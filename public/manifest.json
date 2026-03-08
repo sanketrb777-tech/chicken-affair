@@ -1,0 +1,9 @@
+{
+  "short_name": "Bambini",
+  "name": "Bambini Cafe",
+  "icons": [],
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#0F172A",
+  "background_color": "#0F172A"
+}
