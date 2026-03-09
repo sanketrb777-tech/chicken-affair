@@ -12,7 +12,8 @@ import MenuPage       from './pages/menu/MenuPage'
 import InventoryPage  from './pages/inventory/InventoryPage'
 import ReportsPage    from './pages/reports/ReportsPage'
 import StaffPage      from './pages/staff/StaffPage'
-import SettingsPage   from './pages/settings/SettingsPage'
+import SettingsPage        from './pages/settings/SettingsPage'
+import TablesSettingsPage  from './pages/settings/TablesSettingsPage'
 import KDSPage        from './pages/kds/KDSPage'
 
 function Page({ module, children }) {
@@ -45,7 +46,8 @@ export default function App() {
           <Route path="/inventory"  element={<Page module="inventory" ><InventoryPage  /></Page>} />
           <Route path="/reports"    element={<Page module="reports"   ><ReportsPage    /></Page>} />
           <Route path="/staff"      element={<Page module="staff"     ><StaffPage      /></Page>} />
-          <Route path="/settings"   element={<Page module="settings"  ><SettingsPage   /></Page>} />
+          <Route path="/settings"          element={<Page module="settings"><SettingsPage         /></Page>} />
+<Route path="/settings/tables"   element={<Page module="settings"><TablesSettingsPage   /></Page>} />
 
           <Route path="/"  element={<Navigate to="/dashboard" replace />} />
           <Route path="*"  element={<Navigate to="/dashboard" replace />} />
