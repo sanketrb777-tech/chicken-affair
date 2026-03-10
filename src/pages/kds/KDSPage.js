@@ -1,33 +1,46 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef, useCallback } from 'react'
 import { supabase } from '../../lib/supabase'
 
 export default function KDSPage() {
   const [orders, setOrders] = useState([])
   const [time, setTime]     = useState('')
+  const [connected, setConnected] = useState(false)
+  const debounceRef = useRef(null)
+
+  // Debounced fetch — waits 300ms after last event before fetching
+  // Prevents race conditions when KOT + kot_items fire back to back
+  const debouncedFetch = useCallback(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    debounceRef.current = setTimeout(() => fetchKOTs(), 300)
+  }, [])
 
   useEffect(() => {
     updateClock()
     fetchKOTs()
 
     const channel = supabase
-      .channel('kds-realtime')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'kots' },  () => fetchKOTs())
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'kots' },  () => fetchKOTs())
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'orders' }, () => fetchKOTs())
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'orders' }, () => fetchKOTs())
+      .channel('kds-realtime-v2')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'kots' },      debouncedFetch)
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'kots' },      debouncedFetch)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'kot_items' }, debouncedFetch)
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'kot_items' }, debouncedFetch)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'orders' },    debouncedFetch)
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'orders' },    debouncedFetch)
       .subscribe((status) => {
         console.log('KDS realtime status:', status)
+        setConnected(status === 'SUBSCRIBED')
       })
 
     const clockTimer   = setInterval(updateClock, 1000)
-    const refreshTimer = setInterval(fetchKOTs, 30000)
+    const refreshTimer = setInterval(fetchKOTs, 15000) // fallback poll every 15s
 
     return () => {
       supabase.removeChannel(channel)
       clearInterval(clockTimer)
       clearInterval(refreshTimer)
+      if (debounceRef.current) clearTimeout(debounceRef.current)
     }
-  }, [])
+  }, [debouncedFetch])
 
   function updateClock() {
     setTime(new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true }))
@@ -48,7 +61,7 @@ export default function KDSPage() {
       .gte('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
       .order('created_at')
 
-    if (error) return
+    if (error) { console.error('KDS fetch error:', error); return }
 
     const orderMap = {}
     ;(data || []).forEach(kot => {
@@ -69,6 +82,15 @@ export default function KDSPage() {
     setOrders(Object.values(orderMap))
   }
 
+  async function markKOTDone(kotId) {
+    await supabase.from('kots').update({ status: 'ready' }).eq('id', kotId)
+    // Optimistically update UI immediately without waiting for realtime
+    setOrders(prev => prev.map(order => ({
+      ...order,
+      kots: order.kots.map(k => k.id === kotId ? { ...k, status: 'ready' } : k)
+    })))
+  }
+
   function getElapsed(createdAt) {
     return Math.floor((new Date() - new Date(createdAt)) / 60000)
   }
@@ -79,8 +101,8 @@ export default function KDSPage() {
 
   function getOrderLabel(order) {
     if (order.orderType === 'dine_in')  return 'Table ' + order.tableNumber
-    if (order.orderType === 'takeaway') return order.customerName ? order.customerName : 'Takeaway'
-    if (order.orderType === 'delivery') return order.customerName ? order.customerName : 'Delivery'
+    if (order.orderType === 'takeaway') return order.customerName || 'Takeaway'
+    if (order.orderType === 'delivery') return order.customerName || 'Delivery'
     return 'Order'
   }
 
@@ -99,17 +121,22 @@ export default function KDSPage() {
     <div style={{ minHeight: '100vh', background: '#0D1117', padding: '20px 24px', fontFamily: "'DM Sans', 'Segoe UI', sans-serif" }}>
 
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, flexWrap: 'wrap', gap: 12 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
           <div style={{ background: '#D4A853', borderRadius: 12, width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <span style={{ fontSize: 22 }}>☕</span>
           </div>
           <div>
-            <div style={{ color: '#F8FAFC', fontWeight: 800, fontSize: 20, letterSpacing: -0.5 }}>Bambini Cafe — Kitchen</div>
-            <div style={{ fontSize: 13, marginTop: 2 }}>
+            <div style={{ color: '#F8FAFC', fontWeight: 800, fontSize: 20, letterSpacing: -0.5 }}>Bambini Cafe – Kitchen</div>
+            <div style={{ fontSize: 13, marginTop: 2, display: 'flex', alignItems: 'center', gap: 8 }}>
               {pendingCount === 0
                 ? <span style={{ color: '#22C55E', fontWeight: 600 }}>✓ All clear</span>
                 : <span style={{ color: '#94A3B8' }}>{pendingCount} order{pendingCount !== 1 ? 's' : ''} pending</span>}
+              {/* Connection indicator */}
+              <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: connected ? '#22C55E' : '#EF4444' }}>
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: connected ? '#22C55E' : '#EF4444', display: 'inline-block' }} />
+                {connected ? 'Live' : 'Reconnecting...'}
+              </span>
             </div>
           </div>
         </div>
@@ -162,8 +189,6 @@ export default function KDSPage() {
                   const isReady = kot.status === 'ready'
                   return (
                     <div key={kot.id} style={{ marginTop: kotIdx > 0 ? 16 : 0 }}>
-
-                      {/* KOT label */}
                       {order.kots.length > 1 && (
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
                           <div style={{ fontSize: 11, fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: 0.8 }}>
@@ -175,7 +200,6 @@ export default function KDSPage() {
                         </div>
                       )}
 
-                      {/* Items */}
                       {kot.kot_items.map(kotItem => {
                         const name  = kotItem.order_items?.menu_items?.name
                         const qty   = kotItem.order_items?.quantity
@@ -192,6 +216,14 @@ export default function KDSPage() {
                           </div>
                         )
                       })}
+
+                      {/* Mark as Done button — only on pending KOTs */}
+                      {!isReady && (
+                        <button onClick={() => markKOTDone(kot.id)}
+                          style={{ width: '100%', marginTop: 12, background: '#22C55E', color: '#fff', border: 'none', borderRadius: 8, padding: '10px 0', fontSize: 13, fontWeight: 700, cursor: 'pointer', letterSpacing: 0.3 }}>
+                          ✓ Mark as Done
+                        </button>
+                      )}
 
                       {order.kots.length === 1 && isReady && (
                         <div style={{ textAlign: 'center', color: '#22C55E', fontWeight: 700, fontSize: 13, paddingTop: 12 }}>✓ Ready</div>
