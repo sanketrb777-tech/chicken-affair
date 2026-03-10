@@ -15,7 +15,7 @@ export default function BillScreen() {
   const [gstRate, setGstRate]             = useState(5)
   const [loading, setLoading]             = useState(true)
   const [submitting, setSubmitting]       = useState(false)
-  const [mobileTab, setMobileTab]         = useState('bill') // 'bill' | 'payment'
+  const [mobileTab, setMobileTab]         = useState('bill')
 
   const [selectedDiscount, setSelectedDiscount] = useState(null)
   const [cashAmount, setCashAmount] = useState('')
@@ -58,10 +58,139 @@ export default function BillScreen() {
     totalGST       += itemGST
     gstBreakdown[rate] = (gstBreakdown[rate] || 0) + itemGST
   })
-  totalGST     = parseFloat(totalGST.toFixed(2))
+  totalGST         = parseFloat(totalGST.toFixed(2))
   const grandTotal = afterDiscount
   const totalPaid  = (parseFloat(cashAmount) || 0) + (parseFloat(cardAmount) || 0) + (parseFloat(upiAmount) || 0)
   const balance    = parseFloat((grandTotal - totalPaid).toFixed(2))
+
+  // ── Print ──
+  function printBill() {
+    const orderLabel = order?.cafe_tables ? 'Table ' + order.cafe_tables.number : order?.customer_name || 'Order'
+    const now = new Date().toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true })
+    const paymentLine = [
+      parseFloat(cashAmount) > 0 ? `Cash: ₹${parseFloat(cashAmount).toFixed(2)}` : null,
+      parseFloat(cardAmount) > 0 ? `Card: ₹${parseFloat(cardAmount).toFixed(2)}` : null,
+      parseFloat(upiAmount)  > 0 ? `UPI: ₹${parseFloat(upiAmount).toFixed(2)}`   : null,
+    ].filter(Boolean).join(' + ')
+
+    const receiptHTML = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8"/>
+        <title>Cafe Bambini - Bill</title>
+        <style>
+          * { margin: 0; padding: 0; box-sizing: border-box; }
+          body { font-family: 'Courier New', monospace; font-size: 12px; width: 80mm; margin: 0 auto; padding: 8px; color: #000; }
+          .center { text-align: center; }
+          .bold { font-weight: bold; }
+          .divider { border-top: 1px dashed #000; margin: 6px 0; }
+          .row { display: flex; justify-content: space-between; margin: 3px 0; }
+          .row-3 { display: flex; margin: 3px 0; }
+          .row-3 .name { flex: 1; }
+          .row-3 .qty  { width: 30px; text-align: center; }
+          .row-3 .rate { width: 55px; text-align: right; }
+          .row-3 .amt  { width: 65px; text-align: right; }
+          .total-row { display: flex; justify-content: space-between; font-size: 14px; font-weight: bold; margin: 4px 0; }
+          .small { font-size: 10px; color: #444; }
+          .logo { font-size: 18px; font-weight: bold; letter-spacing: 1px; }
+          .tagline { font-size: 10px; margin-top: 2px; color: #555; }
+          @media print {
+            body { width: 80mm; }
+            @page { size: 80mm auto; margin: 0; }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="center" style="margin-bottom:10px">
+          <div class="logo">Cafe Bambini</div>
+          <div class="tagline">The Lake Side Cafe</div>
+          <div class="small" style="margin-top:4px">${now}</div>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="row">
+          <span>${orderLabel}</span>
+          <span>${order?.order_type?.replace('_', ' ') || ''}</span>
+        </div>
+        <div class="row small">
+          <span>Covers: ${order?.covers || 1}</span>
+          <span>Staff: ${order?.staff?.name || ''}</span>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="row-3 bold small">
+          <span class="name">ITEM</span>
+          <span class="qty">QTY</span>
+          <span class="rate">RATE</span>
+          <span class="amt">AMT</span>
+        </div>
+        <div class="divider"></div>
+
+        ${orderItems.map(item => `
+          <div class="row-3">
+            <span class="name">${item.menu_items?.name || ''}</span>
+            <span class="qty">${item.quantity}</span>
+            <span class="rate">₹${item.unit_price}</span>
+            <span class="amt">₹${(item.quantity * item.unit_price).toFixed(2)}</span>
+          </div>
+        `).join('')}
+
+        <div class="divider"></div>
+
+        <div class="row">
+          <span>Subtotal</span>
+          <span>₹${subtotal.toFixed(2)}</span>
+        </div>
+
+        ${discountAmount > 0 ? `
+          <div class="row">
+            <span>Discount (${selectedDiscount?.name} ${discountPct}%)</span>
+            <span>- ₹${discountAmount.toFixed(2)}</span>
+          </div>
+        ` : ''}
+
+        ${Object.entries(gstBreakdown).map(([rate, amount]) => `
+          <div class="row small">
+            <span>GST ${rate}% (incl.)</span>
+            <span>₹${amount.toFixed(2)}</span>
+          </div>
+        `).join('')}
+
+        ${totalGST > 0 ? `
+          <div class="row small">
+            <span>Total GST</span>
+            <span>₹${totalGST.toFixed(2)}</span>
+          </div>
+        ` : ''}
+
+        <div class="divider"></div>
+        <div class="total-row">
+          <span>TOTAL</span>
+          <span>₹${grandTotal.toFixed(2)}</span>
+        </div>
+        <div class="divider"></div>
+
+        ${paymentLine ? `<div class="row small"><span>Payment</span><span>${paymentLine}</span></div>` : ''}
+        ${notes ? `<div class="row small"><span>Note: ${notes}</span></div>` : ''}
+
+        <div class="divider"></div>
+        <div class="center small" style="margin-top:8px">
+          <div>Thank you for dining with us!</div>
+          <div style="margin-top:4px">Please visit again 🙏</div>
+        </div>
+      </body>
+      </html>
+    `
+
+    const win = window.open('', '_blank', 'width=400,height=600')
+    win.document.write(receiptHTML)
+    win.document.close()
+    win.focus()
+    setTimeout(() => { win.print(); win.close() }, 300)
+  }
 
   async function confirmPayment() {
     if (balance > 0.5) return alert(`Still ₹${balance} pending. Please enter the full amount.`)
@@ -97,13 +226,12 @@ export default function BillScreen() {
 
   const billPanel = (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
-      {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
         <button onClick={() => navigate('/billing')}
           style={{ background: '#fff', border: '1px solid ' + theme.border, borderRadius: 8, padding: '7px 14px', fontSize: 13, cursor: 'pointer', color: theme.textMid, fontWeight: 600 }}>
           ← Back
         </button>
-        <div>
+        <div style={{ flex: 1 }}>
           <h1 style={{ fontSize: 20, fontWeight: 800, color: theme.textDark, margin: 0 }}>
             {order?.cafe_tables ? 'Table ' + order.cafe_tables.number : order?.customer_name || 'Order'}
           </h1>
@@ -111,9 +239,12 @@ export default function BillScreen() {
             {order?.order_type?.replace('_', ' ')} · {order?.covers} cover{order?.covers !== 1 ? 's' : ''} · {order?.staff?.name}
           </p>
         </div>
+        <button onClick={printBill}
+          style={{ background: '#092b33', color: '#fff', border: 'none', borderRadius: 8, padding: '7px 14px', fontSize: 13, cursor: 'pointer', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
+          🖨️ Print
+        </button>
       </div>
 
-      {/* Items */}
       <div style={{ flex: 1, overflowY: 'auto', background: '#fff', borderRadius: 14, border: '1px solid ' + theme.border, padding: '4px 0' }}>
         <div style={{ display: 'flex', padding: '10px 18px', borderBottom: '2px solid ' + theme.bgWarm }}>
           <div style={{ flex: 1, fontSize: 11, fontWeight: 700, color: theme.textLight, textTransform: 'uppercase', letterSpacing: 0.5 }}>Item</div>
@@ -167,7 +298,6 @@ export default function BillScreen() {
       </div>
 
       <div style={{ flex: 1, overflowY: 'auto', padding: 18, display: 'flex', flexDirection: 'column', gap: 16 }}>
-        {/* Discount */}
         <div>
           <label style={{ fontSize: 11, fontWeight: 700, color: theme.textLight, display: 'block', marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 }}>Discount</label>
           <select value={selectedDiscount?.id || ''}
@@ -178,7 +308,6 @@ export default function BillScreen() {
           </select>
         </div>
 
-        {/* Payment split */}
         <div>
           <label style={{ fontSize: 11, fontWeight: 700, color: theme.textLight, display: 'block', marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 }}>Payment Split</label>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -199,7 +328,6 @@ export default function BillScreen() {
           </div>
         </div>
 
-        {/* Balance */}
         <div style={{ background: balance > 0.5 ? '#FEE2E2' : '#DCFCE7', borderRadius: 10, padding: '12px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <span style={{ fontSize: 13, fontWeight: 700, color: balance > 0.5 ? theme.red : '#15803D' }}>
             {balance > 0.5 ? 'Remaining' : balance < -0.5 ? 'Change' : '✓ Settled'}
@@ -221,7 +349,11 @@ export default function BillScreen() {
         </div>
       </div>
 
-      <div style={{ padding: 16, borderTop: '2px solid ' + theme.border }}>
+      <div style={{ padding: 16, borderTop: '2px solid ' + theme.border, display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <button onClick={printBill}
+          style={{ width: '100%', background: theme.bgWarm, color: theme.textDark, border: '1px solid ' + theme.border, borderRadius: 10, padding: '11px', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+          🖨️ Print Bill
+        </button>
         <button onClick={confirmPayment} disabled={submitting || balance > 0.5}
           style={{ width: '100%', background: balance > 0.5 ? theme.bgWarm : '#092b33', color: balance > 0.5 ? theme.textMuted : '#fff', border: 'none', borderRadius: 10, padding: '14px', fontSize: 14, fontWeight: 800, cursor: balance > 0.5 ? 'not-allowed' : 'pointer' }}>
           {submitting ? 'Processing...' : '✓ Confirm Payment & Close Table'}
@@ -232,7 +364,6 @@ export default function BillScreen() {
 
   return (
     <>
-      {/* ── DESKTOP: side by side ── */}
       <div className="bill-desktop" style={{ display: 'flex', gap: 16, height: 'calc(100vh - 112px)' }}>
         {billPanel}
         <div style={{ width: 300, background: '#fff', borderRadius: 14, border: '1px solid ' + theme.border, display: 'flex', flexDirection: 'column', overflow: 'hidden', flexShrink: 0 }}>
@@ -240,9 +371,7 @@ export default function BillScreen() {
         </div>
       </div>
 
-      {/* ── MOBILE: tabbed ── */}
       <div className="bill-mobile" style={{ display: 'none', flexDirection: 'column', height: 'calc(100vh - 120px)' }}>
-        {/* Tab switcher */}
         <div style={{ display: 'flex', background: '#092b33', borderRadius: 10, padding: 4, marginBottom: 12, flexShrink: 0 }}>
           <button onClick={() => setMobileTab('bill')}
             style={{ flex: 1, padding: '8px 0', borderRadius: 7, border: 'none', fontWeight: 700, fontSize: 13, cursor: 'pointer', background: mobileTab === 'bill' ? '#fff' : 'transparent', color: mobileTab === 'bill' ? '#092b33' : 'rgba(255,255,255,0.6)', transition: 'all 0.15s' }}>
