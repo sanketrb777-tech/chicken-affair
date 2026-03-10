@@ -444,7 +444,15 @@ export default function OrdersPage() {
   const navigate    = useNavigate()
   const { profile } = useAuth()
 
-  useEffect(() => { fetchOrders() }, [])
+  useEffect(() => {
+    fetchOrders()
+    // Refresh at next midnight to reset the day
+    const now      = new Date()
+    const midnight = new Date(now)
+    midnight.setHours(24, 0, 0, 0)
+    const timer = setTimeout(() => fetchOrders(), midnight - now)
+    return () => clearTimeout(timer)
+  }, [])
 
   useEffect(() => {
     function handleClick(e) {
@@ -455,9 +463,22 @@ export default function OrdersPage() {
   }, [])
 
   async function fetchOrders() {
+    const start = new Date(); start.setHours(0, 0, 0, 0)
+    const end   = new Date(); end.setHours(23, 59, 59, 999)
     const { data, error } = await supabase
-      .from('orders').select('*, cafe_tables(number), staff(name)').eq('status', 'active').order('created_at', { ascending: false })
-    if (!error) setOrders(data)
+      .from('orders')
+      .select('*, cafe_tables(number), staff(name)')
+      .gte('created_at', start.toISOString())
+      .lte('created_at', end.toISOString())
+      .order('created_at', { ascending: false })
+    if (!error) {
+      const sorted = (data || []).sort((a, b) => {
+        if (a.status === 'active' && b.status !== 'active') return -1
+        if (a.status !== 'active' && b.status === 'active') return 1
+        return new Date(b.created_at) - new Date(a.created_at)
+      })
+      setOrders(sorted)
+    }
     setLoading(false)
   }
 
@@ -489,8 +510,10 @@ export default function OrdersPage() {
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 28 }}>
         <div>
-          <h1 style={{ fontSize: 22, fontWeight: 800, color: theme.textDark, margin: 0 }}>Active Orders</h1>
-          <p style={{ color: theme.textLight, fontSize: 14, marginTop: 4 }}>{orders.length} active order{orders.length !== 1 ? 's' : ''}</p>
+          <h1 style={{ fontSize: 22, fontWeight: 800, color: theme.textDark, margin: 0 }}>Today's Orders</h1>
+          <p style={{ color: theme.textLight, fontSize: 14, marginTop: 4 }}>
+            {orders.filter(o => o.status === 'active').length} active · {orders.filter(o => o.status !== 'active').length} completed
+          </p>
         </div>
 
         <div ref={dropdownRef} style={{ position: 'relative' }}>
@@ -521,28 +544,38 @@ export default function OrdersPage() {
 
       {orders.length === 0 ? (
         <div style={{ background: '#fff', borderRadius: 14, border: '1px solid ' + theme.border, textAlign: 'center', padding: 48, color: theme.textLight }}>
-          No active orders. Click "+ New Order" to get started.
+          No orders today. Click "+ New Order" to get started.
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {orders.map(order => {
             const typeConfig  = ORDER_TYPES[order.order_type] || ORDER_TYPES.dine_in
             const isOffTable  = !order.table_id
+            const isActive    = order.status === 'active'
             const canDelete   = ['owner', 'manager'].includes(profile?.role)
             return (
               <div key={order.id} style={{ position: 'relative' }}>
                 <div
-                  onClick={() => isOffTable
-                    ? navigate('/orders/new?type=' + order.order_type)
-                    : navigate('/orders/new?table=' + order.table_id + '&tableNumber=' + order.cafe_tables?.number)
+                  onClick={() => isActive
+                    ? isOffTable
+                      ? navigate('/orders/new?type=' + order.order_type)
+                      : navigate('/orders/new?table=' + order.table_id + '&tableNumber=' + order.cafe_tables?.number)
+                    : null
                   }
-                  style={{ background: '#fff', borderRadius: 12, padding: '14px 18px', paddingRight: canDelete ? 52 : 18, border: '1px solid ' + theme.border, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 14, boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+                  style={{ background: '#fff', borderRadius: 12, padding: '14px 18px', paddingRight: canDelete ? 52 : 18, border: '1px solid ' + (isActive ? theme.border : theme.bgWarm), cursor: isActive ? 'pointer' : 'default', display: 'flex', alignItems: 'center', gap: 14, boxShadow: '0 1px 3px rgba(0,0,0,0.05)', opacity: isActive ? 1 : 0.65 }}>
                   <div style={{ width: 42, height: 42, background: typeConfig.color + '18', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>
                     {typeConfig.icon}
                   </div>
                   <div style={{ flex: 1 }}>
-                    <div style={{ fontWeight: 700, fontSize: 14, color: theme.textDark }}>
-                      {order.cafe_tables ? 'Table ' + order.cafe_tables.number : order.customer_name || typeConfig.label}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <div style={{ fontWeight: 700, fontSize: 14, color: theme.textDark }}>
+                        {order.cafe_tables ? 'Table ' + order.cafe_tables.number : order.customer_name || typeConfig.label}
+                      </div>
+                      {!isActive && (
+                        <span style={{ fontSize: 10, fontWeight: 700, background: '#DCFCE7', color: '#15803D', padding: '2px 8px', borderRadius: 20 }}>
+                          ✓ Done
+                        </span>
+                      )}
                     </div>
                     <div style={{ fontSize: 12, color: theme.textLight, marginTop: 2 }}>
                       {typeConfig.label}
