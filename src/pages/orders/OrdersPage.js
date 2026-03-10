@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../context/AuthContext'
 import { theme } from '../../lib/theme'
+import { Trash2 } from 'lucide-react'
 
 const ORDER_TYPES = {
   dine_in:  { label: 'Dine In',  icon: '🪑', color: '#0D9488' },
@@ -437,9 +438,11 @@ export function NewOrderPage() {
 export default function OrdersPage() {
   const [orders, setOrders]             = useState([])
   const [loading, setLoading]           = useState(true)
-  const [showTypeMenu, setShowTypeMenu] = useState(false)
+  const [showTypeMenu, setShowTypeMenu]   = useState(false)
+  const [deleteOrderId, setDeleteOrderId] = useState(null)
   const dropdownRef = useRef(null)
   const navigate    = useNavigate()
+  const { profile } = useAuth()
 
   useEffect(() => { fetchOrders() }, [])
 
@@ -456,6 +459,22 @@ export default function OrdersPage() {
       .from('orders').select('*, cafe_tables(number), staff(name)').eq('status', 'active').order('created_at', { ascending: false })
     if (!error) setOrders(data)
     setLoading(false)
+  }
+
+  async function deleteOrder(id) {
+    const order = orders.find(o => o.id === id)
+    if (order?.table_id) {
+      await supabase.from('cafe_tables').update({ status: 'free', captain_id: null }).eq('id', order.table_id)
+    }
+    const { data: kots } = await supabase.from('kots').select('id').eq('order_id', id)
+    if (kots?.length) {
+      await supabase.from('kot_items').delete().in('kot_id', kots.map(k => k.id))
+      await supabase.from('kots').delete().eq('order_id', id)
+    }
+    await supabase.from('order_items').delete().eq('order_id', id)
+    await supabase.from('orders').delete().eq('id', id)
+    setDeleteOrderId(null)
+    fetchOrders()
   }
 
   function handleTypeSelect(type) {
@@ -509,32 +528,65 @@ export default function OrdersPage() {
           {orders.map(order => {
             const typeConfig  = ORDER_TYPES[order.order_type] || ORDER_TYPES.dine_in
             const isOffTable  = !order.table_id
+            const canDelete   = ['owner', 'manager'].includes(profile?.role)
             return (
-              <div key={order.id}
-                onClick={() => isOffTable
-                  ? navigate('/orders/new?type=' + order.order_type)
-                  : navigate('/orders/new?table=' + order.table_id + '&tableNumber=' + order.cafe_tables?.number)
-                }
-                style={{ background: '#fff', borderRadius: 12, padding: '14px 18px', border: '1px solid ' + theme.border, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 14, boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
-                <div style={{ width: 42, height: 42, background: typeConfig.color + '18', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>
-                  {typeConfig.icon}
-                </div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontWeight: 700, fontSize: 14, color: theme.textDark }}>
-                    {order.cafe_tables ? 'Table ' + order.cafe_tables.number : order.customer_name || typeConfig.label}
+              <div key={order.id} style={{ position: 'relative' }}>
+                <div
+                  onClick={() => isOffTable
+                    ? navigate('/orders/new?type=' + order.order_type)
+                    : navigate('/orders/new?table=' + order.table_id + '&tableNumber=' + order.cafe_tables?.number)
+                  }
+                  style={{ background: '#fff', borderRadius: 12, padding: '14px 18px', paddingRight: canDelete ? 52 : 18, border: '1px solid ' + theme.border, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 14, boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+                  <div style={{ width: 42, height: 42, background: typeConfig.color + '18', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>
+                    {typeConfig.icon}
                   </div>
-                  <div style={{ fontSize: 12, color: theme.textLight, marginTop: 2 }}>
-                    {typeConfig.label}
-                    {order.customer_phone && ` · 📞 ${order.customer_phone}`}
-                    {!isOffTable && ` · ${order.covers} cover${order.covers !== 1 ? 's' : ''}`}
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontWeight: 700, fontSize: 14, color: theme.textDark }}>
+                      {order.cafe_tables ? 'Table ' + order.cafe_tables.number : order.customer_name || typeConfig.label}
+                    </div>
+                    <div style={{ fontSize: 12, color: theme.textLight, marginTop: 2 }}>
+                      {typeConfig.label}
+                      {order.customer_phone && ` · 📞 ${order.customer_phone}`}
+                      {!isOffTable && ` · ${order.covers} cover${order.covers !== 1 ? 's' : ''}`}
+                    </div>
+                  </div>
+                  <div style={{ fontSize: 12, color: theme.textLight }}>
+                    {new Date(order.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
                   </div>
                 </div>
-                <div style={{ fontSize: 12, color: theme.textLight }}>
-                  {new Date(order.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
-                </div>
+                {canDelete && (
+                  <button
+                    onClick={e => { e.stopPropagation(); setDeleteOrderId(order.id) }}
+                    style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 7, padding: '6px 8px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+                    <Trash2 size={14} color='#DC2626' />
+                  </button>
+                )}
               </div>
             )
           })}
+        </div>
+      )}
+
+      {/* Delete Order Confirm */}
+      {deleteOrderId && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
+          <div style={{ background: '#fff', borderRadius: 16, padding: 28, width: '100%', maxWidth: 360, textAlign: 'center', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}>
+            <div style={{ width: 52, height: 52, borderRadius: '50%', background: '#FEF2F2', border: '2px solid #FECACA', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+              <Trash2 size={22} color='#DC2626' />
+            </div>
+            <div style={{ fontWeight: 800, fontSize: 16, color: theme.textDark, marginBottom: 8 }}>Delete Order?</div>
+            <div style={{ fontSize: 13, color: theme.textLight, marginBottom: 22 }}>This will permanently delete the order and all its KOTs. If it has a table, it will be freed. This cannot be undone.</div>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button onClick={() => setDeleteOrderId(null)}
+                style={{ flex: 1, background: theme.bgWarm, border: 'none', borderRadius: 9, padding: '11px 0', fontSize: 13, fontWeight: 700, cursor: 'pointer', color: theme.textMid }}>
+                Cancel
+              </button>
+              <button onClick={() => deleteOrder(deleteOrderId)}
+                style={{ flex: 1, background: '#DC2626', color: '#fff', border: 'none', borderRadius: 9, padding: '11px 0', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+                Delete
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
