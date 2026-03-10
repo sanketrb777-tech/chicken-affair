@@ -22,12 +22,12 @@ export const ROLE_PERMISSIONS = {
   manager: {
     dashboard: true,   orders: true,   tables: true,
     billing: true,     menu: true,     inventory: true,
-    reports: true,     settings: false, staff: false,
+    reports: true,     settings: true, staff: false,
     kds: true,
   },
   captain: {
     dashboard: true,   orders: true,   tables: 'own',
-    billing: false,    menu: false,    inventory: false,
+    billing: true,     menu: false,    inventory: false,
     reports: false,    settings: false, staff: false,
     kds: false,
   },
