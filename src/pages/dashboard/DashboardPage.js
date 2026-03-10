@@ -2,11 +2,12 @@ import { useEffect, useState, useRef } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../context/AuthContext'
 import { theme } from '../../lib/theme'
+import { useNavigate } from 'react-router-dom'
 import {
   BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend
 } from 'recharts'
-import { TrendingUp, ShoppingBag, Truck, Utensils, Banknote, CreditCard, Smartphone, ClipboardList, LayoutGrid, BarChart2, Calendar, ChevronDown } from 'lucide-react'
+import { TrendingUp, ShoppingBag, Truck, Utensils, Banknote, CreditCard, Smartphone, ClipboardList, LayoutGrid, BarChart2, Calendar, ChevronDown, Eye, Printer } from 'lucide-react'
 
 const FILTERS_BY_ROLE = {
   owner:   ['Today', 'Yesterday', 'Last 7 Days', 'Last 30 Days', 'Custom Range'],
@@ -34,8 +35,78 @@ function getDateRange(filter) {
 
 const CHART_COLORS = ['#092b33', '#0D9488', '#D4A853', '#7C3AED', '#B91C1C']
 
+function printBill(bill) {
+  const w = window.open('', '_blank', 'width=400,height=700')
+  if (!w) return
+  const date = new Date(bill.created_at).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+  const paymentParts = []
+  if (bill.cash_amount > 0) paymentParts.push(`Cash ₹${parseFloat(bill.cash_amount).toFixed(2)}`)
+  if (bill.card_amount > 0) paymentParts.push(`Card ₹${parseFloat(bill.card_amount).toFixed(2)}`)
+  if (bill.upi_amount  > 0) paymentParts.push(`UPI ₹${parseFloat(bill.upi_amount).toFixed(2)}`)
+
+  const itemsHtml = (bill.items || []).map(i =>
+    `<tr>
+      <td style="padding:3px 0">${i.name}${i.notes ? `<br/><span style="font-size:9px;color:#666">${i.notes}</span>` : ''}</td>
+      <td style="text-align:center;padding:3px 4px">${i.quantity}</td>
+      <td style="text-align:right;padding:3px 0">₹${(i.price * i.quantity).toFixed(2)}</td>
+    </tr>`
+  ).join('')
+
+  const subtotal  = parseFloat(bill.total || 0) / 1.18
+  const gstAmount = parseFloat(bill.total || 0) - subtotal
+
+  w.document.write(`<!DOCTYPE html><html><head>
+    <title>Bill #${bill.bill_number || bill.id?.slice(0,8)}</title>
+    <style>
+      body { font-family: 'Courier New', monospace; font-size: 12px; width: 80mm; margin: 0 auto; padding: 10px; color: #000; }
+      h2 { text-align: center; font-size: 16px; margin: 0 0 2px; }
+      .sub { text-align: center; font-size: 11px; color: #444; margin-bottom: 8px; }
+      .divider { border-top: 1px dashed #000; margin: 8px 0; }
+      table { width: 100%; border-collapse: collapse; }
+      th { font-size: 10px; text-transform: uppercase; border-bottom: 1px solid #000; padding-bottom: 4px; }
+      .total-row td { font-weight: bold; font-size: 13px; padding-top: 6px; }
+      .footer { text-align: center; font-size: 11px; margin-top: 12px; color: #555; }
+      @media print { body { margin: 0; } }
+    </style>
+  </head><body>
+    <h2>Cafe Bambini</h2>
+    <div class="sub">Bambini Cafe · Pune</div>
+    <div class="divider"></div>
+    <div style="font-size:11px">
+      <div><b>Date:</b> ${date}</div>
+      ${bill.table_name ? `<div><b>Table:</b> ${bill.table_name}</div>` : ''}
+      ${bill.order_type ? `<div><b>Type:</b> ${bill.order_type.replace('_',' ').replace(/\b\w/g,c=>c.toUpperCase())}</div>` : ''}
+      <div><b>Bill #:</b> ${bill.bill_number || bill.id?.slice(0,8).toUpperCase()}</div>
+    </div>
+    <div class="divider"></div>
+    <table>
+      <thead><tr>
+        <th style="text-align:left">Item</th>
+        <th style="text-align:center">Qty</th>
+        <th style="text-align:right">Amt</th>
+      </tr></thead>
+      <tbody>${itemsHtml}</tbody>
+    </table>
+    <div class="divider"></div>
+    <table>
+      <tr><td>Subtotal</td><td style="text-align:right">₹${subtotal.toFixed(2)}</td></tr>
+      <tr><td>CGST 9%</td><td style="text-align:right">₹${(gstAmount/2).toFixed(2)}</td></tr>
+      <tr><td>SGST 9%</td><td style="text-align:right">₹${(gstAmount/2).toFixed(2)}</td></tr>
+      <tr class="total-row"><td>TOTAL</td><td style="text-align:right">₹${parseFloat(bill.total).toFixed(2)}</td></tr>
+    </table>
+    <div class="divider"></div>
+    <div style="font-size:11px"><b>Payment:</b> ${paymentParts.join(' + ') || 'N/A'}</div>
+    <div class="divider"></div>
+    <div class="footer">Thank you for visiting!<br/>Please visit again 😊</div>
+  </body></html>`)
+  w.document.close()
+  w.focus()
+  setTimeout(() => { w.print() }, 400)
+}
+
 export default function DashboardPage() {
   const { profile } = useAuth()
+  const navigate    = useNavigate()
   const role        = profile?.role || 'captain'
   const filters     = FILTERS_BY_ROLE[role] || FILTERS_BY_ROLE.captain
 
@@ -47,6 +118,7 @@ export default function DashboardPage() {
   const [loading, setLoading]           = useState(true)
   const [chartType, setChartType]       = useState('bar')
   const [showChartDropdown, setShowChartDropdown] = useState(false)
+  const [printingId, setPrintingId]     = useState(null)
   const dropdownRef      = useRef(null)
   const chartDropdownRef = useRef(null)
 
@@ -63,6 +135,7 @@ export default function DashboardPage() {
   const [totalTables, setTotalTables]         = useState(0)
   const [billCount, setBillCount]             = useState(0)
   const [chartData, setChartData]             = useState([])
+  const [billList, setBillList]               = useState([])
 
   useEffect(() => {
     function handleClick(e) {
@@ -97,46 +170,64 @@ export default function DashboardPage() {
     // Fetch bills
     const { data: bills } = await supabase
       .from('bills')
-      .select('id, total, cash_amount, card_amount, upi_amount, created_at, order_id')
+      .select('id, bill_number, total, cash_amount, card_amount, upi_amount, created_at, order_id, notes')
       .eq('status', 'paid')
       .gte('created_at', fromISO)
       .lte('created_at', toISO)
+      .order('created_at', { ascending: false })
 
-    const billList = bills || []
-    setBillCount(billList.length)
+    const rawBills = bills || []
+    setBillCount(rawBills.length)
 
-    // Fetch order types for these bills
-    const orderIds = billList.map(b => b.order_id).filter(Boolean)
-    let orderTypeMap = {}
+    // Fetch order info
+    const orderIds = rawBills.map(b => b.order_id).filter(Boolean)
+    let orderMap = {}
     if (orderIds.length > 0) {
       const { data: ordersData } = await supabase
-        .from('orders').select('id, order_type').in('id', orderIds)
-      ;(ordersData || []).forEach(o => { orderTypeMap[o.id] = o.order_type })
+        .from('orders').select('id, order_type, table_id').in('id', orderIds)
+      ;(ordersData || []).forEach(o => { orderMap[o.id] = o })
     }
 
-    // Calculate revenue totals
+    // Fetch table names
+    const tableIds = Object.values(orderMap).map(o => o.table_id).filter(Boolean)
+    let tableMap = {}
+    if (tableIds.length > 0) {
+      const { data: tablesData } = await supabase
+        .from('cafe_tables').select('id, name').in('id', tableIds)
+      ;(tablesData || []).forEach(t => { tableMap[t.id] = t.name })
+    }
+
+    // Enrich bills
+    const enrichedBills = rawBills.map(b => {
+      const order = orderMap[b.order_id] || {}
+      return {
+        ...b,
+        order_type: order.order_type || null,
+        table_name: order.table_id ? tableMap[order.table_id] : null,
+      }
+    })
+    setBillList(enrichedBills)
+
+    // Revenue totals
     let total = 0, dineIn = 0, takeaway = 0, delivery = 0, cash = 0, card = 0, upi = 0
-    billList.forEach(b => {
+    enrichedBills.forEach(b => {
       const amt  = parseFloat(b.total || 0)
-      const type = orderTypeMap[b.order_id]
       total += amt
       cash  += parseFloat(b.cash_amount || 0)
       card  += parseFloat(b.card_amount || 0)
       upi   += parseFloat(b.upi_amount  || 0)
-      if (type === 'dine_in')  dineIn   += amt
-      if (type === 'takeaway') takeaway += amt
-      if (type === 'delivery') delivery += amt
+      if (b.order_type === 'dine_in')  dineIn   += amt
+      if (b.order_type === 'takeaway') takeaway += amt
+      if (b.order_type === 'delivery') delivery += amt
     })
 
     setTotalRevenue(total); setDineInRevenue(dineIn)
     setTakeawayRevenue(takeaway); setDeliveryRevenue(delivery)
     setCashTotal(cash); setCardTotal(card); setUpiTotal(upi)
 
-    // Build chart data
+    // Chart data
     const isHourly = activeFilter === 'Today' || activeFilter === 'Yesterday'
     const grouped  = {}
-
-    // Fill all hours/days first
     if (isHourly) {
       const startHour = activeFilter === 'Yesterday' ? 0 : from.getHours()
       const endHour   = activeFilter === 'Yesterday' ? 23 : new Date().getHours()
@@ -152,22 +243,18 @@ export default function DashboardPage() {
         cursor.setDate(cursor.getDate() + 1)
       }
     }
-
-    // Add bill amounts to chart
-    billList.forEach(b => {
+    enrichedBills.forEach(b => {
       const d   = new Date(b.created_at)
       const key = isHourly
         ? d.getHours() + ':00'
         : d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })
       if (!grouped[key]) grouped[key] = { label: key, 'Dine In': 0, Takeaway: 0, Delivery: 0, Total: 0 }
-      const amt  = parseFloat(b.total || 0)
-      const type = orderTypeMap[b.order_id]
+      const amt = parseFloat(b.total || 0)
       grouped[key].Total += amt
-      if (type === 'dine_in')  grouped[key]['Dine In']  += amt
-      if (type === 'takeaway') grouped[key]['Takeaway'] += amt
-      if (type === 'delivery') grouped[key]['Delivery'] += amt
+      if (b.order_type === 'dine_in')  grouped[key]['Dine In']  += amt
+      if (b.order_type === 'takeaway') grouped[key]['Takeaway'] += amt
+      if (b.order_type === 'delivery') grouped[key]['Delivery'] += amt
     })
-
     const sortedChart = Object.values(grouped).sort((a, b) => {
       if (isHourly) return parseInt(a.label) - parseInt(b.label)
       return new Date(a.label) - new Date(b.label)
@@ -184,6 +271,18 @@ export default function DashboardPage() {
 
     setLoading(false)
   }
+
+  async function handlePrint(bill) {
+    setPrintingId(bill.id)
+    // Fetch bill items for print
+    const { data: kotItems } = await supabase
+      .from('kot_items')
+      .select('name, quantity, price, notes')
+      .eq('order_id', bill.order_id)
+    printBill({ ...bill, items: kotItems || [] })
+    setPrintingId(null)
+  }
+
   function selectFilter(f) {
     setActiveFilter(f)
     if (f === 'Custom Range') { setShowCustom(true); setShowDropdown(false) }
@@ -198,7 +297,6 @@ export default function DashboardPage() {
   const occupancyPct = totalTables > 0 ? Math.round((occupiedTables / totalTables) * 100) : 0
   const paymentTotal = cashTotal + cardTotal + upiTotal
 
-  // Pie chart data
   const pieData = [
     { name: 'Dine In',  value: dineInRevenue },
     { name: 'Takeaway', value: takeawayRevenue },
@@ -206,6 +304,20 @@ export default function DashboardPage() {
   ].filter(d => d.value > 0)
 
   const CHART_TYPE_LABELS = { bar: 'Bar Chart', line: 'Line Chart', pie: 'Pie Chart' }
+
+  const ORDER_TYPE_BADGE = {
+    dine_in:  { label: 'Dine In',  bg: '#E6FAF8', color: '#0D9488' },
+    takeaway: { label: 'Takeaway', bg: '#FEF3C7', color: '#B45309' },
+    delivery: { label: 'Delivery', bg: '#EEE9FF', color: '#7C3AED' },
+  }
+
+  const PAYMENT_MODE_LABEL = (b) => {
+    const parts = []
+    if (parseFloat(b.cash_amount) > 0) parts.push('Cash')
+    if (parseFloat(b.card_amount) > 0) parts.push('Card')
+    if (parseFloat(b.upi_amount)  > 0) parts.push('UPI')
+    return parts.join(' + ') || '—'
+  }
 
   return (
     <div>
@@ -271,9 +383,9 @@ export default function DashboardPage() {
             </div>
             {[
               { label: 'Dine In',  value: dineInRevenue },
-            { label: 'Takeaway', value: takeawayRevenue },
-            { label: 'Delivery', value: deliveryRevenue },
-            ].map(({ label, icon, value }) => (
+              { label: 'Takeaway', value: takeawayRevenue },
+              { label: 'Delivery', value: deliveryRevenue },
+            ].map(({ label, value }) => (
               <div key={label} style={{ background: '#fff', borderRadius: 14, padding: '20px 22px', border: '1px solid ' + theme.border }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
                   {label === 'Dine In'  && <Utensils size={14} color={theme.textLight} />}
@@ -350,7 +462,7 @@ export default function DashboardPage() {
           </div>
 
           {/* Row 3 — Sales Chart */}
-          <div style={{ background: '#fff', borderRadius: 14, padding: '20px 22px', border: '1px solid ' + theme.border }}>
+          <div style={{ background: '#fff', borderRadius: 14, padding: '20px 22px', border: '1px solid ' + theme.border, marginBottom: 14 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
               <div>
                 <div style={{ fontSize: 13, fontWeight: 800, color: theme.textDark }}>Sales Data</div>
@@ -358,8 +470,6 @@ export default function DashboardPage() {
                   {activeFilter === 'Today' || activeFilter === 'Yesterday' ? 'Hourly breakdown' : 'Daily breakdown'} by order type
                 </div>
               </div>
-
-              {/* Chart type dropdown */}
               <div ref={chartDropdownRef} style={{ position: 'relative' }}>
                 <button onClick={() => setShowChartDropdown(d => !d)}
                   style={{ background: theme.bgWarm, border: '1px solid ' + theme.border, borderRadius: 9, padding: '8px 14px', fontSize: 12, fontWeight: 700, cursor: 'pointer', color: theme.textDark, display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -421,6 +531,80 @@ export default function DashboardPage() {
                   </PieChart>
                 )}
               </ResponsiveContainer>
+            )}
+          </div>
+
+          {/* Row 4 — Bills List */}
+          <div style={{ background: '#fff', borderRadius: 14, border: '1px solid ' + theme.border, overflow: 'hidden' }}>
+            <div style={{ padding: '18px 22px', borderBottom: '1px solid ' + theme.border, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 800, color: theme.textDark }}>Bills</div>
+                <div style={{ fontSize: 12, color: theme.textLight, marginTop: 2 }}>{billCount} paid bill{billCount !== 1 ? 's' : ''} · {getFilterLabel()}</div>
+              </div>
+            </div>
+
+            {billList.length === 0 ? (
+              <div style={{ textAlign: 'center', color: theme.textLight, fontSize: 13, padding: '40px 0' }}>No bills in this period</div>
+            ) : (
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                  <thead>
+                    <tr style={{ background: theme.bgWarm }}>
+                      {['Bill #', 'Time', 'Table', 'Type', 'Payment', 'Amount', 'Actions'].map(h => (
+                        <th key={h} style={{ padding: '10px 16px', textAlign: h === 'Amount' ? 'right' : 'left', fontWeight: 700, fontSize: 11, color: theme.textLight, textTransform: 'uppercase', letterSpacing: 0.5, whiteSpace: 'nowrap' }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {billList.map((bill, i) => {
+                      const badge = ORDER_TYPE_BADGE[bill.order_type] || { label: '—', bg: theme.bgWarm, color: theme.textLight }
+                      const isOdd = i % 2 === 0
+                      return (
+                        <tr key={bill.id} style={{ background: isOdd ? '#fff' : theme.bgWarm + '55', borderBottom: '1px solid ' + theme.border }}>
+                          <td style={{ padding: '12px 16px', fontWeight: 700, color: theme.textDark }}>
+                            #{bill.bill_number || bill.id?.slice(0,8).toUpperCase()}
+                          </td>
+                          <td style={{ padding: '12px 16px', color: theme.textMid, whiteSpace: 'nowrap' }}>
+                            {new Date(bill.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })}
+                            <div style={{ fontSize: 11, color: theme.textLight }}>
+                              {new Date(bill.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}
+                            </div>
+                          </td>
+                          <td style={{ padding: '12px 16px', color: theme.textMid }}>
+                            {bill.table_name || '—'}
+                          </td>
+                          <td style={{ padding: '12px 16px' }}>
+                            <span style={{ background: badge.bg, color: badge.color, fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 20 }}>
+                              {badge.label}
+                            </span>
+                          </td>
+                          <td style={{ padding: '12px 16px', color: theme.textMid, fontSize: 12 }}>
+                            {PAYMENT_MODE_LABEL(bill)}
+                          </td>
+                          <td style={{ padding: '12px 16px', textAlign: 'right', fontWeight: 800, color: theme.textDark }}>
+                            ₹{parseFloat(bill.total).toFixed(0)}
+                          </td>
+                          <td style={{ padding: '12px 16px' }}>
+                            <div style={{ display: 'flex', gap: 8 }}>
+                              <button
+                                onClick={() => navigate(`/billing/order/${bill.order_id}`)}
+                                style={{ display: 'flex', alignItems: 'center', gap: 5, background: '#EFF6FF', border: 'none', borderRadius: 7, padding: '6px 12px', fontSize: 12, fontWeight: 600, color: '#1D4ED8', cursor: 'pointer' }}>
+                                <Eye size={13} /> View
+                              </button>
+                              <button
+                                onClick={() => handlePrint(bill)}
+                                disabled={printingId === bill.id}
+                                style={{ display: 'flex', alignItems: 'center', gap: 5, background: '#F0FDF4', border: 'none', borderRadius: 7, padding: '6px 12px', fontSize: 12, fontWeight: 600, color: '#15803D', cursor: 'pointer', opacity: printingId === bill.id ? 0.6 : 1 }}>
+                                <Printer size={13} /> {printingId === bill.id ? '...' : 'Print'}
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
             )}
           </div>
         </>
