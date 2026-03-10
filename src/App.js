@@ -50,6 +50,8 @@ export default function App() {
           <Route path="/staff"      element={<Page module="staff"     ><StaffPage      /></Page>} />
           <Route path="/settings"           element={<Page module="settings"><SettingsPage /></Page>} />
           <Route path="/settings/printer"   element={<ProtectedRoute><PrinterSettingsPage /></ProtectedRoute>} />
+          <Route path="/settings/tables"    element={<Page module="settings"><TablesSettingsPage    /></Page>} />
+<Route path="/settings/discounts" element={<Page module="settings"><DiscountsSettingsPage /></Page>} />
           <Route path="/"  element={<Navigate to="/dashboard" replace />} />
           <Route path="*"  element={<Navigate to="/dashboard" replace />} />
         </Routes>
