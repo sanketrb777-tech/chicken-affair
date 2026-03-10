@@ -280,13 +280,21 @@ export function NewOrderPage() {
               <div style={{ fontSize: 10, fontWeight: 700, color: theme.primary, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>New Round</div>
             )}
             {cart.map(c => (
-              <div key={c.item.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 0', borderBottom: '1px solid ' + theme.bgWarm }}>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontWeight: 700, fontSize: 13, color: theme.textDark }}>{c.item.name}</div>
-                  <div style={{ fontSize: 11, color: theme.textLight }}>₹{c.item.price} × {c.quantity}</div>
-                </div>
-                <div style={{ fontWeight: 700, fontSize: 13, color: theme.textDark }}>₹{c.item.price * c.quantity}</div>
-              </div>
+              <div key={c.item.id} style={{ padding: '8px 0', borderBottom: '1px solid ' + theme.bgWarm }}>
+  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+    <div style={{ flex: 1 }}>
+      <div style={{ fontWeight: 700, fontSize: 13, color: theme.textDark }}>{c.item.name}</div>
+      <div style={{ fontSize: 11, color: theme.textLight }}>₹{c.item.price} × {c.quantity}</div>
+    </div>
+    <div style={{ fontWeight: 700, fontSize: 13, color: theme.textDark }}>₹{c.item.price * c.quantity}</div>
+  </div>
+  <input
+    value={c.notes}
+    onChange={e => setCart(prev => prev.map(ci => ci.item.id === c.item.id ? { ...ci, notes: e.target.value } : ci))}
+    placeholder="Add note (e.g. no onion, extra spicy...)"
+    style={{ width: '100%', marginTop: 6, background: '#F8F6F2', border: '1px solid ' + theme.border, borderRadius: 6, padding: '5px 10px', fontSize: 11, color: theme.textDark, outline: 'none', boxSizing: 'border-box' }}
+  />
+</div>
             ))}
           </>
         )}
