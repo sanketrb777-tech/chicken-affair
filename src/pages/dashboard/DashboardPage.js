@@ -94,22 +94,35 @@ export default function DashboardPage() {
     const fromISO = from.toISOString()
     const toISO   = to.toISOString()
 
-    // Bills
+    // Fetch bills
     const { data: bills } = await supabase
       .from('bills')
-      .select('total_amount, cash_amount, card_amount, upi_amount, created_at, orders(order_type)')
+      .select('id, total, cash_amount, card_amount, upi_amount, created_at, order_id')
       .eq('status', 'paid')
       .gte('created_at', fromISO)
       .lte('created_at', toISO)
 
+    const billList = bills || []
+    setBillCount(billList.length)
+
+    // Fetch order types for these bills
+    const orderIds = billList.map(b => b.order_id).filter(Boolean)
+    let orderTypeMap = {}
+    if (orderIds.length > 0) {
+      const { data: ordersData } = await supabase
+        .from('orders').select('id, order_type').in('id', orderIds)
+      ;(ordersData || []).forEach(o => { orderTypeMap[o.id] = o.order_type })
+    }
+
+    // Calculate revenue totals
     let total = 0, dineIn = 0, takeaway = 0, delivery = 0, cash = 0, card = 0, upi = 0
-    ;(bills || []).forEach(b => {
-      const amt = parseFloat(b.total_amount || 0)
-      total    += amt
-      cash     += parseFloat(b.cash_amount || 0)
-      card     += parseFloat(b.card_amount || 0)
-      upi      += parseFloat(b.upi_amount  || 0)
-      const type = b.orders?.order_type
+    billList.forEach(b => {
+      const amt  = parseFloat(b.total || 0)
+      const type = orderTypeMap[b.order_id]
+      total += amt
+      cash  += parseFloat(b.cash_amount || 0)
+      card  += parseFloat(b.card_amount || 0)
+      upi   += parseFloat(b.upi_amount  || 0)
       if (type === 'dine_in')  dineIn   += amt
       if (type === 'takeaway') takeaway += amt
       if (type === 'delivery') delivery += amt
@@ -118,42 +131,42 @@ export default function DashboardPage() {
     setTotalRevenue(total); setDineInRevenue(dineIn)
     setTakeawayRevenue(takeaway); setDeliveryRevenue(delivery)
     setCashTotal(cash); setCardTotal(card); setUpiTotal(upi)
-    setBillCount((bills || []).length)
 
     // Build chart data
     const isHourly = activeFilter === 'Today' || activeFilter === 'Yesterday'
     const grouped  = {}
 
-    ;(bills || []).forEach(b => {
-      const d   = new Date(b.created_at)
-      const key = isHourly
-        ? d.getHours() + ':00'
-        : d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })
-      if (!grouped[key]) grouped[key] = { label: key, 'Dine In': 0, Takeaway: 0, Delivery: 0, Total: 0 }
-      const amt  = parseFloat(b.total_amount || 0)
-      const type = b.orders?.order_type
-      grouped[key].Total    += amt
-      if (type === 'dine_in')  grouped[key]['Dine In']  += amt
-      if (type === 'takeaway') grouped[key]['Takeaway'] += amt
-      if (type === 'delivery') grouped[key]['Delivery'] += amt
-    })
-
-    // Fill in missing hours/days
+    // Fill all hours/days first
     if (isHourly) {
       const startHour = activeFilter === 'Yesterday' ? 0 : from.getHours()
       const endHour   = activeFilter === 'Yesterday' ? 23 : new Date().getHours()
       for (let h = startHour; h <= endHour; h++) {
         const key = h + ':00'
-        if (!grouped[key]) grouped[key] = { label: key, 'Dine In': 0, Takeaway: 0, Delivery: 0, Total: 0 }
+        grouped[key] = { label: key, 'Dine In': 0, Takeaway: 0, Delivery: 0, Total: 0 }
       }
     } else {
       const cursor = new Date(from)
       while (cursor <= to) {
         const key = cursor.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })
-        if (!grouped[key]) grouped[key] = { label: key, 'Dine In': 0, Takeaway: 0, Delivery: 0, Total: 0 }
+        grouped[key] = { label: key, 'Dine In': 0, Takeaway: 0, Delivery: 0, Total: 0 }
         cursor.setDate(cursor.getDate() + 1)
       }
     }
+
+    // Add bill amounts to chart
+    billList.forEach(b => {
+      const d   = new Date(b.created_at)
+      const key = isHourly
+        ? d.getHours() + ':00'
+        : d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })
+      if (!grouped[key]) grouped[key] = { label: key, 'Dine In': 0, Takeaway: 0, Delivery: 0, Total: 0 }
+      const amt  = parseFloat(b.total || 0)
+      const type = orderTypeMap[b.order_id]
+      grouped[key].Total += amt
+      if (type === 'dine_in')  grouped[key]['Dine In']  += amt
+      if (type === 'takeaway') grouped[key]['Takeaway'] += amt
+      if (type === 'delivery') grouped[key]['Delivery'] += amt
+    })
 
     const sortedChart = Object.values(grouped).sort((a, b) => {
       if (isHourly) return parseInt(a.label) - parseInt(b.label)
@@ -171,7 +184,6 @@ export default function DashboardPage() {
 
     setLoading(false)
   }
-
   function selectFilter(f) {
     setActiveFilter(f)
     if (f === 'Custom Range') { setShowCustom(true); setShowDropdown(false) }

@@ -119,7 +119,10 @@ export function NewOrderPage() {
 
   const cartTotal = cart.reduce((sum, c) => sum + c.item.price * c.quantity, 0)
   const cartCount = cart.reduce((sum, c) => sum + c.quantity, 0)
-
+async function markKOTReady(kotId) {
+    await supabase.from('kots').update({ status: 'ready' }).eq('id', kotId)
+    await fetchExistingOrder()
+  }
   async function fireKOT(hold = false) {
     if (cart.length === 0) return
     setSubmitting(true)
@@ -309,6 +312,17 @@ export function NewOrderPage() {
                     <span style={{ color: theme.textLight }}>×{ki.order_items?.quantity}</span>
                   </div>
                 ))}
+                {kot.status !== 'ready' && (
+                  <button onClick={() => markKOTReady(kot.id)}
+                    style={{ width: '100%', marginTop: 8, background: '#DCFCE7', color: '#15803D', border: '1px solid #86EFAC', borderRadius: 7, padding: '7px 0', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
+                    ✓ Mark as Ready
+                  </button>
+                )}
+                {kot.status === 'ready' && (
+                  <div style={{ width: '100%', marginTop: 8, background: '#DCFCE7', color: '#15803D', border: '1px solid #86EFAC', borderRadius: 7, padding: '7px 0', fontSize: 11, fontWeight: 700, textAlign: 'center' }}>
+                    ✓ Ready
+                  </div>
+                )}
               </div>
             ))}
           </div>

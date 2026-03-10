@@ -89,8 +89,7 @@ export default function BillScreen() {
     if (balance > 0.5) return alert(`Still ₹${balance} pending. Please enter the full amount.`)
     setSubmitting(true)
     try {
-      // Create bill record
-      await supabase.from('bills').insert({
+      const billData = {
         order_id:            orderId,
         subtotal:            subtotal,
         discount_type_id:    selectedDiscount?.id || null,
@@ -99,17 +98,24 @@ export default function BillScreen() {
         discount_amount:     discountAmount,
         gst_rate:            null,
         gst_amount:          totalGST,
-        total_amount:        grandTotal,
+        total:               grandTotal,
         cash_amount:         parseFloat(cashAmount) || 0,
         card_amount:         parseFloat(cardAmount) || 0,
         upi_amount:          parseFloat(upiAmount)  || 0,
         notes:               notes || null,
         status:              'paid',
         biller_id:           profile.id,
-      })
+      }
+      console.log('Inserting bill:', billData)
+      const { data, error } = await supabase.from('bills').insert(billData).select()
+      console.log('Bill result:', data, error)
 
       // Mark order as completed
+      // Mark order as completed
       await supabase.from('orders').update({ status: 'completed' }).eq('id', orderId)
+
+      // Mark all KOTs as completed so they disappear from KDS
+      await supabase.from('kots').update({ status: 'completed' }).eq('order_id', orderId)
 
       // Free the table
       if (order?.table_id) {
