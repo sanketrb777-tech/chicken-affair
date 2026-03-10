@@ -483,19 +483,41 @@ export default function OrdersPage() {
   }
 
   async function deleteOrder(id) {
-    const order = orders.find(o => o.id === id)
-    if (order?.table_id) {
-      await supabase.from('cafe_tables').update({ status: 'free', captain_id: null }).eq('id', order.table_id)
+    try {
+      const order = orders.find(o => o.id === id)
+
+      // Free the table if dine-in
+      if (order?.table_id) {
+        await supabase.from('cafe_tables').update({ status: 'free', captain_id: null }).eq('id', order.table_id)
+      }
+
+      // Get all KOTs for this order
+      const { data: kots } = await supabase.from('kots').select('id').eq('order_id', id)
+
+      // Delete kot_items first
+      if (kots?.length) {
+        const kotIds = kots.map(k => k.id)
+        const { error: kiErr } = await supabase.from('kot_items').delete().in('kot_id', kotIds)
+        if (kiErr) throw new Error('kot_items: ' + kiErr.message)
+
+        const { error: kotErr } = await supabase.from('kots').delete().eq('order_id', id)
+        if (kotErr) throw new Error('kots: ' + kotErr.message)
+      }
+
+      // Delete order_items
+      const { error: oiErr } = await supabase.from('order_items').delete().eq('order_id', id)
+      if (oiErr) throw new Error('order_items: ' + oiErr.message)
+
+      // Delete the order itself
+      const { error: ordErr } = await supabase.from('orders').delete().eq('id', id)
+      if (ordErr) throw new Error('orders: ' + ordErr.message)
+
+      setDeleteOrderId(null)
+      fetchOrders()
+    } catch (err) {
+      console.error('Delete failed:', err)
+      alert('Delete failed: ' + err.message + '\n\nYou may need to enable DELETE policy in Supabase for this table.')
     }
-    const { data: kots } = await supabase.from('kots').select('id').eq('order_id', id)
-    if (kots?.length) {
-      await supabase.from('kot_items').delete().in('kot_id', kots.map(k => k.id))
-      await supabase.from('kots').delete().eq('order_id', id)
-    }
-    await supabase.from('order_items').delete().eq('order_id', id)
-    await supabase.from('orders').delete().eq('id', id)
-    setDeleteOrderId(null)
-    fetchOrders()
   }
 
   function handleTypeSelect(type) {
