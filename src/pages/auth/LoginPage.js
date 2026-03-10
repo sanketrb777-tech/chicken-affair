@@ -25,12 +25,12 @@ export default function LoginPage() {
   }
 
   return (
-    <div style={{ minHeight:'100vh', background:'#0F172A', display:'flex', alignItems:'center', justifyContent:'center', padding:20 }}>
+    <div style={{ minHeight:'100vh', background:'#0d2530', display:'flex', alignItems:'center', justifyContent:'center', padding:20 }}>
       <div style={{ width:'100%', maxWidth:400 }}>
 
         {/* Logo */}
         <div style={{ textAlign:'center', marginBottom:40 }}>
-          <div style={{ width:64, height:64, background:'linear-gradient(135deg, #7C3AED, #1D4ED8)', borderRadius:16, display:'flex', alignItems:'center', justifyContent:'center', fontSize:32, margin:'0 auto 16px' }}>☕</div>
+          <img src="/icons/icon-192x192.png" alt="Bambini Cafe" style={{ width:80, height:80, borderRadius:16, margin:'0 auto 16px', display:'block' }} />
           <h1 style={{ color:'#fff', fontSize:28, fontWeight:800, margin:0 }}>Bambini Cafe</h1>
           <p style={{ color:'#64748B', fontSize:14, marginTop:6 }}>Sign in to your account</p>
         </div>
@@ -71,7 +71,7 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={loading}
-            style={{ background: loading ? '#334155' : 'linear-gradient(135deg, #7C3AED, #1D4ED8)', color:'#fff', border:'none', borderRadius:8, padding:'12px', fontSize:15, fontWeight:700, cursor: loading ? 'not-allowed' : 'pointer', marginTop:4 }}
+            style={{ background: loading ? '#334155' : '#1a3c3e', color:'#fff', border:'none', borderRadius:8, padding:'12px', fontSize:15, fontWeight:700, cursor: loading ? 'not-allowed' : 'pointer', marginTop:4 }}
           >
             {loading ? 'Signing in...' : 'Sign In'}
           </button>
