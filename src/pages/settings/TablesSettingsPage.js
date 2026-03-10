@@ -195,16 +195,23 @@ export default function TablesSettingsPage() {
               </div>
 
               <div>
-                <label style={{ fontSize: 11, fontWeight: 700, color: theme.textLight, display: 'block', marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 }}>Area</label>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                  {AREAS.map(a => (
-                    <button key={a} onClick={() => setForm(f => ({ ...f, area: a }))}
-                      style={{ background: form.area === a ? '#092b33' : theme.bgWarm, color: form.area === a ? '#fff' : theme.textMid, border: '1.5px solid ' + (form.area === a ? '#092b33' : theme.border), borderRadius: 8, padding: '7px 14px', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
-                      {AREA_ICONS[a]} {a}
-                    </button>
-                  ))}
-                </div>
-              </div>
+  <label style={{ fontSize: 11, fontWeight: 700, color: theme.textLight, display: 'block', marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 }}>Area</label>
+  <input
+    type="text"
+    value={form.area}
+    onChange={e => setForm(f => ({ ...f, area: e.target.value }))}
+    placeholder="e.g. Indoor, Terrace, Garden"
+    style={{ width: '100%', border: '1.5px solid ' + theme.border, borderRadius: 9, padding: '10px 12px', fontSize: 13, outline: 'none', boxSizing: 'border-box', marginBottom: 10 }}
+  />
+  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+    {AREAS.map(a => (
+      <button key={a} onClick={() => setForm(f => ({ ...f, area: a }))}
+        style={{ background: form.area === a ? '#092b33' : theme.bgWarm, color: form.area === a ? '#fff' : theme.textMid, border: '1.5px solid ' + (form.area === a ? '#092b33' : theme.border), borderRadius: 8, padding: '6px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+        {AREA_ICONS[a]} {a}
+      </button>
+    ))}
+  </div>
+</div>
             </div>
 
             <div style={{ display: 'flex', gap: 10, marginTop: 28 }}>
