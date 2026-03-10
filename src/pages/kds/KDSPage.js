@@ -165,23 +165,23 @@ export default function KDSPage() {
             <div key={order.orderId} style={{ background: '#161B22', borderRadius: 16, overflow: 'hidden', border: '1.5px solid ' + colors.border, opacity: allReady ? 0.5 : 1, transition: 'opacity 0.3s' }}>
 
               {/* Card header */}
-              <div style={{ background: colors.bg, borderBottom: '1px solid ' + colors.border, padding: '14px 18px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div>
-                  <div style={{ color: '#F8FAFC', fontWeight: 900, fontSize: 22, letterSpacing: -0.5 }}>{getOrderLabel(order)}</div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
-                    <span style={{ fontSize: 10, fontWeight: 700, color: colors.badge, background: 'rgba(0,0,0,0.3)', padding: '2px 8px', borderRadius: 99, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-                      {order.orderType?.replace('_', ' ')}
-                    </span>
-                    <span style={{ fontSize: 10, fontWeight: 600, color: '#94A3B8' }}>
-                      {allReady ? '· All Ready' : `· ${order.kots.filter(k => k.status !== 'ready').length} pending`}
-                    </span>
-                  </div>
-                </div>
-                <div style={{ textAlign: 'right' }}>
-                  <div style={{ color: colors.badge, fontWeight: 900, fontSize: 20 }}>{elapsed} min</div>
-                  <div style={{ color: '#475569', fontSize: 11, marginTop: 2 }}>{formatTime(order.kots[0].created_at)}</div>
-                </div>
-              </div>
+<div style={{ background: colors.bg, borderBottom: '1px solid ' + colors.border, padding: '14px 18px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+  <div>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+      <div style={{ color: '#F8FAFC', fontWeight: 900, fontSize: 22, letterSpacing: -0.5 }}>{getOrderLabel(order)}</div>
+      <span style={{ fontSize: 11, fontWeight: 700, color: colors.badge, background: 'rgba(0,0,0,0.3)', padding: '3px 9px', borderRadius: 99, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+        {order.orderType?.replace('_', ' ')}
+      </span>
+    </div>
+    <div style={{ fontSize: 10, fontWeight: 600, color: '#94A3B8', marginTop: 4 }}>
+      {allReady ? 'All Ready' : `${order.kots.filter(k => k.status !== 'ready').length} pending`}
+    </div>
+  </div>
+  <div style={{ textAlign: 'right' }}>
+    <div style={{ color: colors.badge, fontWeight: 900, fontSize: 20 }}>{elapsed} min</div>
+    <div style={{ color: '#475569', fontSize: 11, marginTop: 2 }}>{formatTime(order.kots[0].created_at)}</div>
+  </div>
+</div>
 
               {/* KOTs */}
               <div style={{ padding: '14px 18px' }}>
