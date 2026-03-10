@@ -491,10 +491,13 @@ export default function OrdersPage() {
         await supabase.from('cafe_tables').update({ status: 'free', captain_id: null }).eq('id', order.table_id)
       }
 
+      // Delete bills linked to this order
+      const { error: billErr } = await supabase.from('bills').delete().eq('order_id', id)
+      if (billErr) throw new Error('bills: ' + billErr.message)
+
       // Get all KOTs for this order
       const { data: kots } = await supabase.from('kots').select('id').eq('order_id', id)
 
-      // Delete kot_items first
       if (kots?.length) {
         const kotIds = kots.map(k => k.id)
         const { error: kiErr } = await supabase.from('kot_items').delete().in('kot_id', kotIds)
@@ -504,11 +507,9 @@ export default function OrdersPage() {
         if (kotErr) throw new Error('kots: ' + kotErr.message)
       }
 
-      // Delete order_items
       const { error: oiErr } = await supabase.from('order_items').delete().eq('order_id', id)
       if (oiErr) throw new Error('order_items: ' + oiErr.message)
 
-      // Delete the order itself
       const { error: ordErr } = await supabase.from('orders').delete().eq('id', id)
       if (ordErr) throw new Error('orders: ' + ordErr.message)
 
@@ -516,7 +517,7 @@ export default function OrdersPage() {
       fetchOrders()
     } catch (err) {
       console.error('Delete failed:', err)
-      alert('Delete failed: ' + err.message + '\n\nYou may need to enable DELETE policy in Supabase for this table.')
+      alert('Delete failed: ' + err.message)
     }
   }
 
@@ -630,7 +631,7 @@ export default function OrdersPage() {
               <Trash2 size={22} color='#DC2626' />
             </div>
             <div style={{ fontWeight: 800, fontSize: 16, color: theme.textDark, marginBottom: 8 }}>Delete Order?</div>
-            <div style={{ fontSize: 13, color: theme.textLight, marginBottom: 22 }}>This will permanently delete the order and all its KOTs. If it has a table, it will be freed. This cannot be undone.</div>
+            <div style={{ fontSize: 13, color: theme.textLight, marginBottom: 22 }}>This will permanently delete the order, its bill, all KOTs, and free the table. This cannot be undone.</div>
             <div style={{ display: 'flex', gap: 10 }}>
               <button onClick={() => setDeleteOrderId(null)}
                 style={{ flex: 1, background: theme.bgWarm, border: 'none', borderRadius: 9, padding: '11px 0', fontSize: 13, fontWeight: 700, cursor: 'pointer', color: theme.textMid }}>
