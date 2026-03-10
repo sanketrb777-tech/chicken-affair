@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../context/AuthContext'
@@ -14,10 +14,11 @@ export function NewOrderPage() {
   const [searchParams]  = useSearchParams()
   const tableId         = searchParams.get('table')
   const tableNumber     = searchParams.get('tableNumber')
+  const typeParam       = searchParams.get('type')
   const navigate        = useNavigate()
   const { profile }     = useAuth()
 
-  const [orderType, setOrderType]           = useState(tableId ? 'dine_in' : 'takeaway')
+  const [orderType, setOrderType]           = useState(tableId ? 'dine_in' : (typeParam || 'takeaway'))
   const [categories, setCategories]         = useState([])
   const [items, setItems]                   = useState([])
   const [activeCategory, setActiveCategory] = useState(null)
@@ -29,12 +30,14 @@ export function NewOrderPage() {
   const [existingOrder, setExistingOrder]   = useState(null)
   const [existingKOTs, setExistingKOTs]     = useState([])
   const [runningTotal, setRunningTotal]     = useState(0)
-  const [mobileTab, setMobileTab]           = useState('menu') // 'menu' | 'order'
+  const [mobileTab, setMobileTab]           = useState('menu')
 
   const [customerName, setCustomerName]   = useState('')
   const [customerPhone, setCustomerPhone] = useState('')
   const [roomNumber, setRoomNumber]       = useState('')
   const [search, setSearch] = useState('')
+
+  const isOffTable = !tableId
 
   useEffect(() => {
     fetchMenu()
@@ -140,45 +143,108 @@ export function NewOrderPage() {
     ? items.filter(i => i.name.toLowerCase().includes(search.toLowerCase()))
     : getItemsForCategory(activeCategory)
 
+  // ── CUSTOMER INFO CARD (takeaway / delivery) ──────────────────
+  const customerPanel = isOffTable && !existingOrder && (
+    <div style={{ background: '#fff', borderRadius: 12, border: '1px solid ' + theme.border, padding: '14px 16px', marginBottom: 12 }}>
+      {/* Type switcher */}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
+        {Object.entries(ORDER_TYPES).filter(([k]) => k !== 'dine_in').map(([key, cfg]) => (
+          <button key={key} onClick={() => setOrderType(key)}
+            style={{ flex: 1, background: orderType === key ? cfg.color : theme.bgWarm, color: orderType === key ? '#fff' : theme.textMid, border: 'none', borderRadius: 8, padding: '9px 0', fontSize: 13, fontWeight: 700, cursor: 'pointer', transition: 'all 0.15s' }}>
+            {cfg.icon} {cfg.label}
+          </button>
+        ))}
+      </div>
+      {/* Fields */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <div style={{ display: 'flex', gap: 10 }}>
+          <div style={{ flex: 1 }}>
+            <label style={{ fontSize: 11, fontWeight: 700, color: theme.textLight, textTransform: 'uppercase', letterSpacing: 0.5, display: 'block', marginBottom: 5 }}>
+              Customer Name <span style={{ color: '#B91C1C' }}>*</span>
+            </label>
+            <input value={customerName} onChange={e => setCustomerName(e.target.value)} placeholder="e.g. Rahul Sharma"
+              style={{ width: '100%', border: '1.5px solid ' + (customerName ? '#0D9488' : theme.border), borderRadius: 8, padding: '9px 12px', fontSize: 13, outline: 'none', boxSizing: 'border-box', color: theme.textDark }} />
+          </div>
+          <div style={{ flex: 1 }}>
+            <label style={{ fontSize: 11, fontWeight: 700, color: theme.textLight, textTransform: 'uppercase', letterSpacing: 0.5, display: 'block', marginBottom: 5 }}>
+              Phone <span style={{ color: '#B91C1C' }}>*</span>
+            </label>
+            <input value={customerPhone} onChange={e => setCustomerPhone(e.target.value)} placeholder="e.g. 9876543210" type="tel"
+              style={{ width: '100%', border: '1.5px solid ' + (customerPhone ? '#0D9488' : theme.border), borderRadius: 8, padding: '9px 12px', fontSize: 13, outline: 'none', boxSizing: 'border-box', color: theme.textDark }} />
+          </div>
+        </div>
+        {orderType === 'delivery' && (
+          <div>
+            <label style={{ fontSize: 11, fontWeight: 700, color: theme.textLight, textTransform: 'uppercase', letterSpacing: 0.5, display: 'block', marginBottom: 5 }}>
+              Room / Address
+            </label>
+            <input value={roomNumber} onChange={e => setRoomNumber(e.target.value)} placeholder="e.g. Room 12, Villa B"
+              style={{ width: '100%', border: '1.5px solid ' + theme.border, borderRadius: 8, padding: '9px 12px', fontSize: 13, outline: 'none', boxSizing: 'border-box', color: theme.textDark }} />
+          </div>
+        )}
+      </div>
+    </div>
+  )
+
+  // show existing order customer badge
+  const existingCustomerBadge = isOffTable && existingOrder && (
+    <div style={{ background: ORDER_TYPES[orderType]?.color + '18', border: '1px solid ' + ORDER_TYPES[orderType]?.color + '33', borderRadius: 10, padding: '10px 14px', marginBottom: 12, display: 'flex', gap: 12, alignItems: 'center' }}>
+      <span style={{ fontSize: 20 }}>{ORDER_TYPES[orderType]?.icon}</span>
+      <div>
+        <div style={{ fontWeight: 700, fontSize: 14, color: theme.textDark }}>{existingOrder.customer_name || '—'}</div>
+        {existingOrder.customer_phone && <div style={{ fontSize: 12, color: theme.textLight, marginTop: 2 }}>📞 {existingOrder.customer_phone}</div>}
+        {existingOrder.room_number && <div style={{ fontSize: 12, color: theme.textLight }}>📍 {existingOrder.room_number}</div>}
+      </div>
+      <span style={{ marginLeft: 'auto', background: '#D4FAD4', color: '#15803D', fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 20 }}>● Active</span>
+    </div>
+  )
+
   // ── SHARED PANELS ──────────────────────────────────────────────
 
   const menuPanel = (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
-      {/* Order type + table info */}
-      <div style={{ background: '#092b33', borderRadius: 12, padding: '12px 16px', marginBottom: 12 }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+
+      {customerPanel}
+      {existingCustomerBadge}
+
+      {/* Dine-in header */}
+      {!isOffTable && (
+        <div style={{ background: '#092b33', borderRadius: 12, padding: '12px 16px', marginBottom: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+            <div style={{ color: '#fff', fontWeight: 800, fontSize: 15 }}>
+              {tableId ? `Table ${tableNumber}` : 'New Order'}
+              {existingOrder && <span style={{ fontSize: 11, color: '#D4A853', marginLeft: 8, fontWeight: 600 }}>● Active</span>}
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 12 }}>Covers:</span>
+              <button onClick={() => setCovers(c => Math.max(1, c - 1))} style={{ background: '#1E3A3A', border: 'none', color: '#fff', width: 26, height: 26, borderRadius: 6, cursor: 'pointer', fontSize: 14 }}>-</button>
+              <span style={{ color: '#fff', fontWeight: 700, minWidth: 18, textAlign: 'center', fontSize: 13 }}>{covers}</span>
+              <button onClick={() => setCovers(c => c + 1)} style={{ background: '#1E3A3A', border: 'none', color: '#fff', width: 26, height: 26, borderRadius: 6, cursor: 'pointer', fontSize: 14 }}>+</button>
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: 6 }}>
+            {Object.entries(ORDER_TYPES).map(([key, cfg]) => (
+              <button key={key} onClick={() => setOrderType(key)}
+                style={{ flex: 1, background: orderType === key ? cfg.color : 'rgba(255,255,255,0.07)', color: orderType === key ? '#fff' : 'rgba(255,255,255,0.5)', border: 'none', borderRadius: 8, padding: '7px 0', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+                {cfg.icon} {cfg.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Off-table top bar */}
+      {isOffTable && (
+        <div style={{ background: '#092b33', borderRadius: 12, padding: '10px 16px', marginBottom: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div style={{ color: '#fff', fontWeight: 800, fontSize: 15 }}>
-            {tableId ? `Table ${tableNumber}` : 'New Order'}
-            {existingOrder && <span style={{ fontSize: 11, color: '#D4A853', marginLeft: 8, fontWeight: 600 }}>● Active</span>}
+            {ORDER_TYPES[orderType]?.icon} {ORDER_TYPES[orderType]?.label} Order
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 12 }}>Covers:</span>
-            <button onClick={() => setCovers(c => Math.max(1, c - 1))} style={{ background: '#1E3A3A', border: 'none', color: '#fff', width: 26, height: 26, borderRadius: 6, cursor: 'pointer', fontSize: 14 }}>-</button>
-            <span style={{ color: '#fff', fontWeight: 700, minWidth: 18, textAlign: 'center', fontSize: 13 }}>{covers}</span>
-            <button onClick={() => setCovers(c => c + 1)} style={{ background: '#1E3A3A', border: 'none', color: '#fff', width: 26, height: 26, borderRadius: 6, cursor: 'pointer', fontSize: 14 }}>+</button>
-          </div>
+          <button onClick={() => navigate('/orders')}
+            style={{ background: 'rgba(255,255,255,0.1)', border: 'none', color: 'rgba(255,255,255,0.7)', borderRadius: 7, padding: '5px 12px', fontSize: 12, cursor: 'pointer', fontWeight: 600 }}>
+            ← Back
+          </button>
         </div>
-        <div style={{ display: 'flex', gap: 6 }}>
-          {Object.entries(ORDER_TYPES).map(([key, cfg]) => (
-            <button key={key} onClick={() => setOrderType(key)}
-              style={{ flex: 1, background: orderType === key ? cfg.color : 'rgba(255,255,255,0.07)', color: orderType === key ? '#fff' : 'rgba(255,255,255,0.5)', border: 'none', borderRadius: 8, padding: '7px 0', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
-              {cfg.icon} {cfg.label}
-            </button>
-          ))}
-        </div>
-        {orderType !== 'dine_in' && !existingOrder && (
-          <div style={{ marginTop: 10, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            {orderType === 'delivery' && (
-              <input value={roomNumber} onChange={e => setRoomNumber(e.target.value)} placeholder="Room / Villa No."
-                style={{ flex: 1, minWidth: 100, background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 7, padding: '7px 10px', fontSize: 12, color: '#fff', outline: 'none' }} />
-            )}
-            <input value={customerName} onChange={e => setCustomerName(e.target.value)} placeholder="Customer Name"
-              style={{ flex: 2, minWidth: 120, background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 7, padding: '7px 10px', fontSize: 12, color: '#fff', outline: 'none' }} />
-            <input value={customerPhone} onChange={e => setCustomerPhone(e.target.value)} placeholder="Phone"
-              style={{ flex: 1, minWidth: 100, background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 7, padding: '7px 10px', fontSize: 12, color: '#fff', outline: 'none' }} />
-          </div>
-        )}
-      </div>
+      )}
 
       {/* Search */}
       <div style={{ position: 'relative', marginBottom: 10 }}>
@@ -230,13 +296,11 @@ export function NewOrderPage() {
 
   const orderPanel = (
     <div style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', flex: 1 }}>
-      {/* Header */}
       <div style={{ background: '#092b33', padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderRadius: '12px 12px 0 0' }}>
         <div style={{ color: '#fff', fontWeight: 800, fontSize: 14 }}>Order Summary</div>
         {runningTotal > 0 && <div style={{ color: '#D4A853', fontWeight: 800, fontSize: 13 }}>₹{runningTotal} total</div>}
       </div>
 
-      {/* Existing KOTs */}
       {existingKOTs.length > 0 && (
         <div style={{ borderBottom: '2px solid ' + theme.border, overflowY: 'auto', maxHeight: 220 }}>
           {existingKOTs.map((kot, idx) => (
@@ -268,7 +332,6 @@ export function NewOrderPage() {
         </div>
       )}
 
-      {/* Cart items */}
       <div style={{ flex: 1, overflowY: 'auto', padding: '10px 14px' }}>
         {cart.length === 0 ? (
           <div style={{ textAlign: 'center', color: theme.textMuted, fontSize: 12, marginTop: 20 }}>
@@ -281,26 +344,25 @@ export function NewOrderPage() {
             )}
             {cart.map(c => (
               <div key={c.item.id} style={{ padding: '8px 0', borderBottom: '1px solid ' + theme.bgWarm }}>
-  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-    <div style={{ flex: 1 }}>
-      <div style={{ fontWeight: 700, fontSize: 13, color: theme.textDark }}>{c.item.name}</div>
-      <div style={{ fontSize: 11, color: theme.textLight }}>₹{c.item.price} × {c.quantity}</div>
-    </div>
-    <div style={{ fontWeight: 700, fontSize: 13, color: theme.textDark }}>₹{c.item.price * c.quantity}</div>
-  </div>
-  <input
-    value={c.notes}
-    onChange={e => setCart(prev => prev.map(ci => ci.item.id === c.item.id ? { ...ci, notes: e.target.value } : ci))}
-    placeholder="Add note (e.g. no onion, extra spicy...)"
-    style={{ width: '100%', marginTop: 6, background: '#F8F6F2', border: '1px solid ' + theme.border, borderRadius: 6, padding: '5px 10px', fontSize: 11, color: theme.textDark, outline: 'none', boxSizing: 'border-box' }}
-  />
-</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontWeight: 700, fontSize: 13, color: theme.textDark }}>{c.item.name}</div>
+                    <div style={{ fontSize: 11, color: theme.textLight }}>₹{c.item.price} × {c.quantity}</div>
+                  </div>
+                  <div style={{ fontWeight: 700, fontSize: 13, color: theme.textDark }}>₹{c.item.price * c.quantity}</div>
+                </div>
+                <input
+                  value={c.notes}
+                  onChange={e => setCart(prev => prev.map(ci => ci.item.id === c.item.id ? { ...ci, notes: e.target.value } : ci))}
+                  placeholder="Add note (e.g. no onion, extra spicy...)"
+                  style={{ width: '100%', marginTop: 6, background: '#F8F6F2', border: '1px solid ' + theme.border, borderRadius: 6, padding: '5px 10px', fontSize: 11, color: theme.textDark, outline: 'none', boxSizing: 'border-box' }}
+                />
+              </div>
             ))}
           </>
         )}
       </div>
 
-      {/* Action buttons */}
       <div style={{ padding: '12px 14px', borderTop: '2px solid ' + theme.border, display: 'flex', flexDirection: 'column', gap: 8 }}>
         {cart.length > 0 && (
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
@@ -334,7 +396,6 @@ export function NewOrderPage() {
 
   return (
     <>
-      {/* ── DESKTOP: side by side ── */}
       <div className="orders-desktop" style={{ display: 'flex', gap: 16, height: 'calc(100vh - 112px)' }}>
         {menuPanel}
         <div style={{ width: 290, background: '#fff', borderRadius: 12, border: '1px solid ' + theme.border, display: 'flex', flexDirection: 'column', overflow: 'hidden', flexShrink: 0 }}>
@@ -342,9 +403,7 @@ export function NewOrderPage() {
         </div>
       </div>
 
-      {/* ── MOBILE: tabbed ── */}
       <div className="orders-mobile" style={{ display: 'none', flexDirection: 'column', height: 'calc(100vh - 120px)' }}>
-        {/* Tab switcher */}
         <div style={{ display: 'flex', background: '#092b33', borderRadius: 10, padding: 4, marginBottom: 12, flexShrink: 0 }}>
           <button onClick={() => setMobileTab('menu')}
             style={{ flex: 1, padding: '8px 0', borderRadius: 7, border: 'none', fontWeight: 700, fontSize: 13, cursor: 'pointer', background: mobileTab === 'menu' ? '#fff' : 'transparent', color: mobileTab === 'menu' ? '#092b33' : 'rgba(255,255,255,0.6)', transition: 'all 0.15s' }}>
@@ -355,8 +414,6 @@ export function NewOrderPage() {
             🧾 Order {cartCount > 0 && <span style={{ background: '#0D9488', color: '#fff', borderRadius: 10, fontSize: 10, padding: '1px 6px', marginLeft: 4 }}>{cartCount}</span>}
           </button>
         </div>
-
-        {/* Active tab content */}
         <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
           {mobileTab === 'menu' ? menuPanel : (
             <div style={{ background: '#fff', borderRadius: 12, border: '1px solid ' + theme.border, display: 'flex', flexDirection: 'column', overflow: 'hidden', flex: 1 }}>
@@ -378,17 +435,33 @@ export function NewOrderPage() {
 
 // ─── ORDERS LIST PAGE ──────────────────────────────────────────────────────────
 export default function OrdersPage() {
-  const [orders, setOrders]   = useState([])
-  const [loading, setLoading] = useState(true)
-  const navigate = useNavigate()
+  const [orders, setOrders]             = useState([])
+  const [loading, setLoading]           = useState(true)
+  const [showTypeMenu, setShowTypeMenu] = useState(false)
+  const dropdownRef = useRef(null)
+  const navigate    = useNavigate()
 
   useEffect(() => { fetchOrders() }, [])
+
+  useEffect(() => {
+    function handleClick(e) {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) setShowTypeMenu(false)
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [])
 
   async function fetchOrders() {
     const { data, error } = await supabase
       .from('orders').select('*, cafe_tables(number), staff(name)').eq('status', 'active').order('created_at', { ascending: false })
     if (!error) setOrders(data)
     setLoading(false)
+  }
+
+  function handleTypeSelect(type) {
+    setShowTypeMenu(false)
+    if (type === 'dine_in') navigate('/tables')
+    else navigate('/orders/new?type=' + type)
   }
 
   if (loading) return <div style={{ padding: 40, color: theme.textLight }}>Loading orders...</div>
@@ -400,32 +473,60 @@ export default function OrdersPage() {
           <h1 style={{ fontSize: 22, fontWeight: 800, color: theme.textDark, margin: 0 }}>Active Orders</h1>
           <p style={{ color: theme.textLight, fontSize: 14, marginTop: 4 }}>{orders.length} active order{orders.length !== 1 ? 's' : ''}</p>
         </div>
-        <button onClick={() => navigate('/tables')}
-          style={{ background: '#092b33', color: '#fff', border: 'none', borderRadius: 9, padding: '10px 20px', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
-          + New Order
-        </button>
+
+        <div ref={dropdownRef} style={{ position: 'relative' }}>
+          <button onClick={() => setShowTypeMenu(d => !d)}
+            style={{ background: '#092b33', color: '#fff', border: 'none', borderRadius: 9, padding: '10px 20px', fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}>
+            + New Order <span style={{ fontSize: 10, opacity: 0.6 }}>▼</span>
+          </button>
+          {showTypeMenu && (
+            <div style={{ position: 'absolute', right: 0, top: 'calc(100% + 6px)', background: '#fff', border: '1px solid ' + theme.border, borderRadius: 12, boxShadow: '0 8px 24px rgba(0,0,0,0.14)', zIndex: 100, minWidth: 200, overflow: 'hidden' }}>
+              {Object.entries(ORDER_TYPES).map(([key, cfg], i, arr) => (
+                <div key={key} onClick={() => handleTypeSelect(key)}
+                  style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', fontSize: 13, color: theme.textDark, cursor: 'pointer', borderBottom: i < arr.length - 1 ? '1px solid ' + theme.bgWarm : 'none' }}
+                  onMouseEnter={e => e.currentTarget.style.background = theme.bgWarm}
+                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                  <span style={{ fontSize: 20 }}>{cfg.icon}</span>
+                  <div>
+                    <div style={{ fontWeight: 700 }}>{cfg.label}</div>
+                    <div style={{ fontSize: 11, color: theme.textLight }}>
+                      {key === 'dine_in' ? 'Select a table' : key === 'takeaway' ? 'Customer picks up' : 'Deliver to address'}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       {orders.length === 0 ? (
-        <div style={{ ...theme.card, textAlign: 'center', padding: 48, color: theme.textLight }}>
-          No active orders. Go to Tables to start a new order.
+        <div style={{ background: '#fff', borderRadius: 14, border: '1px solid ' + theme.border, textAlign: 'center', padding: 48, color: theme.textLight }}>
+          No active orders. Click "+ New Order" to get started.
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {orders.map(order => {
-            const typeConfig = ORDER_TYPES[order.order_type] || ORDER_TYPES.dine_in
+            const typeConfig  = ORDER_TYPES[order.order_type] || ORDER_TYPES.dine_in
+            const isOffTable  = !order.table_id
             return (
-              <div key={order.id} onClick={() => navigate('/orders/new?table=' + order.table_id + '&tableNumber=' + order.cafe_tables?.number)}
+              <div key={order.id}
+                onClick={() => isOffTable
+                  ? navigate('/orders/new?type=' + order.order_type)
+                  : navigate('/orders/new?table=' + order.table_id + '&tableNumber=' + order.cafe_tables?.number)
+                }
                 style={{ background: '#fff', borderRadius: 12, padding: '14px 18px', border: '1px solid ' + theme.border, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 14, boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
                 <div style={{ width: 42, height: 42, background: typeConfig.color + '18', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>
                   {typeConfig.icon}
                 </div>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontWeight: 700, fontSize: 14, color: theme.textDark }}>
-                    {order.cafe_tables ? 'Table ' + order.cafe_tables.number : order.customer_name || 'Order'}
+                    {order.cafe_tables ? 'Table ' + order.cafe_tables.number : order.customer_name || typeConfig.label}
                   </div>
                   <div style={{ fontSize: 12, color: theme.textLight, marginTop: 2 }}>
-                    {typeConfig.label} · {order.covers} cover{order.covers !== 1 ? 's' : ''} · {order.staff?.name}
+                    {typeConfig.label}
+                    {order.customer_phone && ` · 📞 ${order.customer_phone}`}
+                    {!isOffTable && ` · ${order.covers} cover${order.covers !== 1 ? 's' : ''}`}
                   </div>
                 </div>
                 <div style={{ fontSize: 12, color: theme.textLight }}>
