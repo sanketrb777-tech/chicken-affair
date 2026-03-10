@@ -37,7 +37,7 @@ export default function BillScreen() {
     // Fetch order items with menu item names
     const { data: items } = await supabase
       .from('order_items')
-      .select('*, menu_items(name)')
+      .select('*, menu_items(name, gst_rate)')
       .eq('order_id', orderId)
     setOrderItems(items || [])
 
@@ -64,13 +64,23 @@ export default function BillScreen() {
   const subtotal = orderItems.reduce((sum, i) => sum + i.quantity * i.unit_price, 0)
 
   const discountPct    = selectedDiscount ? parseFloat(selectedDiscount.percentage) : 0
+  const discountFactor = 1 - discountPct / 100
   const discountAmount = parseFloat(((subtotal * discountPct) / 100).toFixed(2))
   const afterDiscount  = subtotal - discountAmount
 
-  // GST inclusive — extract from total
-  const gstAmount  = parseFloat(((afterDiscount * gstRate) / (100 + gstRate)).toFixed(2))
-  const baseAmount = parseFloat((afterDiscount - gstAmount).toFixed(2))
-  const grandTotal = afterDiscount
+  // GST per item — inclusive, extract from each item's discounted amount
+  const gstBreakdown = {}
+  let totalGST = 0
+  orderItems.forEach(item => {
+    const itemTotal      = item.quantity * item.unit_price * discountFactor
+    const rate           = item.menu_items?.gst_rate ?? gstRate
+    if (rate === 0) return
+    const itemGST        = parseFloat(((itemTotal * rate) / (100 + rate)).toFixed(2))
+    totalGST            += itemGST
+    gstBreakdown[rate]   = (gstBreakdown[rate] || 0) + itemGST
+  })
+  totalGST             = parseFloat(totalGST.toFixed(2))
+  const grandTotal     = afterDiscount
 
   const totalPaid = (parseFloat(cashAmount) || 0) + (parseFloat(cardAmount) || 0) + (parseFloat(upiAmount) || 0)
   const balance   = parseFloat((grandTotal - totalPaid).toFixed(2))
@@ -87,8 +97,8 @@ export default function BillScreen() {
         discount_name:       selectedDiscount?.name || null,
         discount_percentage: discountPct,
         discount_amount:     discountAmount,
-        gst_rate:            gstRate,
-        gst_amount:          gstAmount,
+        gst_rate:            null,
+        gst_amount:          totalGST,
         total_amount:        grandTotal,
         cash_amount:         parseFloat(cashAmount) || 0,
         card_amount:         parseFloat(cardAmount) || 0,
@@ -171,10 +181,18 @@ export default function BillScreen() {
               </div>
             )}
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: theme.textLight, marginBottom: 8 }}>
-              <span>GST {gstRate}% (inclusive)</span>
-              <span>₹{gstAmount.toFixed(2)}</span>
-            </div>
+            {Object.entries(gstBreakdown).map(([rate, amount]) => (
+              <div key={rate} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: theme.textLight, marginBottom: 6 }}>
+                <span>GST {rate}% (inclusive)</span>
+                <span>₹{amount.toFixed(2)}</span>
+              </div>
+            ))}
+            {totalGST > 0 && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, fontWeight: 700, color: theme.textLight, marginBottom: 8 }}>
+                <span>Total GST</span>
+                <span>₹{totalGST.toFixed(2)}</span>
+              </div>
+            )}
 
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 16, fontWeight: 900, color: theme.textDark, marginTop: 12, paddingTop: 12, borderTop: '2px solid ' + theme.border }}>
               <span>Grand Total</span>

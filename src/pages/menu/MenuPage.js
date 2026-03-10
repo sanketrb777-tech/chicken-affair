@@ -21,7 +21,7 @@ export default function MenuPage() {
   const [saving, setSaving]               = useState(false)
 
   const [catForm, setCatForm]   = useState({ name: '', sort_order: 0 })
-  const [itemForm, setItemForm] = useState({ name: '', price: '', description: '', food_type: 'veg', is_available: true, sort_order: 0 })
+  const [itemForm, setItemForm] = useState({ name: '', price: '', description: '', food_type: 'veg', is_available: true, sort_order: 0, gst_rate: 5 })
 
   useEffect(() => { fetchAll() }, [])
 
@@ -77,13 +77,13 @@ export default function MenuPage() {
 
   // ── Item actions ──
   function openAddItem() {
-    setItemForm({ name: '', price: '', description: '', food_type: 'veg', is_available: true, sort_order: items.filter(i => i.category_id === activeCategory).length })
+    setItemForm({ name: '', price: '', description: '', food_type: 'veg', is_available: true, sort_order: items.filter(i => i.category_id === activeCategory).length, gst_rate: 5 })
     setEditItem(null)
     setShowItemForm(true)
   }
 
   function openEditItem(item) {
-    setItemForm({ name: item.name, price: item.price, description: item.description || '', food_type: item.food_type || 'veg', is_available: item.is_available, sort_order: item.sort_order })
+    setItemForm({ name: item.name, price: item.price, description: item.description || '', food_type: item.food_type || 'veg', is_available: item.is_available, sort_order: item.sort_order, gst_rate: item.gst_rate ?? 5 })
     setEditItem(item)
     setShowItemForm(true)
   }
@@ -97,13 +97,15 @@ export default function MenuPage() {
         await supabase.from('menu_items').update({
           name: itemForm.name, price: parseFloat(itemForm.price),
           description: itemForm.description || null, food_type: itemForm.food_type,
-          is_available: itemForm.is_available, sort_order: parseInt(itemForm.sort_order)
+          is_available: itemForm.is_available, sort_order: parseInt(itemForm.sort_order),
+          gst_rate: parseFloat(itemForm.gst_rate)
         }).eq('id', editItem.id)
       } else {
         await supabase.from('menu_items').insert({
           name: itemForm.name, price: parseFloat(itemForm.price),
           description: itemForm.description || null, food_type: itemForm.food_type,
           is_available: itemForm.is_available, sort_order: parseInt(itemForm.sort_order),
+          gst_rate: parseFloat(itemForm.gst_rate),
           category_id: activeCategory
         })
       }
@@ -258,7 +260,18 @@ export default function MenuPage() {
             </h2>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
               <div>
-                <label style={{ fontSize: 11, fontWeight: 700, color: theme.textLight, display: 'block', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5 }}>Category Name *</label>
+                <label style={{ fontSize: 11, fontWeight: 700, color: theme.textLight, display: 'block', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5 }}>GST Rate (%)</label>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  {[0, 5, 12, 18].map(rate => (
+                    <button key={rate} onClick={() => setItemForm(f => ({ ...f, gst_rate: rate }))}
+                      style={{ flex: 1, background: itemForm.gst_rate === rate ? '#092b33' : theme.bgWarm, color: itemForm.gst_rate === rate ? '#fff' : theme.textMid, border: '1.5px solid ' + (itemForm.gst_rate === rate ? '#092b33' : theme.border), borderRadius: 8, padding: '8px 0', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+                      {rate}%
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <label style={{ fontSize: 11, fontWeight: 700, color: theme.textLight, display: 'block', marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 }}>Food Type</label>
                 <input autoFocus value={catForm.name} onChange={e => setCatForm(f => ({ ...f, name: e.target.value }))}
                   placeholder="e.g. Starters, Main Course, Beverages"
                   style={{ width: '100%', border: '1.5px solid ' + theme.border, borderRadius: 9, padding: '10px 12px', fontSize: 13, outline: 'none', boxSizing: 'border-box' }} />
