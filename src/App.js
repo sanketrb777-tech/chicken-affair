@@ -8,6 +8,7 @@ import DashboardPage  from './pages/dashboard/DashboardPage'
 import OrdersPage, { NewOrderPage } from './pages/orders/OrdersPage'
 import TablesPage     from './pages/tables/TablesPage'
 import BillingPage    from './pages/billing/BillingPage'
+import BillScreen     from './pages/billing/BillScreen'
 import MenuPage       from './pages/menu/MenuPage'
 import InventoryPage  from './pages/inventory/InventoryPage'
 import ReportsPage    from './pages/reports/ReportsPage'
@@ -41,7 +42,8 @@ export default function App() {
           <Route path="/orders"     element={<Page module="orders"    ><OrdersPage     /></Page>} />
           <Route path="/orders/new" element={<Page module="orders"    ><NewOrderPage   /></Page>} />
           <Route path="/tables"     element={<Page module="tables"    ><TablesPage     /></Page>} />
-          <Route path="/billing"    element={<Page module="billing"   ><BillingPage    /></Page>} />
+          <Route path="/billing"             element={<Page module="billing"><BillingPage  /></Page>} />
+<Route path="/billing/order/:orderId" element={<Page module="billing"><BillScreen /></Page>} />
           <Route path="/menu"       element={<Page module="menu"      ><MenuPage       /></Page>} />
           <Route path="/inventory"  element={<Page module="inventory" ><InventoryPage  /></Page>} />
           <Route path="/reports"    element={<Page module="reports"   ><ReportsPage    /></Page>} />
