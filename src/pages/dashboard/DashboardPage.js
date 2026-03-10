@@ -170,7 +170,7 @@ export default function DashboardPage() {
     // Fetch bills
     const { data: bills } = await supabase
       .from('bills')
-      .select('id, bill_number, total, cash_amount, card_amount, upi_amount, created_at, order_id, notes')
+      .select('id, total, cash_amount, card_amount, upi_amount, created_at, order_id, notes')
       .eq('status', 'paid')
       .gte('created_at', fromISO)
       .lte('created_at', toISO)
