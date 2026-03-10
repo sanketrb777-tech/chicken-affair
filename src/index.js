@@ -14,7 +14,21 @@ style.textContent = `
     color: #1C1917;
     -webkit-font-smoothing: antialiased;
   }
+html, body, #root {
+    overflow-x: hidden;
+    max-width: 100vw;
+  }
 
+  table {
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    width: 100%;
+  }
+
+  img, video, iframe {
+    max-width: 100%;
+  }
   a { text-decoration: none; }
   button { font-family: inherit; }
   input, textarea, select { font-family: inherit; }
