@@ -1,23 +1,25 @@
+import { lazy, Suspense } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider } from './context/AuthContext'
 import { ProtectedRoute, RoleRoute } from './components/ProtectedRoute'
 import Layout from './components/Layout'
 
-import LoginPage      from './pages/auth/LoginPage'
-import DashboardPage  from './pages/dashboard/DashboardPage'
-import OrdersPage, { NewOrderPage } from './pages/orders/OrdersPage'
-import TablesPage     from './pages/tables/TablesPage'
-import BillingPage    from './pages/billing/BillingPage'
-import BillScreen     from './pages/billing/BillScreen'
-import MenuPage       from './pages/menu/MenuPage'
-import InventoryPage  from './pages/inventory/InventoryPage'
-import ReportsPage    from './pages/reports/ReportsPage'
-import StaffPage      from './pages/staff/StaffPage'
-import SettingsPage        from './pages/settings/SettingsPage'
-import TablesSettingsPage     from './pages/settings/TablesSettingsPage'
-import PrinterSettingsPage   from './pages/settings/PrinterSettingsPage'
-import DiscountsSettingsPage  from './pages/settings/DiscountsSettingsPage'
-import KDSPage        from './pages/kds/KDSPage'
+const LoginPage             = lazy(() => import('./pages/auth/LoginPage'))
+const DashboardPage         = lazy(() => import('./pages/dashboard/DashboardPage'))
+const OrdersPage            = lazy(() => import('./pages/orders/OrdersPage'))
+const NewOrderPage          = lazy(() => import('./pages/orders/OrdersPage').then(m => ({ default: m.NewOrderPage })))
+const TablesPage            = lazy(() => import('./pages/tables/TablesPage'))
+const BillingPage           = lazy(() => import('./pages/billing/BillingPage'))
+const BillScreen            = lazy(() => import('./pages/billing/BillScreen'))
+const MenuPage              = lazy(() => import('./pages/menu/MenuPage'))
+const InventoryPage         = lazy(() => import('./pages/inventory/InventoryPage'))
+const ReportsPage           = lazy(() => import('./pages/reports/ReportsPage'))
+const StaffPage             = lazy(() => import('./pages/staff/StaffPage'))
+const SettingsPage          = lazy(() => import('./pages/settings/SettingsPage'))
+const TablesSettingsPage    = lazy(() => import('./pages/settings/TablesSettingsPage'))
+const PrinterSettingsPage   = lazy(() => import('./pages/settings/PrinterSettingsPage'))
+const DiscountsSettingsPage = lazy(() => import('./pages/settings/DiscountsSettingsPage'))
+const KDSPage               = lazy(() => import('./pages/kds/KDSPage'))
 
 function Page({ module, children }) {
   return (
@@ -36,6 +38,7 @@ export default function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
+        <Suspense> fallback={<div style={{ display:'flex', alignItems:'center', justifyContent:'center', height:'100vh', fontFamily:'DM Sans,sans-serif', color:'#A8917A', fontSize:14 }}>Loading...</div>}
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/kds" element={<KDSPage />} />
@@ -55,6 +58,7 @@ export default function App() {
           <Route path="/"  element={<Navigate to="/dashboard" replace />} />
           <Route path="*"  element={<Navigate to="/dashboard" replace />} />
         </Routes>
+        </Suspense>
       </AuthProvider>
     </BrowserRouter>
   )
