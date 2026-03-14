@@ -17,6 +17,7 @@ import TablesSettingsPage    from './pages/settings/TablesSettingsPage'
 import PrinterSettingsPage   from './pages/settings/PrinterSettingsPage'
 import DiscountsSettingsPage from './pages/settings/DiscountsSettingsPage'
 import KDSPage               from './pages/kds/KDSPage'
+import CustomerMenuPage from './pages/customer/CustomerMenuPage'
 
 function Page({ module, children }) {
   return (
