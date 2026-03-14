@@ -52,6 +52,7 @@ export default function App() {
           <Route path="/settings/printer"   element={<ProtectedRoute><PrinterSettingsPage /></ProtectedRoute>} />
           <Route path="/settings/tables"    element={<Page module="settings"><TablesSettingsPage    /></Page>} />
 <Route path="/settings/discounts" element={<Page module="settings"><DiscountsSettingsPage /></Page>} />
+          <Route path="/menu/table/:tableId" element={<CustomerMenuPage />} />
           <Route path="/"  element={<Navigate to="/dashboard" replace />} />
           <Route path="*"  element={<Navigate to="/dashboard" replace />} />
         </Routes>
