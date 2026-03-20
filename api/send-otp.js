@@ -12,7 +12,7 @@ export default async function handler(req, res) {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': process.env.REACT_APP_WATI_TOKEN,
+          'Authorization': `Bearer ${process.env.REACT_APP_WATI_TOKEN}`,
         },
         body: JSON.stringify({
           template_name: 'bambini_otp',
