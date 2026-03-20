@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useParams } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 
@@ -12,9 +12,30 @@ const TEXTD = '#1a1a1a'
 const TEXTL = '#6B7280'
 
 const STEP_IDENTITY = 'identity'
+const STEP_OTP      = 'otp'
 const STEP_MENU     = 'menu'
 const STEP_CONFIRM  = 'confirm'
 const STEP_PLACED   = 'placed'
+
+function generateOTP() {
+  return Math.floor(100000 + Math.random() * 900000).toString()
+}
+
+async function sendOTPviaWATI(phone, otp) {
+  try {
+    const response = await fetch('/api/send-otp', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone, otp }),
+    })
+    const data = await response.json()
+    console.log('WATI response:', data)
+    return response.ok
+  } catch (err) {
+    console.error('WATI error:', err)
+    return false
+  }
+}
 
 export default function CustomerMenuPage() {
   const { tableId } = useParams()
@@ -33,7 +54,26 @@ export default function CustomerMenuPage() {
   const [nameErr, setNameErr]   = useState('')
   const [phoneErr, setPhoneErr] = useState('')
 
+  const [otp, setOtp]               = useState(['', '', '', '', '', ''])
+  const [generatedOtp, setGeneratedOtp] = useState('')
+  const [otpError, setOtpError]     = useState('')
+  const [resendTimer, setResendTimer] = useState(30)
+  const otpRefs = useRef([])
+
   useEffect(() => { fetchData() }, [tableId])
+
+  useEffect(() => {
+    if (step === STEP_OTP) {
+      let t = 30
+      setResendTimer(t)
+      const interval = setInterval(() => {
+        t -= 1
+        setResendTimer(t)
+        if (t <= 0) clearInterval(interval)
+      }, 1000)
+      return () => clearInterval(interval)
+    }
+  }, [step])
 
   async function fetchData() {
     const [{ data: tableData }, { data: cats }, { data: menuItems }] = await Promise.all([
@@ -48,12 +88,49 @@ export default function CustomerMenuPage() {
     setLoading(false)
   }
 
-  function handleStart() {
+  async function handleSendOTP() {
     setNameErr('')
     setPhoneErr('')
     if (!name.trim()) return setNameErr('Please enter your name')
     if (!/^[6-9]\d{9}$/.test(phone)) return setPhoneErr('Enter a valid 10-digit mobile number')
+    setSubmitting(true)
+    const newOtp = generateOTP()
+    setGeneratedOtp(newOtp)
+    const sent = await sendOTPviaWATI(phone, newOtp)
+    setSubmitting(false)
+    if (!sent) return setPhoneErr('Failed to send OTP. Please try again.')
+    setStep(STEP_OTP)
+  }
+
+  function handleOtpInput(val, idx) {
+    const digits = val.replace(/\D/g, '').slice(0, 1)
+    const newOtp = [...otp]
+    newOtp[idx] = digits
+    setOtp(newOtp)
+    setOtpError('')
+    if (digits && idx < 5) otpRefs.current[idx + 1]?.focus()
+  }
+
+  function handleOtpKeyDown(e, idx) {
+    if (e.key === 'Backspace' && !otp[idx] && idx > 0) {
+      otpRefs.current[idx - 1]?.focus()
+    }
+  }
+
+  function handleVerifyOTP() {
+    const entered = otp.join('')
+    if (entered.length < 6) return setOtpError('Enter the 6-digit OTP')
+    if (entered !== generatedOtp) return setOtpError('Incorrect OTP. Please try again.')
     setStep(STEP_MENU)
+  }
+
+  async function handleResendOTP() {
+    const newOtp = generateOTP()
+    setGeneratedOtp(newOtp)
+    setOtp(['', '', '', '', '', ''])
+    setOtpError('')
+    await sendOTPviaWATI(phone, newOtp)
+    setResendTimer(30)
   }
 
   function addToCart(item) {
@@ -173,18 +250,15 @@ export default function CustomerMenuPage() {
             <div style={{ fontWeight: 800, fontSize: 22, color: TEXTD }}>Welcome!</div>
             <div style={{ color: TEXTL, fontSize: 14, marginTop: 6 }}>Tell us who you are to start ordering</div>
           </div>
-
           <div style={{ background: WHITE, borderRadius: 16, padding: 24, boxShadow: '0 2px 12px rgba(0,0,0,0.06)' }}>
             <div style={{ marginBottom: 16 }}>
               <label style={{ fontSize: 11, fontWeight: 700, color: TEXTL, textTransform: 'uppercase', letterSpacing: 0.5, display: 'block', marginBottom: 8 }}>Your Name</label>
-              <input value={name} onChange={e => { setName(e.target.value); setNameErr('') }}
-                placeholder="e.g. Rahul Sharma"
+              <input value={name} onChange={e => { setName(e.target.value); setNameErr('') }} placeholder="e.g. Rahul Sharma"
                 style={{ width: '100%', border: '1.5px solid ' + (nameErr ? '#EF4444' : BORDER), borderRadius: 10, padding: '12px 14px', fontSize: 15, color: TEXTD, background: '#FAFAFA' }} />
               {nameErr && <div style={{ color: '#EF4444', fontSize: 12, marginTop: 5, fontWeight: 600 }}>{nameErr}</div>}
             </div>
-
             <div style={{ marginBottom: 24 }}>
-              <label style={{ fontSize: 11, fontWeight: 700, color: TEXTL, textTransform: 'uppercase', letterSpacing: 0.5, display: 'block', marginBottom: 8 }}>Mobile Number</label>
+              <label style={{ fontSize: 11, fontWeight: 700, color: TEXTL, textTransform: 'uppercase', letterSpacing: 0.5, display: 'block', marginBottom: 8 }}>WhatsApp Number</label>
               <div style={{ display: 'flex', alignItems: 'center', border: '1.5px solid ' + (phoneErr ? '#EF4444' : BORDER), borderRadius: 10, background: '#FAFAFA', overflow: 'hidden' }}>
                 <div style={{ padding: '12px', borderRight: '1px solid ' + BORDER, color: TEXTL, fontSize: 14, fontWeight: 600 }}>🇮🇳 +91</div>
                 <input value={phone} onChange={e => { setPhone(e.target.value.replace(/\D/g, '').slice(0, 10)); setPhoneErr('') }}
@@ -192,12 +266,53 @@ export default function CustomerMenuPage() {
                   style={{ flex: 1, border: 'none', background: 'transparent', padding: '12px 14px', fontSize: 15, color: TEXTD }} />
               </div>
               {phoneErr && <div style={{ color: '#EF4444', fontSize: 12, marginTop: 5, fontWeight: 600 }}>{phoneErr}</div>}
+              <div style={{ fontSize: 11, color: TEXTL, marginTop: 6 }}>📲 OTP will be sent to this WhatsApp number</div>
             </div>
-
-            <button onClick={handleStart}
-              style={{ width: '100%', background: TEAL, color: WHITE, border: 'none', borderRadius: 12, padding: '14px 0', fontSize: 15, fontWeight: 700, cursor: 'pointer' }}>
-              Start Ordering →
+            <button onClick={handleSendOTP} disabled={submitting}
+              style={{ width: '100%', background: TEAL, color: WHITE, border: 'none', borderRadius: 12, padding: '14px 0', fontSize: 15, fontWeight: 700, cursor: submitting ? 'not-allowed' : 'pointer', opacity: submitting ? 0.8 : 1 }}>
+              {submitting ? 'Sending OTP...' : 'Get OTP on WhatsApp →'}
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* STEP: OTP */}
+      {step === STEP_OTP && (
+        <div style={{ padding: 24, animation: 'fadeIn 0.3s ease' }}>
+          <button onClick={() => setStep(STEP_IDENTITY)}
+            style={{ background: 'none', border: 'none', color: TEAL, fontWeight: 700, fontSize: 13, cursor: 'pointer', padding: '0 0 20px', display: 'flex', alignItems: 'center', gap: 4 }}>
+            ← Back
+          </button>
+          <div style={{ textAlign: 'center', marginBottom: 32 }}>
+            <div style={{ fontSize: 40, marginBottom: 10 }}>📲</div>
+            <div style={{ fontWeight: 800, fontSize: 22, color: TEXTD }}>Enter OTP</div>
+            <div style={{ color: TEXTL, fontSize: 14, marginTop: 6 }}>
+              Sent to <strong style={{ color: TEXTD }}>+91 {phone}</strong> on WhatsApp
+            </div>
+          </div>
+          <div style={{ background: WHITE, borderRadius: 16, padding: 24, boxShadow: '0 2px 12px rgba(0,0,0,0.06)' }}>
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginBottom: 20 }}>
+              {otp.map((digit, idx) => (
+                <input key={idx} ref={el => otpRefs.current[idx] = el} value={digit}
+                  onChange={e => handleOtpInput(e.target.value, idx)} onKeyDown={e => handleOtpKeyDown(e, idx)}
+                  maxLength={1} inputMode="numeric" type="tel"
+                  style={{ width: 46, height: 56, textAlign: 'center', fontSize: 22, fontWeight: 800, border: '2px solid ' + (digit ? TEAL : BORDER), borderRadius: 10, color: TEXTD, background: digit ? '#F0FDF9' : '#FAFAFA', transition: 'all 0.15s' }} />
+              ))}
+            </div>
+            {otpError && (
+              <div style={{ background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 8, padding: '10px 14px', color: '#DC2626', fontSize: 13, fontWeight: 600, textAlign: 'center', marginBottom: 16 }}>
+                {otpError}
+              </div>
+            )}
+            <button onClick={handleVerifyOTP}
+              style={{ width: '100%', background: TEAL, color: WHITE, border: 'none', borderRadius: 12, padding: '14px 0', fontSize: 15, fontWeight: 700, cursor: 'pointer', marginBottom: 16 }}>
+              Verify OTP
+            </button>
+            <div style={{ textAlign: 'center', fontSize: 13, color: TEXTL }}>
+              {resendTimer > 0
+                ? <>Resend OTP in <strong style={{ color: TEXTD }}>{resendTimer}s</strong></>
+                : <button onClick={handleResendOTP} style={{ background: 'none', border: 'none', color: TEAL, fontWeight: 700, fontSize: 13, cursor: 'pointer', textDecoration: 'underline' }}>Resend OTP</button>}
+            </div>
           </div>
         </div>
       )}
@@ -208,13 +323,11 @@ export default function CustomerMenuPage() {
           <div style={{ background: TEAL + '18', borderBottom: '1px solid ' + TEAL + '22', padding: '10px 20px', fontSize: 13, color: TEAL, fontWeight: 600 }}>
             👋 Hi <strong>{name}</strong>! What would you like to order?
           </div>
-
           <div style={{ padding: '14px 16px 0', position: 'relative' }}>
             <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search dishes..."
               style={{ width: '100%', border: '1.5px solid ' + BORDER, borderRadius: 10, padding: '10px 14px 10px 38px', fontSize: 14, color: TEXTD, background: WHITE }} />
             <span style={{ position: 'absolute', left: 28, top: '50%', transform: 'translateY(-20%)', fontSize: 16 }}>🔍</span>
           </div>
-
           {!search && (
             <div style={{ display: 'flex', gap: 8, padding: '12px 16px', overflowX: 'auto', scrollbarWidth: 'none' }}>
               {categories.map(cat => (
@@ -225,7 +338,6 @@ export default function CustomerMenuPage() {
               ))}
             </div>
           )}
-
           <div style={{ padding: '0 16px' }}>
             {displayItems.map(item => {
               const qty = getQty(item.id)
@@ -252,7 +364,6 @@ export default function CustomerMenuPage() {
               )
             })}
           </div>
-
           {cartCount > 0 && (
             <div style={{ position: 'fixed', bottom: 20, left: '50%', transform: 'translateX(-50%)', width: 'calc(100% - 40px)', maxWidth: 440, zIndex: 100 }}>
               <button onClick={() => setStep(STEP_CONFIRM)}
@@ -270,7 +381,6 @@ export default function CustomerMenuPage() {
         <div style={{ padding: 20, animation: 'fadeIn 0.3s ease' }}>
           <button onClick={() => setStep(STEP_MENU)} style={{ background: 'none', border: 'none', color: TEAL, fontWeight: 700, fontSize: 13, cursor: 'pointer', padding: '0 0 16px' }}>← Back to Menu</button>
           <div style={{ fontWeight: 800, fontSize: 20, color: TEXTD, marginBottom: 20 }}>Your Order</div>
-
           <div style={{ background: WHITE, borderRadius: 16, overflow: 'hidden', border: '1px solid ' + BORDER, marginBottom: 16 }}>
             {cart.map((c, i) => (
               <div key={c.item.id} style={{ padding: '14px 16px', borderBottom: i < cart.length - 1 ? '1px solid ' + BORDER : 'none', display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -289,17 +399,14 @@ export default function CustomerMenuPage() {
               </div>
             ))}
           </div>
-
           <div style={{ background: WHITE, borderRadius: 16, padding: 16, border: '1px solid ' + BORDER, marginBottom: 20 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, color: TEXTL, marginBottom: 8 }}><span>Subtotal</span><span>₹{cartTotal}</span></div>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, color: TEXTL, paddingBottom: 12, borderBottom: '1px solid ' + BORDER, marginBottom: 12 }}><span>GST</span><span>Included</span></div>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 17, fontWeight: 800, color: TEXTD }}><span>Total</span><span>₹{cartTotal}</span></div>
           </div>
-
           <div style={{ background: TEAL + '10', borderRadius: 12, padding: '12px 16px', marginBottom: 20, fontSize: 13, color: TEAL, fontWeight: 600 }}>
             📋 Order for <strong>{name}</strong> · {table.name || `Table ${table.number}`}
           </div>
-
           <button onClick={placeOrder} disabled={submitting || cart.length === 0}
             style={{ width: '100%', background: TEAL, color: WHITE, border: 'none', borderRadius: 14, padding: '15px 0', fontSize: 16, fontWeight: 700, cursor: submitting ? 'not-allowed' : 'pointer', opacity: submitting ? 0.8 : 1 }}>
             {submitting ? 'Placing Order...' : '🔥 Place Order'}
@@ -315,7 +422,6 @@ export default function CustomerMenuPage() {
             <div style={{ fontWeight: 800, fontSize: 20, color: '#15803D', marginBottom: 6 }}>Order Placed!</div>
             <div style={{ fontSize: 14, color: '#166534' }}>Your order is being prepared. We'll serve it to your table shortly.</div>
           </div>
-
           <div style={{ background: WHITE, borderRadius: 16, overflow: 'hidden', border: '1px solid ' + BORDER, marginBottom: 16 }}>
             <div style={{ background: TEAL, padding: '14px 18px' }}>
               <div style={{ color: WHITE, fontWeight: 800, fontSize: 15 }}>Order Summary</div>
@@ -332,7 +438,6 @@ export default function CustomerMenuPage() {
               <span style={{ fontWeight: 800, fontSize: 15, color: TEAL }}>₹{cartTotal}</span>
             </div>
           </div>
-
           <div style={{ fontWeight: 700, fontSize: 15, color: TEXTD, marginBottom: 12 }}>How would you like to pay?</div>
           <div style={{ display: 'flex', gap: 12, marginBottom: 16 }}>
             <button onClick={() => alert('Please pay at your table. A staff member will assist you.')}
@@ -348,7 +453,6 @@ export default function CustomerMenuPage() {
               <div style={{ fontSize: 11, color: TEXTL, marginTop: 3 }}>Visit the counter</div>
             </button>
           </div>
-
           <button onClick={() => { setCart([]); setStep(STEP_MENU) }}
             style={{ width: '100%', background: BG, border: '1px solid ' + BORDER, borderRadius: 14, padding: '13px 0', fontSize: 14, fontWeight: 700, cursor: 'pointer', color: TEXTL }}>
             + Order More Items
