@@ -4,7 +4,19 @@
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
   if (req.method === 'OPTIONS') return res.status(200).end()
 
-  const { phone, otp } = req.body
+  let phone, otp
+  try {
+    const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body
+    phone = body.phone
+    otp = body.otp
+  } catch (e) {
+    return res.status(400).json({ error: 'Invalid request body' })
+  }
+
+  if (!phone || !otp) {
+    return res.status(400).json({ error: 'phone and otp are required' })
+  }
+
   try {
     const response = await fetch(
       `https://live-mt-server.wati.io/10112850/api/v1/sendTemplateMessage?whatsappNumber=91${phone}`,
@@ -21,11 +33,11 @@
         }),
       }
     )
-    const data = await response.json()
-    console.log('WATI response:', JSON.stringify(data))
-    res.status(response.ok ? 200 : 400).json(data)
+    const text = await response.text()
+    console.log('WATI response:', text)
+    return res.status(200).json({ result: text })
   } catch (err) {
     console.error('WATI error:', err.message)
-    res.status(500).json({ error: err.message })
+    return res.status(500).json({ error: err.message })
   }
 }
