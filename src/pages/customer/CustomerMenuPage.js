@@ -11,29 +11,43 @@ const BORDER  = '#E5E7EB'
 const TEXTD   = '#1a1a1a'
 const TEXTL   = '#6B7280'
 
-// ─── STEP CONSTANTS ────────────────────────────────────────────────────────────
 const STEP_IDENTITY = 'identity'
 const STEP_OTP      = 'otp'
 const STEP_MENU     = 'menu'
 const STEP_CONFIRM  = 'confirm'
 const STEP_PLACED   = 'placed'
 
-// ─── OTP HELPER ───────────────────────────────────────────────────────────────
 function generateOTP() {
   return Math.floor(100000 + Math.random() * 900000).toString()
 }
 
-// ── WATI PLACEHOLDER ──────────────────────────────────────────────────────────
-// TODO: Replace this function with actual WATI API call once credentials are available
-// WATI endpoint: POST https://live-server-XXXXX.wati.io/api/v1/sendTemplateMessage
-// Body: { whatsappNumber: phone, template_name: 'otp_template', broadcast_name: 'otp', parameters: [{ name: 'otp', value: otp }] }
 async function sendOTPviaWATI(phone, otp) {
-  console.log(`[WATI PLACEHOLDER] Sending OTP ${otp} to ${phone} via WhatsApp`)
-  // Simulate network delay
-  await new Promise(r => setTimeout(r, 800))
-  // Remove this alert once WATI is connected:
-  alert(`[DEV MODE] OTP for ${phone} is: ${otp}\n\nThis alert will be removed once WATI is connected.`)
-  return true
+  try {
+    const response = await fetch(
+      `https://live-mt-server.wati.io/10112850/api/v1/sendTemplateMessage?whatsappNumber=91${phone}`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': process.env.REACT_APP_WATI_TOKEN,
+        },
+        body: JSON.stringify({
+          template_name: 'bambini_otp',
+          broadcast_name: 'bambini_otp',
+          parameters: [
+            { name: '1', value: otp },
+            { name: '2', value: '5' },
+          ],
+        }),
+      }
+    )
+    const data = await response.json()
+    console.log('WATI response:', data)
+    return true
+  } catch (err) {
+    console.error('WATI error:', err)
+    return false
+  }
 }
 
 export default function CustomerMenuPage() {
@@ -49,13 +63,11 @@ export default function CustomerMenuPage() {
   const [submitting, setSubmitting] = useState(false)
   const [placedOrder, setPlacedOrder] = useState(null)
 
-  // Identity
   const [name, setName]   = useState('')
   const [phone, setPhone] = useState('')
   const [nameErr, setNameErr]   = useState('')
   const [phoneErr, setPhoneErr] = useState('')
 
-  // OTP
   const [otp, setOtp]         = useState(['', '', '', '', '', ''])
   const [generatedOtp, setGeneratedOtp] = useState('')
   const [otpError, setOtpError]   = useState('')
@@ -90,7 +102,6 @@ export default function CustomerMenuPage() {
     setLoading(false)
   }
 
-  // ── IDENTITY STEP ─────────────────────────────────────────────────────────
   async function handleSendOTP() {
     setNameErr('')
     setPhoneErr('')
@@ -99,12 +110,12 @@ export default function CustomerMenuPage() {
     setSubmitting(true)
     const newOtp = generateOTP()
     setGeneratedOtp(newOtp)
-    await sendOTPviaWATI(phone, newOtp)
+    const sent = await sendOTPviaWATI(phone, newOtp)
     setSubmitting(false)
+    if (!sent) return setPhoneErr('Failed to send OTP. Please try again.')
     setStep(STEP_OTP)
   }
 
-  // ── OTP STEP ──────────────────────────────────────────────────────────────
   function handleOtpInput(val, idx) {
     const digits = val.replace(/\D/g, '').slice(0, 1)
     const newOtp = [...otp]
@@ -136,7 +147,6 @@ export default function CustomerMenuPage() {
     setResendTimer(30)
   }
 
-  // ── CART ──────────────────────────────────────────────────────────────────
   function addToCart(item) {
     setCart(prev => {
       const ex = prev.find(c => c.item.id === item.id)
@@ -158,12 +168,10 @@ export default function CustomerMenuPage() {
   const cartTotal = cart.reduce((s, c) => s + c.item.price * c.qty, 0)
   const cartCount = cart.reduce((s, c) => s + c.qty, 0)
 
-  // ── PLACE ORDER ───────────────────────────────────────────────────────────
   async function placeOrder() {
     if (cart.length === 0) return
     setSubmitting(true)
     try {
-      // Create order
       const { data: order, error: oErr } = await supabase.from('orders').insert({
         table_id: tableId,
         order_type: 'dine_in',
@@ -174,10 +182,8 @@ export default function CustomerMenuPage() {
       }).select().single()
       if (oErr) throw oErr
 
-      // Mark table occupied
       await supabase.from('cafe_tables').update({ status: 'occupied' }).eq('id', tableId)
 
-      // Insert order items
       const orderItems = cart.map(c => ({
         order_id: order.id,
         item_id: c.item.id,
@@ -188,11 +194,9 @@ export default function CustomerMenuPage() {
       const { data: createdItems, error: iErr } = await supabase.from('order_items').insert(orderItems).select()
       if (iErr) throw iErr
 
-      // Create KOT
       const { data: kot, error: kErr } = await supabase.from('kots').insert({ order_id: order.id, status: 'pending' }).select().single()
       if (kErr) throw kErr
 
-      // Create KOT items
       await supabase.from('kot_items').insert(createdItems.map(oi => ({ kot_id: kot.id, order_item_id: oi.id, is_done: false })))
 
       setPlacedOrder(order)
@@ -208,7 +212,6 @@ export default function CustomerMenuPage() {
     ? items.filter(i => i.name.toLowerCase().includes(search.toLowerCase()))
     : items.filter(i => i.category_id === activeCategory)
 
-  // ── LOADING ───────────────────────────────────────────────────────────────
   if (loading) return (
     <div style={{ minHeight: '100vh', background: BG, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <div style={{ textAlign: 'center' }}>
@@ -229,7 +232,6 @@ export default function CustomerMenuPage() {
     </div>
   )
 
-  // ── RENDER ────────────────────────────────────────────────────────────────
   return (
     <div style={{ minHeight: '100vh', background: BG, fontFamily: "'DM Sans', 'Segoe UI', sans-serif", maxWidth: 480, margin: '0 auto' }}>
       <style>{`
@@ -239,7 +241,7 @@ export default function CustomerMenuPage() {
         input:focus { outline: none; }
       `}</style>
 
-      {/* ── HEADER ── */}
+      {/* HEADER */}
       <div style={{ background: TEAL, padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 12, position: 'sticky', top: 0, zIndex: 50 }}>
         <div style={{ width: 38, height: 38, background: GOLD, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>☕</div>
         <div>
@@ -256,7 +258,7 @@ export default function CustomerMenuPage() {
         )}
       </div>
 
-      {/* ── STEP: IDENTITY ── */}
+      {/* STEP: IDENTITY */}
       {step === STEP_IDENTITY && (
         <div style={{ padding: 24, animation: 'fadeIn 0.3s ease' }}>
           <div style={{ textAlign: 'center', marginBottom: 32, marginTop: 12 }}>
@@ -294,7 +296,7 @@ export default function CustomerMenuPage() {
         </div>
       )}
 
-      {/* ── STEP: OTP ── */}
+      {/* STEP: OTP */}
       {step === STEP_OTP && (
         <div style={{ padding: 24, animation: 'fadeIn 0.3s ease' }}>
           <button onClick={() => setStep(STEP_IDENTITY)}
@@ -311,7 +313,6 @@ export default function CustomerMenuPage() {
           </div>
 
           <div style={{ background: WHITE, borderRadius: 16, padding: 24, boxShadow: '0 2px 12px rgba(0,0,0,0.06)' }}>
-            {/* 6-digit OTP boxes */}
             <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginBottom: 20 }}>
               {otp.map((digit, idx) => (
                 <input key={idx}
@@ -344,22 +345,19 @@ export default function CustomerMenuPage() {
         </div>
       )}
 
-      {/* ── STEP: MENU ── */}
+      {/* STEP: MENU */}
       {step === STEP_MENU && (
         <div style={{ animation: 'fadeIn 0.3s ease', paddingBottom: cartCount > 0 ? 80 : 20 }}>
-          {/* Welcome strip */}
           <div style={{ background: TEAL + '18', borderBottom: '1px solid ' + TEAL + '22', padding: '10px 20px', fontSize: 13, color: TEAL, fontWeight: 600 }}>
             👋 Hi <strong>{name}</strong>! What would you like to order?
           </div>
 
-          {/* Search */}
           <div style={{ padding: '14px 16px 0', position: 'relative' }}>
             <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search dishes..."
               style={{ width: '100%', border: '1.5px solid ' + BORDER, borderRadius: 10, padding: '10px 14px 10px 38px', fontSize: 14, color: TEXTD, background: WHITE }} />
             <span style={{ position: 'absolute', left: 28, top: '50%', transform: 'translateY(-20%)', fontSize: 16 }}>🔍</span>
           </div>
 
-          {/* Category tabs */}
           {!search && (
             <div style={{ display: 'flex', gap: 8, padding: '12px 16px', overflowX: 'auto', scrollbarWidth: 'none' }}>
               {categories.map(cat => (
@@ -371,7 +369,6 @@ export default function CustomerMenuPage() {
             </div>
           )}
 
-          {/* Items */}
           <div style={{ padding: '0 16px' }}>
             {displayItems.map(item => {
               const qty = getQty(item.id)
@@ -402,7 +399,6 @@ export default function CustomerMenuPage() {
             })}
           </div>
 
-          {/* Sticky cart button */}
           {cartCount > 0 && (
             <div style={{ position: 'fixed', bottom: 20, left: '50%', transform: 'translateX(-50%)', width: 'calc(100% - 40px)', maxWidth: 440, zIndex: 100 }}>
               <button onClick={() => setStep(STEP_CONFIRM)}
@@ -415,7 +411,7 @@ export default function CustomerMenuPage() {
         </div>
       )}
 
-      {/* ── STEP: CONFIRM ── */}
+      {/* STEP: CONFIRM */}
       {step === STEP_CONFIRM && (
         <div style={{ padding: 20, animation: 'fadeIn 0.3s ease' }}>
           <button onClick={() => setStep(STEP_MENU)}
@@ -444,7 +440,6 @@ export default function CustomerMenuPage() {
             ))}
           </div>
 
-          {/* Bill summary */}
           <div style={{ background: WHITE, borderRadius: 16, padding: 16, border: '1px solid ' + BORDER, marginBottom: 20 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, color: TEXTL, marginBottom: 8 }}>
               <span>Subtotal</span><span>₹{cartTotal}</span>
@@ -457,7 +452,6 @@ export default function CustomerMenuPage() {
             </div>
           </div>
 
-          {/* Customer info */}
           <div style={{ background: TEAL + '10', borderRadius: 12, padding: '12px 16px', marginBottom: 20, fontSize: 13, color: TEAL, fontWeight: 600 }}>
             📋 Order for <strong>{name}</strong> · {table.name || `Table ${table.number}`}
           </div>
@@ -469,17 +463,15 @@ export default function CustomerMenuPage() {
         </div>
       )}
 
-      {/* ── STEP: PLACED ── */}
+      {/* STEP: PLACED */}
       {step === STEP_PLACED && (
         <div style={{ padding: 24, animation: 'fadeIn 0.3s ease' }}>
-          {/* Success banner */}
           <div style={{ background: '#F0FDF4', border: '1px solid #86EFAC', borderRadius: 16, padding: '24px', textAlign: 'center', marginBottom: 20 }}>
             <div style={{ fontSize: 48, marginBottom: 10 }}>✅</div>
             <div style={{ fontWeight: 800, fontSize: 20, color: '#15803D', marginBottom: 6 }}>Order Placed!</div>
             <div style={{ fontSize: 14, color: '#166534' }}>Your order is being prepared. We'll serve it to your table shortly.</div>
           </div>
 
-          {/* Order summary */}
           <div style={{ background: WHITE, borderRadius: 16, overflow: 'hidden', border: '1px solid ' + BORDER, marginBottom: 16 }}>
             <div style={{ background: TEAL, padding: '14px 18px' }}>
               <div style={{ color: WHITE, fontWeight: 800, fontSize: 15 }}>Order Summary</div>
@@ -499,18 +491,15 @@ export default function CustomerMenuPage() {
             </div>
           </div>
 
-          {/* Payment options */}
           <div style={{ fontWeight: 700, fontSize: 15, color: TEXTD, marginBottom: 12 }}>How would you like to pay?</div>
           <div style={{ display: 'flex', gap: 12 }}>
-            <button
-              onClick={() => alert('Please pay at your table. A staff member will assist you.')}
+            <button onClick={() => alert('Please pay at your table. A staff member will assist you.')}
               style={{ flex: 1, background: WHITE, border: '2px solid ' + TEAL, borderRadius: 14, padding: '16px 12px', cursor: 'pointer', textAlign: 'center' }}>
               <div style={{ fontSize: 24, marginBottom: 6 }}>🪑</div>
               <div style={{ fontWeight: 700, fontSize: 13, color: TEAL }}>Pay at Table</div>
               <div style={{ fontSize: 11, color: TEXTL, marginTop: 3 }}>Staff will come to you</div>
             </button>
-            <button
-              onClick={() => alert('Please visit the reception counter to pay. Thank you!')}
+            <button onClick={() => alert('Please visit the reception counter to pay. Thank you!')}
               style={{ flex: 1, background: WHITE, border: '2px solid ' + TEAL, borderRadius: 14, padding: '16px 12px', cursor: 'pointer', textAlign: 'center' }}>
               <div style={{ fontSize: 24, marginBottom: 6 }}>🏧</div>
               <div style={{ fontWeight: 700, fontSize: 13, color: TEAL }}>Pay at Reception</div>
