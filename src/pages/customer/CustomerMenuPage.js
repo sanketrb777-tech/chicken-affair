@@ -23,27 +23,14 @@ function generateOTP() {
 
 async function sendOTPviaWATI(phone, otp) {
   try {
-    const response = await fetch(
-      `https://live-mt-server.wati.io/10112850/api/v1/sendTemplateMessage?whatsappNumber=91${phone}`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': process.env.REACT_APP_WATI_TOKEN,
-        },
-        body: JSON.stringify({
-          template_name: 'bambini_otp',
-          broadcast_name: 'bambini_otp',
-          parameters: [
-            { name: '1', value: otp },
-            { name: '2', value: '5' },
-          ],
-        }),
-      }
-    )
+    const response = await fetch('/api/send-otp', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone, otp }),
+    })
     const data = await response.json()
     console.log('WATI response:', data)
-    return true
+    return response.ok
   } catch (err) {
     console.error('WATI error:', err)
     return false
@@ -241,7 +228,6 @@ export default function CustomerMenuPage() {
         input:focus { outline: none; }
       `}</style>
 
-      {/* HEADER */}
       <div style={{ background: TEAL, padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 12, position: 'sticky', top: 0, zIndex: 50 }}>
         <div style={{ width: 38, height: 38, background: GOLD, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>☕</div>
         <div>
@@ -258,7 +244,6 @@ export default function CustomerMenuPage() {
         )}
       </div>
 
-      {/* STEP: IDENTITY */}
       {step === STEP_IDENTITY && (
         <div style={{ padding: 24, animation: 'fadeIn 0.3s ease' }}>
           <div style={{ textAlign: 'center', marginBottom: 32, marginTop: 12 }}>
@@ -266,16 +251,13 @@ export default function CustomerMenuPage() {
             <div style={{ fontWeight: 800, fontSize: 22, color: TEXTD }}>Welcome!</div>
             <div style={{ color: TEXTL, fontSize: 14, marginTop: 6 }}>Tell us who you are to start ordering</div>
           </div>
-
           <div style={{ background: WHITE, borderRadius: 16, padding: 24, boxShadow: '0 2px 12px rgba(0,0,0,0.06)' }}>
             <div style={{ marginBottom: 18 }}>
               <label style={{ fontSize: 11, fontWeight: 700, color: TEXTL, textTransform: 'uppercase', letterSpacing: 0.5, display: 'block', marginBottom: 8 }}>Your Name</label>
-              <input value={name} onChange={e => { setName(e.target.value); setNameErr('') }}
-                placeholder="e.g. Rahul Sharma"
+              <input value={name} onChange={e => { setName(e.target.value); setNameErr('') }} placeholder="e.g. Rahul Sharma"
                 style={{ width: '100%', border: '1.5px solid ' + (nameErr ? '#EF4444' : BORDER), borderRadius: 10, padding: '12px 14px', fontSize: 15, color: TEXTD, background: '#FAFAFA' }} />
               {nameErr && <div style={{ color: '#EF4444', fontSize: 12, marginTop: 5, fontWeight: 600 }}>{nameErr}</div>}
             </div>
-
             <div style={{ marginBottom: 24 }}>
               <label style={{ fontSize: 11, fontWeight: 700, color: TEXTL, textTransform: 'uppercase', letterSpacing: 0.5, display: 'block', marginBottom: 8 }}>WhatsApp Number</label>
               <div style={{ display: 'flex', alignItems: 'center', border: '1.5px solid ' + (phoneErr ? '#EF4444' : BORDER), borderRadius: 10, background: '#FAFAFA', overflow: 'hidden' }}>
@@ -287,7 +269,6 @@ export default function CustomerMenuPage() {
               {phoneErr && <div style={{ color: '#EF4444', fontSize: 12, marginTop: 5, fontWeight: 600 }}>{phoneErr}</div>}
               <div style={{ fontSize: 11, color: TEXTL, marginTop: 6 }}>📲 OTP will be sent to this WhatsApp number</div>
             </div>
-
             <button onClick={handleSendOTP} disabled={submitting}
               style={{ width: '100%', background: TEAL, color: WHITE, border: 'none', borderRadius: 12, padding: '14px 0', fontSize: 15, fontWeight: 700, cursor: submitting ? 'not-allowed' : 'pointer', opacity: submitting ? 0.8 : 1 }}>
               {submitting ? 'Sending OTP...' : 'Get OTP on WhatsApp →'}
@@ -296,14 +277,12 @@ export default function CustomerMenuPage() {
         </div>
       )}
 
-      {/* STEP: OTP */}
       {step === STEP_OTP && (
         <div style={{ padding: 24, animation: 'fadeIn 0.3s ease' }}>
           <button onClick={() => setStep(STEP_IDENTITY)}
             style={{ background: 'none', border: 'none', color: TEAL, fontWeight: 700, fontSize: 13, cursor: 'pointer', padding: '0 0 20px', display: 'flex', alignItems: 'center', gap: 4 }}>
             ← Back
           </button>
-
           <div style={{ textAlign: 'center', marginBottom: 32 }}>
             <div style={{ fontSize: 40, marginBottom: 10 }}>📲</div>
             <div style={{ fontWeight: 800, fontSize: 22, color: TEXTD }}>Enter OTP</div>
@@ -311,31 +290,24 @@ export default function CustomerMenuPage() {
               Sent to <strong style={{ color: TEXTD }}>+91 {phone}</strong> on WhatsApp
             </div>
           </div>
-
           <div style={{ background: WHITE, borderRadius: 16, padding: 24, boxShadow: '0 2px 12px rgba(0,0,0,0.06)' }}>
             <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginBottom: 20 }}>
               {otp.map((digit, idx) => (
-                <input key={idx}
-                  ref={el => otpRefs.current[idx] = el}
-                  value={digit}
-                  onChange={e => handleOtpInput(e.target.value, idx)}
-                  onKeyDown={e => handleOtpKeyDown(e, idx)}
+                <input key={idx} ref={el => otpRefs.current[idx] = el} value={digit}
+                  onChange={e => handleOtpInput(e.target.value, idx)} onKeyDown={e => handleOtpKeyDown(e, idx)}
                   maxLength={1} inputMode="numeric" type="tel"
                   style={{ width: 46, height: 56, textAlign: 'center', fontSize: 22, fontWeight: 800, border: '2px solid ' + (digit ? TEAL : BORDER), borderRadius: 10, color: TEXTD, background: digit ? '#F0FDF9' : '#FAFAFA', transition: 'all 0.15s' }} />
               ))}
             </div>
-
             {otpError && (
               <div style={{ background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 8, padding: '10px 14px', color: '#DC2626', fontSize: 13, fontWeight: 600, textAlign: 'center', marginBottom: 16 }}>
                 {otpError}
               </div>
             )}
-
             <button onClick={handleVerifyOTP}
               style={{ width: '100%', background: TEAL, color: WHITE, border: 'none', borderRadius: 12, padding: '14px 0', fontSize: 15, fontWeight: 700, cursor: 'pointer', marginBottom: 16 }}>
               Verify OTP
             </button>
-
             <div style={{ textAlign: 'center', fontSize: 13, color: TEXTL }}>
               {resendTimer > 0
                 ? <>Resend OTP in <strong style={{ color: TEXTD }}>{resendTimer}s</strong></>
@@ -345,19 +317,16 @@ export default function CustomerMenuPage() {
         </div>
       )}
 
-      {/* STEP: MENU */}
       {step === STEP_MENU && (
         <div style={{ animation: 'fadeIn 0.3s ease', paddingBottom: cartCount > 0 ? 80 : 20 }}>
           <div style={{ background: TEAL + '18', borderBottom: '1px solid ' + TEAL + '22', padding: '10px 20px', fontSize: 13, color: TEAL, fontWeight: 600 }}>
             👋 Hi <strong>{name}</strong>! What would you like to order?
           </div>
-
           <div style={{ padding: '14px 16px 0', position: 'relative' }}>
             <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search dishes..."
               style={{ width: '100%', border: '1.5px solid ' + BORDER, borderRadius: 10, padding: '10px 14px 10px 38px', fontSize: 14, color: TEXTD, background: WHITE }} />
             <span style={{ position: 'absolute', left: 28, top: '50%', transform: 'translateY(-20%)', fontSize: 16 }}>🔍</span>
           </div>
-
           {!search && (
             <div style={{ display: 'flex', gap: 8, padding: '12px 16px', overflowX: 'auto', scrollbarWidth: 'none' }}>
               {categories.map(cat => (
@@ -368,7 +337,6 @@ export default function CustomerMenuPage() {
               ))}
             </div>
           )}
-
           <div style={{ padding: '0 16px' }}>
             {displayItems.map(item => {
               const qty = getQty(item.id)
@@ -383,10 +351,7 @@ export default function CustomerMenuPage() {
                     {item.description && <div style={{ fontSize: 11, color: TEXTL, marginTop: 2 }}>{item.description}</div>}
                   </div>
                   {qty === 0 ? (
-                    <button onClick={() => addToCart(item)}
-                      style={{ background: TEAL, color: WHITE, border: 'none', borderRadius: 8, padding: '8px 16px', fontSize: 13, fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}>
-                      + Add
-                    </button>
+                    <button onClick={() => addToCart(item)} style={{ background: TEAL, color: WHITE, border: 'none', borderRadius: 8, padding: '8px 16px', fontSize: 13, fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}>+ Add</button>
                   ) : (
                     <div style={{ display: 'flex', alignItems: 'center', background: TEAL, borderRadius: 8, overflow: 'hidden', flexShrink: 0 }}>
                       <button onClick={() => removeFromCart(item.id)} style={{ background: 'none', border: 'none', color: WHITE, padding: '8px 12px', fontSize: 18, cursor: 'pointer', fontWeight: 700 }}>-</button>
@@ -398,7 +363,6 @@ export default function CustomerMenuPage() {
               )
             })}
           </div>
-
           {cartCount > 0 && (
             <div style={{ position: 'fixed', bottom: 20, left: '50%', transform: 'translateX(-50%)', width: 'calc(100% - 40px)', maxWidth: 440, zIndex: 100 }}>
               <button onClick={() => setStep(STEP_CONFIRM)}
@@ -411,16 +375,10 @@ export default function CustomerMenuPage() {
         </div>
       )}
 
-      {/* STEP: CONFIRM */}
       {step === STEP_CONFIRM && (
         <div style={{ padding: 20, animation: 'fadeIn 0.3s ease' }}>
-          <button onClick={() => setStep(STEP_MENU)}
-            style={{ background: 'none', border: 'none', color: TEAL, fontWeight: 700, fontSize: 13, cursor: 'pointer', padding: '0 0 16px', display: 'flex', alignItems: 'center', gap: 4 }}>
-            ← Back to Menu
-          </button>
-
+          <button onClick={() => setStep(STEP_MENU)} style={{ background: 'none', border: 'none', color: TEAL, fontWeight: 700, fontSize: 13, cursor: 'pointer', padding: '0 0 16px', display: 'flex', alignItems: 'center', gap: 4 }}>← Back to Menu</button>
           <div style={{ fontWeight: 800, fontSize: 20, color: TEXTD, marginBottom: 20 }}>Your Order</div>
-
           <div style={{ background: WHITE, borderRadius: 16, overflow: 'hidden', border: '1px solid ' + BORDER, marginBottom: 16 }}>
             {cart.map((c, i) => (
               <div key={c.item.id} style={{ padding: '14px 16px', borderBottom: i < cart.length - 1 ? '1px solid ' + BORDER : 'none', display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -439,23 +397,14 @@ export default function CustomerMenuPage() {
               </div>
             ))}
           </div>
-
           <div style={{ background: WHITE, borderRadius: 16, padding: 16, border: '1px solid ' + BORDER, marginBottom: 20 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, color: TEXTL, marginBottom: 8 }}>
-              <span>Subtotal</span><span>₹{cartTotal}</span>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, color: TEXTL, paddingBottom: 12, borderBottom: '1px solid ' + BORDER, marginBottom: 12 }}>
-              <span>GST</span><span>Included</span>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 17, fontWeight: 800, color: TEXTD }}>
-              <span>Total</span><span>₹{cartTotal}</span>
-            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, color: TEXTL, marginBottom: 8 }}><span>Subtotal</span><span>₹{cartTotal}</span></div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, color: TEXTL, paddingBottom: 12, borderBottom: '1px solid ' + BORDER, marginBottom: 12 }}><span>GST</span><span>Included</span></div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 17, fontWeight: 800, color: TEXTD }}><span>Total</span><span>₹{cartTotal}</span></div>
           </div>
-
           <div style={{ background: TEAL + '10', borderRadius: 12, padding: '12px 16px', marginBottom: 20, fontSize: 13, color: TEAL, fontWeight: 600 }}>
             📋 Order for <strong>{name}</strong> · {table.name || `Table ${table.number}`}
           </div>
-
           <button onClick={placeOrder} disabled={submitting || cart.length === 0}
             style={{ width: '100%', background: TEAL, color: WHITE, border: 'none', borderRadius: 14, padding: '15px 0', fontSize: 16, fontWeight: 700, cursor: submitting ? 'not-allowed' : 'pointer', opacity: submitting ? 0.8 : 1 }}>
             {submitting ? 'Placing Order...' : '🔥 Place Order'}
@@ -463,7 +412,6 @@ export default function CustomerMenuPage() {
         </div>
       )}
 
-      {/* STEP: PLACED */}
       {step === STEP_PLACED && (
         <div style={{ padding: 24, animation: 'fadeIn 0.3s ease' }}>
           <div style={{ background: '#F0FDF4', border: '1px solid #86EFAC', borderRadius: 16, padding: '24px', textAlign: 'center', marginBottom: 20 }}>
@@ -471,13 +419,10 @@ export default function CustomerMenuPage() {
             <div style={{ fontWeight: 800, fontSize: 20, color: '#15803D', marginBottom: 6 }}>Order Placed!</div>
             <div style={{ fontSize: 14, color: '#166534' }}>Your order is being prepared. We'll serve it to your table shortly.</div>
           </div>
-
           <div style={{ background: WHITE, borderRadius: 16, overflow: 'hidden', border: '1px solid ' + BORDER, marginBottom: 16 }}>
             <div style={{ background: TEAL, padding: '14px 18px' }}>
               <div style={{ color: WHITE, fontWeight: 800, fontSize: 15 }}>Order Summary</div>
-              <div style={{ color: 'rgba(255,255,255,0.6)', fontSize: 12, marginTop: 2 }}>
-                {table.name || `Table ${table.number}`} · {name}
-              </div>
+              <div style={{ color: 'rgba(255,255,255,0.6)', fontSize: 12, marginTop: 2 }}>{table.name || `Table ${table.number}`} · {name}</div>
             </div>
             {cart.map((c, i) => (
               <div key={c.item.id} style={{ padding: '12px 16px', borderBottom: i < cart.length - 1 ? '1px solid ' + BORDER : 'none', display: 'flex', justifyContent: 'space-between' }}>
@@ -490,7 +435,6 @@ export default function CustomerMenuPage() {
               <span style={{ fontWeight: 800, fontSize: 15, color: TEAL }}>₹{cartTotal}</span>
             </div>
           </div>
-
           <div style={{ fontWeight: 700, fontSize: 15, color: TEXTD, marginBottom: 12 }}>How would you like to pay?</div>
           <div style={{ display: 'flex', gap: 12 }}>
             <button onClick={() => alert('Please pay at your table. A staff member will assist you.')}
@@ -506,7 +450,6 @@ export default function CustomerMenuPage() {
               <div style={{ fontSize: 11, color: TEXTL, marginTop: 3 }}>Visit the counter</div>
             </button>
           </div>
-
           <button onClick={() => { setCart([]); setStep(STEP_MENU) }}
             style={{ width: '100%', marginTop: 16, background: BG, border: '1px solid ' + BORDER, borderRadius: 14, padding: '13px 0', fontSize: 14, fontWeight: 700, cursor: 'pointer', color: TEXTL }}>
             + Order More Items
