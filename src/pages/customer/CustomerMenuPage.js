@@ -29,10 +29,10 @@ async function sendOTPviaWATI(phone, otp) {
       body: JSON.stringify({ phone, otp }),
     })
     const data = await response.json()
-    console.log('WATI response:', data)
+    console.log('OTP send result:', data)
     return response.ok
   } catch (err) {
-    console.error('WATI error:', err)
+    console.error('OTP send error:', err)
     return false
   }
 }
@@ -49,30 +49,29 @@ export default function CustomerMenuPage() {
   const [loading, setLoading]       = useState(true)
   const [submitting, setSubmitting] = useState(false)
 
-  const [name, setName]   = useState('')
-  const [phone, setPhone] = useState('')
+  const [name, setName]         = useState('')
+  const [phone, setPhone]       = useState('')
   const [nameErr, setNameErr]   = useState('')
   const [phoneErr, setPhoneErr] = useState('')
 
-  const [otp, setOtp]               = useState(['', '', '', '', '', ''])
+  const [otp, setOtp]                   = useState(['', '', '', '', '', ''])
   const [generatedOtp, setGeneratedOtp] = useState('')
-  const [otpError, setOtpError]     = useState('')
-  const [resendTimer, setResendTimer] = useState(30)
+  const [otpError, setOtpError]         = useState('')
+  const [resendTimer, setResendTimer]   = useState(30)
   const otpRefs = useRef([])
 
   useEffect(() => { fetchData() }, [tableId])
 
   useEffect(() => {
-    if (step === STEP_OTP) {
-      let t = 30
+    if (step !== STEP_OTP) return
+    let t = 30
+    setResendTimer(t)
+    const interval = setInterval(() => {
+      t -= 1
       setResendTimer(t)
-      const interval = setInterval(() => {
-        t -= 1
-        setResendTimer(t)
-        if (t <= 0) clearInterval(interval)
-      }, 1000)
-      return () => clearInterval(interval)
-    }
+      if (t <= 0) clearInterval(interval)
+    }, 1000)
+    return () => clearInterval(interval)
   }, [step])
 
   async function fetchData() {
@@ -103,12 +102,12 @@ export default function CustomerMenuPage() {
   }
 
   function handleOtpInput(val, idx) {
-    const digits = val.replace(/\D/g, '').slice(0, 1)
+    const digit = val.replace(/\D/g, '').slice(0, 1)
     const newOtp = [...otp]
-    newOtp[idx] = digits
+    newOtp[idx] = digit
     setOtp(newOtp)
     setOtpError('')
-    if (digits && idx < 5) otpRefs.current[idx + 1]?.focus()
+    if (digit && idx < 5) otpRefs.current[idx + 1]?.focus()
   }
 
   function handleOtpKeyDown(e, idx) {
@@ -129,8 +128,8 @@ export default function CustomerMenuPage() {
     setGeneratedOtp(newOtp)
     setOtp(['', '', '', '', '', ''])
     setOtpError('')
-    await sendOTPviaWATI(phone, newOtp)
     setResendTimer(30)
+    await sendOTPviaWATI(phone, newOtp)
   }
 
   function addToCart(item) {
@@ -180,10 +179,14 @@ export default function CustomerMenuPage() {
       const { data: createdItems, error: iErr } = await supabase.from('order_items').insert(orderItems).select()
       if (iErr) throw iErr
 
-      const { data: kot, error: kErr } = await supabase.from('kots').insert({ order_id: order.id, status: 'pending' }).select().single()
+      const { data: kot, error: kErr } = await supabase.from('kots').insert({
+        order_id: order.id, status: 'pending'
+      }).select().single()
       if (kErr) throw kErr
 
-      await supabase.from('kot_items').insert(createdItems.map(oi => ({ kot_id: kot.id, order_item_id: oi.id, is_done: false })))
+      await supabase.from('kot_items').insert(
+        createdItems.map(oi => ({ kot_id: kot.id, order_item_id: oi.id, is_done: false }))
+      )
       setStep(STEP_PLACED)
     } catch (err) {
       alert('Something went wrong. Please try again.\n' + err.message)
@@ -253,14 +256,15 @@ export default function CustomerMenuPage() {
           <div style={{ background: WHITE, borderRadius: 16, padding: 24, boxShadow: '0 2px 12px rgba(0,0,0,0.06)' }}>
             <div style={{ marginBottom: 16 }}>
               <label style={{ fontSize: 11, fontWeight: 700, color: TEXTL, textTransform: 'uppercase', letterSpacing: 0.5, display: 'block', marginBottom: 8 }}>Your Name</label>
-              <input value={name} onChange={e => { setName(e.target.value); setNameErr('') }} placeholder="e.g. Rahul Sharma"
+              <input value={name} onChange={e => { setName(e.target.value); setNameErr('') }}
+                placeholder="e.g. Rahul Sharma"
                 style={{ width: '100%', border: '1.5px solid ' + (nameErr ? '#EF4444' : BORDER), borderRadius: 10, padding: '12px 14px', fontSize: 15, color: TEXTD, background: '#FAFAFA' }} />
               {nameErr && <div style={{ color: '#EF4444', fontSize: 12, marginTop: 5, fontWeight: 600 }}>{nameErr}</div>}
             </div>
             <div style={{ marginBottom: 24 }}>
               <label style={{ fontSize: 11, fontWeight: 700, color: TEXTL, textTransform: 'uppercase', letterSpacing: 0.5, display: 'block', marginBottom: 8 }}>WhatsApp Number</label>
               <div style={{ display: 'flex', alignItems: 'center', border: '1.5px solid ' + (phoneErr ? '#EF4444' : BORDER), borderRadius: 10, background: '#FAFAFA', overflow: 'hidden' }}>
-                <div style={{ padding: '12px', borderRight: '1px solid ' + BORDER, color: TEXTL, fontSize: 14, fontWeight: 600 }}>🇮🇳 +91</div>
+                <div style={{ padding: '12px', borderRight: '1px solid ' + BORDER, color: TEXTL, fontSize: 14, fontWeight: 600, whiteSpace: 'nowrap' }}>🇮🇳 +91</div>
                 <input value={phone} onChange={e => { setPhone(e.target.value.replace(/\D/g, '').slice(0, 10)); setPhoneErr('') }}
                   placeholder="10-digit number" type="tel" inputMode="numeric"
                   style={{ flex: 1, border: 'none', background: 'transparent', padding: '12px 14px', fontSize: 15, color: TEXTD }} />
@@ -279,7 +283,7 @@ export default function CustomerMenuPage() {
       {/* STEP: OTP */}
       {step === STEP_OTP && (
         <div style={{ padding: 24, animation: 'fadeIn 0.3s ease' }}>
-          <button onClick={() => setStep(STEP_IDENTITY)}
+          <button onClick={() => { setStep(STEP_IDENTITY); setOtp(['','','','','','']); setOtpError('') }}
             style={{ background: 'none', border: 'none', color: TEAL, fontWeight: 700, fontSize: 13, cursor: 'pointer', padding: '0 0 20px', display: 'flex', alignItems: 'center', gap: 4 }}>
             ← Back
           </button>
@@ -293,8 +297,11 @@ export default function CustomerMenuPage() {
           <div style={{ background: WHITE, borderRadius: 16, padding: 24, boxShadow: '0 2px 12px rgba(0,0,0,0.06)' }}>
             <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginBottom: 20 }}>
               {otp.map((digit, idx) => (
-                <input key={idx} ref={el => otpRefs.current[idx] = el} value={digit}
-                  onChange={e => handleOtpInput(e.target.value, idx)} onKeyDown={e => handleOtpKeyDown(e, idx)}
+                <input key={idx}
+                  ref={el => otpRefs.current[idx] = el}
+                  value={digit}
+                  onChange={e => handleOtpInput(e.target.value, idx)}
+                  onKeyDown={e => handleOtpKeyDown(e, idx)}
                   maxLength={1} inputMode="numeric" type="tel"
                   style={{ width: 46, height: 56, textAlign: 'center', fontSize: 22, fontWeight: 800, border: '2px solid ' + (digit ? TEAL : BORDER), borderRadius: 10, color: TEXTD, background: digit ? '#F0FDF9' : '#FAFAFA', transition: 'all 0.15s' }} />
               ))}
@@ -352,7 +359,10 @@ export default function CustomerMenuPage() {
                     {item.description && <div style={{ fontSize: 11, color: TEXTL, marginTop: 2 }}>{item.description}</div>}
                   </div>
                   {qty === 0 ? (
-                    <button onClick={() => addToCart(item)} style={{ background: TEAL, color: WHITE, border: 'none', borderRadius: 8, padding: '8px 16px', fontSize: 13, fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}>+ Add</button>
+                    <button onClick={() => addToCart(item)}
+                      style={{ background: TEAL, color: WHITE, border: 'none', borderRadius: 8, padding: '8px 16px', fontSize: 13, fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}>
+                      + Add
+                    </button>
                   ) : (
                     <div style={{ display: 'flex', alignItems: 'center', background: TEAL, borderRadius: 8, overflow: 'hidden', flexShrink: 0 }}>
                       <button onClick={() => removeFromCart(item.id)} style={{ background: 'none', border: 'none', color: WHITE, padding: '8px 12px', fontSize: 18, cursor: 'pointer', fontWeight: 700 }}>-</button>
@@ -379,7 +389,10 @@ export default function CustomerMenuPage() {
       {/* STEP: CONFIRM */}
       {step === STEP_CONFIRM && (
         <div style={{ padding: 20, animation: 'fadeIn 0.3s ease' }}>
-          <button onClick={() => setStep(STEP_MENU)} style={{ background: 'none', border: 'none', color: TEAL, fontWeight: 700, fontSize: 13, cursor: 'pointer', padding: '0 0 16px' }}>← Back to Menu</button>
+          <button onClick={() => setStep(STEP_MENU)}
+            style={{ background: 'none', border: 'none', color: TEAL, fontWeight: 700, fontSize: 13, cursor: 'pointer', padding: '0 0 16px' }}>
+            ← Back to Menu
+          </button>
           <div style={{ fontWeight: 800, fontSize: 20, color: TEXTD, marginBottom: 20 }}>Your Order</div>
           <div style={{ background: WHITE, borderRadius: 16, overflow: 'hidden', border: '1px solid ' + BORDER, marginBottom: 16 }}>
             {cart.map((c, i) => (
