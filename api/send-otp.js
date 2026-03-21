@@ -9,13 +9,9 @@
     const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body
     phone = body.phone
     otp = body.otp
-  } catch (e) {
-    return res.status(400).json({ error: 'Invalid request body' })
-  }
+  } catch (e) { return res.status(400).json({ error: 'Invalid request body' }) }
 
-  if (!phone || !otp) {
-    return res.status(400).json({ error: 'phone and otp are required' })
-  }
+  if (!phone || !otp) return res.status(400).json({ error: 'phone and otp are required' })
 
   try {
     const response = await fetch(
@@ -34,10 +30,12 @@
       }
     )
     const text = await response.text()
-    console.log('WATI response:', text)
-    return res.status(200).json({ result: text })
+    console.log('WATI status:', response.status, '| body:', text || '(empty)')
+    if (response.status >= 200 && response.status < 300) {
+      return res.status(200).json({ success: true })
+    }
+    return res.status(400).json({ error: text })
   } catch (err) {
-    console.error('WATI error:', err.message)
     return res.status(500).json({ error: err.message })
   }
 }
