@@ -16,6 +16,7 @@ const STEP_OTP      = 'otp'
 const STEP_MENU     = 'menu'
 const STEP_CONFIRM  = 'confirm'
 const STEP_PLACED   = 'placed'
+const STEP_PAYMENT  = 'payment'
 
 function generateOTP() {
   return Math.floor(100000 + Math.random() * 900000).toString()
@@ -48,6 +49,8 @@ export default function CustomerMenuPage() {
   const [search, setSearch]         = useState('')
   const [loading, setLoading]       = useState(true)
   const [submitting, setSubmitting] = useState(false)
+  const [placedOrderId, setPlacedOrderId] = useState(null)
+  const [paymentPref, setPaymentPref] = useState(null)
 
   const [name, setName]         = useState('')
   const [phone, setPhone]       = useState('')
@@ -187,12 +190,29 @@ export default function CustomerMenuPage() {
       await supabase.from('kot_items').insert(
         createdItems.map(oi => ({ kot_id: kot.id, order_item_id: oi.id, is_done: false }))
       )
+
+      setPlacedOrderId(order.id)
       setStep(STEP_PLACED)
     } catch (err) {
       alert('Something went wrong. Please try again.\n' + err.message)
     } finally {
       setSubmitting(false)
     }
+  }
+
+  async function handlePaymentChoice(pref) {
+    setPaymentPref(pref)
+    setSubmitting(true)
+    try {
+      await supabase.from('orders')
+        .update({ payment_preference: pref })
+        .eq('id', placedOrderId)
+    } catch (err) {
+      console.error('Failed to save payment preference:', err)
+    } finally {
+      setSubmitting(false)
+    }
+    setStep(STEP_PAYMENT)
   }
 
   const displayItems = search
@@ -297,11 +317,8 @@ export default function CustomerMenuPage() {
           <div style={{ background: WHITE, borderRadius: 16, padding: 24, boxShadow: '0 2px 12px rgba(0,0,0,0.06)' }}>
             <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginBottom: 20 }}>
               {otp.map((digit, idx) => (
-                <input key={idx}
-                  ref={el => otpRefs.current[idx] = el}
-                  value={digit}
-                  onChange={e => handleOtpInput(e.target.value, idx)}
-                  onKeyDown={e => handleOtpKeyDown(e, idx)}
+                <input key={idx} ref={el => otpRefs.current[idx] = el} value={digit}
+                  onChange={e => handleOtpInput(e.target.value, idx)} onKeyDown={e => handleOtpKeyDown(e, idx)}
                   maxLength={1} inputMode="numeric" type="tel"
                   style={{ width: 46, height: 56, textAlign: 'center', fontSize: 22, fontWeight: 800, border: '2px solid ' + (digit ? TEAL : BORDER), borderRadius: 10, color: TEXTD, background: digit ? '#F0FDF9' : '#FAFAFA', transition: 'all 0.15s' }} />
               ))}
@@ -427,47 +444,68 @@ export default function CustomerMenuPage() {
         </div>
       )}
 
-      {/* STEP: PLACED */}
+      {/* STEP: PLACED — choose payment method */}
       {step === STEP_PLACED && (
         <div style={{ padding: 24, animation: 'fadeIn 0.3s ease' }}>
-          <div style={{ background: '#F0FDF4', border: '1px solid #86EFAC', borderRadius: 16, padding: 24, textAlign: 'center', marginBottom: 20 }}>
+          <div style={{ background: '#F0FDF4', border: '1px solid #86EFAC', borderRadius: 16, padding: 24, textAlign: 'center', marginBottom: 24 }}>
             <div style={{ fontSize: 48, marginBottom: 10 }}>✅</div>
             <div style={{ fontWeight: 800, fontSize: 20, color: '#15803D', marginBottom: 6 }}>Order Placed!</div>
-            <div style={{ fontSize: 14, color: '#166534' }}>Your order is being prepared. We'll serve it to your table shortly.</div>
+            <div style={{ fontSize: 14, color: '#166534' }}>Your order is being prepared. How would you like to pay?</div>
           </div>
-          <div style={{ background: WHITE, borderRadius: 16, overflow: 'hidden', border: '1px solid ' + BORDER, marginBottom: 16 }}>
-            <div style={{ background: TEAL, padding: '14px 18px' }}>
-              <div style={{ color: WHITE, fontWeight: 800, fontSize: 15 }}>Order Summary</div>
-              <div style={{ color: 'rgba(255,255,255,0.6)', fontSize: 12, marginTop: 2 }}>{table.name || `Table ${table.number}`} · {name}</div>
-            </div>
-            {cart.map((c, i) => (
-              <div key={c.item.id} style={{ padding: '12px 16px', borderBottom: i < cart.length - 1 ? '1px solid ' + BORDER : 'none', display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ fontSize: 14, color: TEXTD, fontWeight: 600 }}>{c.item.name} ×{c.qty}</span>
-                <span style={{ fontSize: 14, color: TEXTD, fontWeight: 700 }}>₹{c.item.price * c.qty}</span>
-              </div>
-            ))}
-            <div style={{ padding: '14px 16px', background: BG, display: 'flex', justifyContent: 'space-between' }}>
-              <span style={{ fontWeight: 800, fontSize: 15, color: TEXTD }}>Total</span>
-              <span style={{ fontWeight: 800, fontSize: 15, color: TEAL }}>₹{cartTotal}</span>
-            </div>
-          </div>
-          <div style={{ fontWeight: 700, fontSize: 15, color: TEXTD, marginBottom: 12 }}>How would you like to pay?</div>
-          <div style={{ display: 'flex', gap: 12, marginBottom: 16 }}>
-            <button onClick={() => alert('Please pay at your table. A staff member will assist you.')}
-              style={{ flex: 1, background: WHITE, border: '2px solid ' + TEAL, borderRadius: 14, padding: '16px 12px', cursor: 'pointer', textAlign: 'center' }}>
-              <div style={{ fontSize: 24, marginBottom: 6 }}>🪑</div>
-              <div style={{ fontWeight: 700, fontSize: 13, color: TEAL }}>Pay at Table</div>
-              <div style={{ fontSize: 11, color: TEXTL, marginTop: 3 }}>Staff will come to you</div>
+
+          <div style={{ fontWeight: 800, fontSize: 17, color: TEXTD, marginBottom: 16, textAlign: 'center' }}>Choose Payment Method</div>
+
+          <div style={{ display: 'flex', gap: 14, marginBottom: 20 }}>
+            <button onClick={() => handlePaymentChoice('pay_at_table')} disabled={submitting}
+              style={{ flex: 1, background: WHITE, border: '2.5px solid ' + TEAL, borderRadius: 16, padding: '20px 12px', cursor: 'pointer', textAlign: 'center', transition: 'all 0.15s', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}
+              onMouseEnter={e => e.currentTarget.style.background = TEAL + '08'}
+              onMouseLeave={e => e.currentTarget.style.background = WHITE}>
+              <div style={{ fontSize: 32, marginBottom: 8 }}>🪑</div>
+              <div style={{ fontWeight: 800, fontSize: 14, color: TEAL, marginBottom: 4 }}>Pay at Table</div>
+              <div style={{ fontSize: 11, color: TEXTL, lineHeight: 1.4 }}>A staff member will come to your table</div>
             </button>
-            <button onClick={() => alert('Please visit the reception counter to pay. Thank you!')}
-              style={{ flex: 1, background: WHITE, border: '2px solid ' + TEAL, borderRadius: 14, padding: '16px 12px', cursor: 'pointer', textAlign: 'center' }}>
-              <div style={{ fontSize: 24, marginBottom: 6 }}>🏧</div>
-              <div style={{ fontWeight: 700, fontSize: 13, color: TEAL }}>Pay at Reception</div>
-              <div style={{ fontSize: 11, color: TEXTL, marginTop: 3 }}>Visit the counter</div>
+            <button onClick={() => handlePaymentChoice('pay_at_reception')} disabled={submitting}
+              style={{ flex: 1, background: WHITE, border: '2.5px solid ' + TEAL, borderRadius: 16, padding: '20px 12px', cursor: 'pointer', textAlign: 'center', transition: 'all 0.15s', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}
+              onMouseEnter={e => e.currentTarget.style.background = TEAL + '08'}
+              onMouseLeave={e => e.currentTarget.style.background = WHITE}>
+              <div style={{ fontSize: 32, marginBottom: 8 }}>🏧</div>
+              <div style={{ fontWeight: 800, fontSize: 14, color: TEAL, marginBottom: 4 }}>Pay at Reception</div>
+              <div style={{ fontSize: 11, color: TEXTL, lineHeight: 1.4 }}>Visit the counter when ready</div>
             </button>
           </div>
+
           <button onClick={() => { setCart([]); setStep(STEP_MENU) }}
             style={{ width: '100%', background: BG, border: '1px solid ' + BORDER, borderRadius: 14, padding: '13px 0', fontSize: 14, fontWeight: 700, cursor: 'pointer', color: TEXTL }}>
+            + Order More Items
+          </button>
+        </div>
+      )}
+
+      {/* STEP: PAYMENT CONFIRMATION */}
+      {step === STEP_PAYMENT && (
+        <div style={{ padding: 24, animation: 'fadeIn 0.3s ease' }}>
+          <div style={{ background: WHITE, borderRadius: 20, padding: 32, textAlign: 'center', boxShadow: '0 4px 20px rgba(0,0,0,0.08)', marginBottom: 20 }}>
+            <div style={{ fontSize: 56, marginBottom: 16 }}>
+              {paymentPref === 'pay_at_table' ? '🪑' : '🏧'}
+            </div>
+            <div style={{ fontWeight: 800, fontSize: 22, color: TEXTD, marginBottom: 10 }}>
+              {paymentPref === 'pay_at_table' ? 'Pay at Table' : 'Pay at Reception'}
+            </div>
+            <div style={{ fontSize: 14, color: TEXTL, lineHeight: 1.6, marginBottom: 24 }}>
+              {paymentPref === 'pay_at_table'
+                ? 'No worries! Stay seated and a staff member will come to your table to collect payment.'
+                : 'Please visit the reception counter when you\'re ready to pay. We\'ve noted your preference.'}
+            </div>
+            <div style={{ background: TEAL + '10', borderRadius: 12, padding: '12px 16px', fontSize: 13, color: TEAL, fontWeight: 600, marginBottom: 8 }}>
+              📋 {table.name || `Table ${table.number}`} · {name} · ₹{cartTotal}
+            </div>
+            <div style={{ fontSize: 12, color: TEXTL, marginTop: 8 }}>
+              ✓ Staff has been notified of your payment preference
+            </div>
+          </div>
+
+          <button onClick={() => { setCart([]); setStep(STEP_MENU) }}
+            style={{ width: '100%', background: TEAL, color: WHITE, border: 'none', borderRadius: 14, padding: '14px 0', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
             + Order More Items
           </button>
         </div>
