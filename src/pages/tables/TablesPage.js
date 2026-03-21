@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { theme } from '../../lib/theme'
@@ -16,42 +16,70 @@ export default function TablesPage() {
   const [tableStats, setTableStats]       = useState({})
   const [loading, setLoading]             = useState(true)
   const [now, setNow]                     = useState(new Date())
-  const [changeTableModal, setChangeTableModal] = useState(null) // { fromTable, orderId }
+  const [changeTableModal, setChangeTableModal] = useState(null)
   const [changingTable, setChangingTable] = useState(false)
   const navigate = useNavigate()
 
-  useEffect(() => {
-    fetchTables()
-    const timer = setInterval(() => setNow(new Date()), 30000)
-    const channel = supabase
-      .channel('tables-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'cafe_tables' }, () => fetchTables())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => fetchTables())
-      .subscribe()
-    return () => { supabase.removeChannel(channel); clearInterval(timer) }
-  }, [])
-
-  async function fetchTables() {
-    const { data: tablesData } = await supabase.from('cafe_tables').select('*').order('number')
+  const fetchTables = useCallback(async () => {
+    const { data: tablesData } = await supabase
+      .from('cafe_tables').select('*').order('number')
     if (!tablesData) return
     setTables(tablesData)
 
     const occupiedTables = tablesData.filter(t => t.status === 'occupied' || t.status === 'bill_requested')
     if (occupiedTables.length > 0) {
       const stats = {}
-      for (const table of occupiedTables) {
+      await Promise.all(occupiedTables.map(async (table) => {
+        // Get active order
         const { data: order } = await supabase
-          .from('orders').select('id, created_at').eq('table_id', table.id).eq('status', 'active').single()
-        if (!order) continue
-        const { data: orderItems } = await supabase.from('order_items').select('quantity, unit_price').eq('order_id', order.id)
+          .from('orders').select('id, created_at')
+          .eq('table_id', table.id).eq('status', 'active').single()
+        if (!order) return
+
+        // Running total from ALL order_items for this order
+        const { data: orderItems } = await supabase
+          .from('order_items').select('quantity, unit_price').eq('order_id', order.id)
         const total = (orderItems || []).reduce((sum, i) => sum + i.quantity * i.unit_price, 0)
-        const { data: lastKOT } = await supabase.from('kots').select('created_at').eq('order_id', order.id).order('created_at', { ascending: false }).limit(1).single()
-        stats[table.id] = { total, lastKOTTime: lastKOT?.created_at || order.created_at, orderId: order.id }
-      }
+
+        // Last KOT time
+        const { data: lastKOT } = await supabase
+          .from('kots').select('created_at')
+          .eq('order_id', order.id)
+          .order('created_at', { ascending: false }).limit(1).single()
+
+        stats[table.id] = {
+          total,
+          lastKOTTime: lastKOT?.created_at || order.created_at,
+          orderId: order.id,
+        }
+      }))
       setTableStats(stats)
+    } else {
+      setTableStats({})
     }
     setLoading(false)
-  }
+  }, [])
+
+  useEffect(() => {
+    fetchTables()
+
+    const timer = setInterval(() => setNow(new Date()), 30000)
+
+    // Subscribe to ALL relevant table changes for realtime updates
+    const channel = supabase
+      .channel('tables-live')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'cafe_tables' },  fetchTables)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' },       fetchTables)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'order_items' }, fetchTables)
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'order_items' }, fetchTables)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'kots' },    fetchTables)
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+      clearInterval(timer)
+    }
+  }, [fetchTables])
 
   function getElapsed(dateString) {
     if (!dateString) return null
@@ -76,16 +104,9 @@ export default function TablesPage() {
     setChangingTable(true)
     try {
       const { fromTable, orderId } = changeTableModal
-
-      // Update order to new table
       await supabase.from('orders').update({ table_id: toTable.id }).eq('id', orderId)
-
-      // Free old table
       await supabase.from('cafe_tables').update({ status: 'free', captain_id: null }).eq('id', fromTable.id)
-
-      // Occupy new table
       await supabase.from('cafe_tables').update({ status: 'occupied' }).eq('id', toTable.id)
-
       setChangeTableModal(null)
       fetchTables()
     } catch (err) {
@@ -125,7 +146,7 @@ export default function TablesPage() {
       </div>
 
       {tables.length === 0 && (
-        <div style={{ ...theme.card, textAlign: 'center', padding: 48, color: theme.textLight }}>
+        <div style={{ textAlign: 'center', padding: 48, color: theme.textLight }}>
           No tables found. Add tables in Settings first.
         </div>
       )}
@@ -133,9 +154,9 @@ export default function TablesPage() {
       {/* Table grid */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 14 }}>
         {tables.map(table => {
-          const cfg    = STATUS_CONFIG[table.status] || STATUS_CONFIG.free
-          const stats  = tableStats[table.id]
-          const isFree = table.status === 'free'
+          const cfg        = STATUS_CONFIG[table.status] || STATUS_CONFIG.free
+          const stats      = tableStats[table.id]
+          const isFree     = table.status === 'free'
           const isOccupied = table.status === 'occupied' || table.status === 'bill_requested'
 
           return (
@@ -162,10 +183,9 @@ export default function TablesPage() {
                 {cfg.label}
               </div>
 
-              {/* Change table button for occupied tables */}
+              {/* Change table button */}
               {isOccupied && stats && (
-                <button
-                  onClick={e => openChangeTable(e, table)}
+                <button onClick={e => openChangeTable(e, table)}
                   style={{ position: 'absolute', top: 8, right: 8, background: 'rgba(255,255,255,0.9)', border: '1px solid ' + cfg.border, borderRadius: 6, padding: '3px 7px', fontSize: 10, fontWeight: 700, cursor: 'pointer', color: cfg.color }}
                   title="Change Table">
                   ⇄
@@ -183,18 +203,15 @@ export default function TablesPage() {
           <div style={{ background: '#fff', borderRadius: 20, padding: 28, width: '100%', maxWidth: 480, boxShadow: '0 24px 64px rgba(0,0,0,0.2)' }}>
             <div style={{ fontWeight: 800, fontSize: 18, color: theme.textDark, marginBottom: 6 }}>Change Table</div>
             <div style={{ fontSize: 13, color: theme.textLight, marginBottom: 20 }}>
-              Moving order from <strong style={{ color: theme.textDark }}>T{changeTableModal.fromTable.number}</strong> to a free table. All order data stays unchanged.
+              Moving order from <strong style={{ color: theme.textDark }}>T{changeTableModal.fromTable.number}</strong> — all order data stays unchanged.
             </div>
-
             {freeTables.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '24px 0', color: theme.textLight, fontSize: 13 }}>No free tables available to move to.</div>
+              <div style={{ textAlign: 'center', padding: '24px 0', color: theme.textLight, fontSize: 13 }}>No free tables available.</div>
             ) : (
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))', gap: 10, marginBottom: 20 }}>
                 {freeTables.map(t => (
                   <button key={t.id} onClick={() => handleChangeTable(t)} disabled={changingTable}
-                    style={{ background: '#E6FAF8', border: '2px solid #99E6E0', borderRadius: 12, padding: '14px 10px', cursor: 'pointer', textAlign: 'center', transition: 'all 0.15s' }}
-                    onMouseEnter={e => e.currentTarget.style.background = '#092b33' + '18'}
-                    onMouseLeave={e => e.currentTarget.style.background = '#E6FAF8'}>
+                    style={{ background: '#E6FAF8', border: '2px solid #99E6E0', borderRadius: 12, padding: '14px 10px', cursor: 'pointer', textAlign: 'center' }}>
                     <div style={{ fontWeight: 900, fontSize: 18, color: theme.textDark }}>T{t.number}</div>
                     {t.area && <div style={{ fontSize: 10, color: theme.textLight, marginTop: 2 }}>{t.area}</div>}
                     <div style={{ fontSize: 10, color: '#0D9488', fontWeight: 700, marginTop: 4 }}>Free</div>
@@ -202,7 +219,6 @@ export default function TablesPage() {
                 ))}
               </div>
             )}
-
             <button onClick={() => setChangeTableModal(null)}
               style={{ width: '100%', background: theme.bgWarm, border: '1px solid ' + theme.border, borderRadius: 10, padding: '11px 0', fontSize: 13, fontWeight: 700, cursor: 'pointer', color: theme.textMid }}>
               Cancel

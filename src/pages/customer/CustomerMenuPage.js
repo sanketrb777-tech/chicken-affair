@@ -30,7 +30,6 @@ async function sendOTPviaWATI(phone, otp) {
       body: JSON.stringify({ phone, otp }),
     })
     const data = await response.json()
-    console.log('OTP send result:', data)
     return response.ok
   } catch (err) {
     console.error('OTP send error:', err)
@@ -49,8 +48,11 @@ export default function CustomerMenuPage() {
   const [search, setSearch]         = useState('')
   const [loading, setLoading]       = useState(true)
   const [submitting, setSubmitting] = useState(false)
+
+  // The single order for this session — reused for all rounds
   const [placedOrderId, setPlacedOrderId] = useState(null)
-  const [paymentPref, setPaymentPref] = useState(null)
+  const [paymentPref, setPaymentPref]     = useState(null)
+  const [roundCount, setRoundCount]       = useState(0) // how many KOTs fired
 
   const [name, setName]         = useState('')
   const [phone, setPhone]       = useState('')
@@ -62,6 +64,9 @@ export default function CustomerMenuPage() {
   const [otpError, setOtpError]         = useState('')
   const [resendTimer, setResendTimer]   = useState(30)
   const otpRefs = useRef([])
+
+  // Running total across all rounds
+  const [runningTotal, setRunningTotal] = useState(0)
 
   useEffect(() => { fetchData() }, [tableId])
 
@@ -90,9 +95,15 @@ export default function CustomerMenuPage() {
     setLoading(false)
   }
 
+  async function refreshRunningTotal(orderId) {
+    const { data } = await supabase
+      .from('order_items').select('quantity, unit_price').eq('order_id', orderId)
+    const total = (data || []).reduce((s, i) => s + i.quantity * i.unit_price, 0)
+    setRunningTotal(total)
+  }
+
   async function handleSendOTP() {
-    setNameErr('')
-    setPhoneErr('')
+    setNameErr(''); setPhoneErr('')
     if (!name.trim()) return setNameErr('Please enter your name')
     if (!/^[6-9]\d{9}$/.test(phone)) return setPhoneErr('Enter a valid 10-digit mobile number')
     setSubmitting(true)
@@ -106,17 +117,13 @@ export default function CustomerMenuPage() {
 
   function handleOtpInput(val, idx) {
     const digit = val.replace(/\D/g, '').slice(0, 1)
-    const newOtp = [...otp]
-    newOtp[idx] = digit
-    setOtp(newOtp)
-    setOtpError('')
+    const newOtp = [...otp]; newOtp[idx] = digit
+    setOtp(newOtp); setOtpError('')
     if (digit && idx < 5) otpRefs.current[idx + 1]?.focus()
   }
 
   function handleOtpKeyDown(e, idx) {
-    if (e.key === 'Backspace' && !otp[idx] && idx > 0) {
-      otpRefs.current[idx - 1]?.focus()
-    }
+    if (e.key === 'Backspace' && !otp[idx] && idx > 0) otpRefs.current[idx - 1]?.focus()
   }
 
   function handleVerifyOTP() {
@@ -156,24 +163,35 @@ export default function CustomerMenuPage() {
   const cartTotal = cart.reduce((s, c) => s + c.item.price * c.qty, 0)
   const cartCount = cart.reduce((s, c) => s + c.qty, 0)
 
+  // ── PLACE ORDER (creates order on first round, reuses on subsequent rounds) ──
   async function placeOrder() {
     if (cart.length === 0) return
     setSubmitting(true)
     try {
-      const { data: order, error: oErr } = await supabase.from('orders').insert({
-        table_id: tableId,
-        order_type: 'dine_in',
-        customer_name: name,
-        customer_phone: phone,
-        covers: 1,
-        status: 'active',
-      }).select().single()
-      if (oErr) throw oErr
+      let orderId = placedOrderId
 
-      await supabase.from('cafe_tables').update({ status: 'occupied' }).eq('id', tableId)
+      if (!orderId) {
+        // FIRST ROUND — create the order and mark table occupied
+        const { data: order, error: oErr } = await supabase.from('orders').insert({
+          table_id: tableId,
+          order_type: 'dine_in',
+          customer_name: name,
+          customer_phone: phone,
+          covers: 1,
+          status: 'active',
+        }).select().single()
+        if (oErr) throw oErr
+        orderId = order.id
+        setPlacedOrderId(orderId)
 
+        // Mark table occupied — this triggers realtime in TablesPage
+        await supabase.from('cafe_tables').update({ status: 'occupied' }).eq('id', tableId)
+      }
+      // SUBSEQUENT ROUNDS — reuse the same orderId, just add more items + new KOT
+
+      // Insert order items
       const orderItems = cart.map(c => ({
-        order_id: order.id,
+        order_id: orderId,
         item_id: c.item.id,
         quantity: c.qty,
         unit_price: c.item.price,
@@ -182,8 +200,9 @@ export default function CustomerMenuPage() {
       const { data: createdItems, error: iErr } = await supabase.from('order_items').insert(orderItems).select()
       if (iErr) throw iErr
 
+      // Fire a new KOT for this round
       const { data: kot, error: kErr } = await supabase.from('kots').insert({
-        order_id: order.id, status: 'pending'
+        order_id: orderId, status: 'pending'
       }).select().single()
       if (kErr) throw kErr
 
@@ -191,7 +210,9 @@ export default function CustomerMenuPage() {
         createdItems.map(oi => ({ kot_id: kot.id, order_item_id: oi.id, is_done: false }))
       )
 
-      setPlacedOrderId(order.id)
+      setRoundCount(r => r + 1)
+      await refreshRunningTotal(orderId)
+      setCart([])
       setStep(STEP_PLACED)
     } catch (err) {
       alert('Something went wrong. Please try again.\n' + err.message)
@@ -202,15 +223,8 @@ export default function CustomerMenuPage() {
 
   async function handlePaymentChoice(pref) {
     setPaymentPref(pref)
-    setSubmitting(true)
-    try {
-      await supabase.from('orders')
-        .update({ payment_preference: pref })
-        .eq('id', placedOrderId)
-    } catch (err) {
-      console.error('Failed to save payment preference:', err)
-    } finally {
-      setSubmitting(false)
+    if (placedOrderId) {
+      await supabase.from('orders').update({ payment_preference: pref }).eq('id', placedOrderId)
     }
     setStep(STEP_PAYMENT)
   }
@@ -263,6 +277,11 @@ export default function CustomerMenuPage() {
             🛒 {cartCount} · ₹{cartTotal}
           </button>
         )}
+        {step === STEP_MENU && runningTotal > 0 && cartCount === 0 && (
+          <div style={{ marginLeft: 'auto', color: GOLD, fontWeight: 700, fontSize: 13 }}>
+            Total: ₹{runningTotal}
+          </div>
+        )}
       </div>
 
       {/* STEP: IDENTITY */}
@@ -276,8 +295,7 @@ export default function CustomerMenuPage() {
           <div style={{ background: WHITE, borderRadius: 16, padding: 24, boxShadow: '0 2px 12px rgba(0,0,0,0.06)' }}>
             <div style={{ marginBottom: 16 }}>
               <label style={{ fontSize: 11, fontWeight: 700, color: TEXTL, textTransform: 'uppercase', letterSpacing: 0.5, display: 'block', marginBottom: 8 }}>Your Name</label>
-              <input value={name} onChange={e => { setName(e.target.value); setNameErr('') }}
-                placeholder="e.g. Rahul Sharma"
+              <input value={name} onChange={e => { setName(e.target.value); setNameErr('') }} placeholder="e.g. Rahul Sharma"
                 style={{ width: '100%', border: '1.5px solid ' + (nameErr ? '#EF4444' : BORDER), borderRadius: 10, padding: '12px 14px', fontSize: 15, color: TEXTD, background: '#FAFAFA' }} />
               {nameErr && <div style={{ color: '#EF4444', fontSize: 12, marginTop: 5, fontWeight: 600 }}>{nameErr}</div>}
             </div>
@@ -344,8 +362,9 @@ export default function CustomerMenuPage() {
       {/* STEP: MENU */}
       {step === STEP_MENU && (
         <div style={{ animation: 'fadeIn 0.3s ease', paddingBottom: cartCount > 0 ? 80 : 20 }}>
-          <div style={{ background: TEAL + '18', borderBottom: '1px solid ' + TEAL + '22', padding: '10px 20px', fontSize: 13, color: TEAL, fontWeight: 600 }}>
-            👋 Hi <strong>{name}</strong>! What would you like to order?
+          <div style={{ background: TEAL + '18', borderBottom: '1px solid ' + TEAL + '22', padding: '10px 20px', fontSize: 13, color: TEAL, fontWeight: 600, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span>👋 Hi <strong>{name}</strong>! {roundCount > 0 ? `Round ${roundCount + 1}` : 'What would you like to order?'}</span>
+            {runningTotal > 0 && <span style={{ fontWeight: 800 }}>₹{runningTotal} so far</span>}
           </div>
           <div style={{ padding: '14px 16px 0', position: 'relative' }}>
             <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search dishes..."
@@ -376,10 +395,7 @@ export default function CustomerMenuPage() {
                     {item.description && <div style={{ fontSize: 11, color: TEXTL, marginTop: 2 }}>{item.description}</div>}
                   </div>
                   {qty === 0 ? (
-                    <button onClick={() => addToCart(item)}
-                      style={{ background: TEAL, color: WHITE, border: 'none', borderRadius: 8, padding: '8px 16px', fontSize: 13, fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}>
-                      + Add
-                    </button>
+                    <button onClick={() => addToCart(item)} style={{ background: TEAL, color: WHITE, border: 'none', borderRadius: 8, padding: '8px 16px', fontSize: 13, fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}>+ Add</button>
                   ) : (
                     <div style={{ display: 'flex', alignItems: 'center', background: TEAL, borderRadius: 8, overflow: 'hidden', flexShrink: 0 }}>
                       <button onClick={() => removeFromCart(item.id)} style={{ background: 'none', border: 'none', color: WHITE, padding: '8px 12px', fontSize: 18, cursor: 'pointer', fontWeight: 700 }}>-</button>
@@ -406,11 +422,13 @@ export default function CustomerMenuPage() {
       {/* STEP: CONFIRM */}
       {step === STEP_CONFIRM && (
         <div style={{ padding: 20, animation: 'fadeIn 0.3s ease' }}>
-          <button onClick={() => setStep(STEP_MENU)}
-            style={{ background: 'none', border: 'none', color: TEAL, fontWeight: 700, fontSize: 13, cursor: 'pointer', padding: '0 0 16px' }}>
-            ← Back to Menu
-          </button>
-          <div style={{ fontWeight: 800, fontSize: 20, color: TEXTD, marginBottom: 20 }}>Your Order</div>
+          <button onClick={() => setStep(STEP_MENU)} style={{ background: 'none', border: 'none', color: TEAL, fontWeight: 700, fontSize: 13, cursor: 'pointer', padding: '0 0 16px' }}>← Back to Menu</button>
+          <div style={{ fontWeight: 800, fontSize: 20, color: TEXTD, marginBottom: 6 }}>
+            {roundCount > 0 ? `Round ${roundCount + 1} — Add to Order` : 'Your Order'}
+          </div>
+          {roundCount > 0 && (
+            <div style={{ fontSize: 13, color: TEXTL, marginBottom: 16 }}>These items will be added to your existing order (₹{runningTotal} so far)</div>
+          )}
           <div style={{ background: WHITE, borderRadius: 16, overflow: 'hidden', border: '1px solid ' + BORDER, marginBottom: 16 }}>
             {cart.map((c, i) => (
               <div key={c.item.id} style={{ padding: '14px 16px', borderBottom: i < cart.length - 1 ? '1px solid ' + BORDER : 'none', display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -430,47 +448,56 @@ export default function CustomerMenuPage() {
             ))}
           </div>
           <div style={{ background: WHITE, borderRadius: 16, padding: 16, border: '1px solid ' + BORDER, marginBottom: 20 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, color: TEXTL, marginBottom: 8 }}><span>Subtotal</span><span>₹{cartTotal}</span></div>
+            {roundCount > 0 && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, color: TEXTL, marginBottom: 8 }}>
+                <span>Previous rounds</span><span>₹{runningTotal}</span>
+              </div>
+            )}
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, color: TEXTL, marginBottom: 8 }}><span>This round</span><span>₹{cartTotal}</span></div>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, color: TEXTL, paddingBottom: 12, borderBottom: '1px solid ' + BORDER, marginBottom: 12 }}><span>GST</span><span>Included</span></div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 17, fontWeight: 800, color: TEXTD }}><span>Total</span><span>₹{cartTotal}</span></div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 17, fontWeight: 800, color: TEXTD }}>
+              <span>New Total</span><span>₹{runningTotal + cartTotal}</span>
+            </div>
           </div>
           <div style={{ background: TEAL + '10', borderRadius: 12, padding: '12px 16px', marginBottom: 20, fontSize: 13, color: TEAL, fontWeight: 600 }}>
             📋 Order for <strong>{name}</strong> · {table.name || `Table ${table.number}`}
           </div>
           <button onClick={placeOrder} disabled={submitting || cart.length === 0}
             style={{ width: '100%', background: TEAL, color: WHITE, border: 'none', borderRadius: 14, padding: '15px 0', fontSize: 16, fontWeight: 700, cursor: submitting ? 'not-allowed' : 'pointer', opacity: submitting ? 0.8 : 1 }}>
-            {submitting ? 'Placing Order...' : '🔥 Place Order'}
+            {submitting ? 'Placing Order...' : roundCount > 0 ? '🔥 Add to Order' : '🔥 Place Order'}
           </button>
         </div>
       )}
 
-      {/* STEP: PLACED — choose payment method */}
+      {/* STEP: PLACED — choose payment */}
       {step === STEP_PLACED && (
         <div style={{ padding: 24, animation: 'fadeIn 0.3s ease' }}>
           <div style={{ background: '#F0FDF4', border: '1px solid #86EFAC', borderRadius: 16, padding: 24, textAlign: 'center', marginBottom: 24 }}>
             <div style={{ fontSize: 48, marginBottom: 10 }}>✅</div>
-            <div style={{ fontWeight: 800, fontSize: 20, color: '#15803D', marginBottom: 6 }}>Order Placed!</div>
-            <div style={{ fontSize: 14, color: '#166534' }}>Your order is being prepared. How would you like to pay?</div>
+            <div style={{ fontWeight: 800, fontSize: 20, color: '#15803D', marginBottom: 6 }}>
+              {roundCount === 1 ? 'Order Placed!' : `Round ${roundCount} Added!`}
+            </div>
+            <div style={{ fontSize: 14, color: '#166534' }}>
+              {roundCount === 1 ? 'Your order is being prepared!' : 'New items sent to kitchen!'}
+            </div>
+            {runningTotal > 0 && (
+              <div style={{ marginTop: 10, fontWeight: 800, fontSize: 18, color: '#15803D' }}>Total so far: ₹{runningTotal}</div>
+            )}
           </div>
 
-          <div style={{ fontWeight: 800, fontSize: 17, color: TEXTD, marginBottom: 16, textAlign: 'center' }}>Choose Payment Method</div>
-
-          <div style={{ display: 'flex', gap: 14, marginBottom: 20 }}>
+          <div style={{ fontWeight: 800, fontSize: 17, color: TEXTD, marginBottom: 16, textAlign: 'center' }}>How would you like to pay?</div>
+          <div style={{ display: 'flex', gap: 14, marginBottom: 16 }}>
             <button onClick={() => handlePaymentChoice('pay_at_table')} disabled={submitting}
-              style={{ flex: 1, background: WHITE, border: '2.5px solid ' + TEAL, borderRadius: 16, padding: '20px 12px', cursor: 'pointer', textAlign: 'center', transition: 'all 0.15s', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}
-              onMouseEnter={e => e.currentTarget.style.background = TEAL + '08'}
-              onMouseLeave={e => e.currentTarget.style.background = WHITE}>
+              style={{ flex: 1, background: WHITE, border: '2.5px solid ' + TEAL, borderRadius: 16, padding: '20px 12px', cursor: 'pointer', textAlign: 'center' }}>
               <div style={{ fontSize: 32, marginBottom: 8 }}>🪑</div>
               <div style={{ fontWeight: 800, fontSize: 14, color: TEAL, marginBottom: 4 }}>Pay at Table</div>
-              <div style={{ fontSize: 11, color: TEXTL, lineHeight: 1.4 }}>A staff member will come to your table</div>
+              <div style={{ fontSize: 11, color: TEXTL, lineHeight: 1.4 }}>Staff will come to you</div>
             </button>
             <button onClick={() => handlePaymentChoice('pay_at_reception')} disabled={submitting}
-              style={{ flex: 1, background: WHITE, border: '2.5px solid ' + TEAL, borderRadius: 16, padding: '20px 12px', cursor: 'pointer', textAlign: 'center', transition: 'all 0.15s', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}
-              onMouseEnter={e => e.currentTarget.style.background = TEAL + '08'}
-              onMouseLeave={e => e.currentTarget.style.background = WHITE}>
+              style={{ flex: 1, background: WHITE, border: '2.5px solid ' + TEAL, borderRadius: 16, padding: '20px 12px', cursor: 'pointer', textAlign: 'center' }}>
               <div style={{ fontSize: 32, marginBottom: 8 }}>🏧</div>
               <div style={{ fontWeight: 800, fontSize: 14, color: TEAL, marginBottom: 4 }}>Pay at Reception</div>
-              <div style={{ fontSize: 11, color: TEXTL, lineHeight: 1.4 }}>Visit the counter when ready</div>
+              <div style={{ fontSize: 11, color: TEXTL, lineHeight: 1.4 }}>Visit the counter</div>
             </button>
           </div>
 
@@ -493,17 +520,14 @@ export default function CustomerMenuPage() {
             </div>
             <div style={{ fontSize: 14, color: TEXTL, lineHeight: 1.6, marginBottom: 24 }}>
               {paymentPref === 'pay_at_table'
-                ? 'No worries! Stay seated and a staff member will come to your table to collect payment.'
-                : 'Please visit the reception counter when you\'re ready to pay. We\'ve noted your preference.'}
+                ? 'Stay seated — a staff member will come to your table to collect payment.'
+                : "Please visit the reception counter when you're ready to pay."}
             </div>
             <div style={{ background: TEAL + '10', borderRadius: 12, padding: '12px 16px', fontSize: 13, color: TEAL, fontWeight: 600, marginBottom: 8 }}>
-              📋 {table.name || `Table ${table.number}`} · {name} · ₹{cartTotal}
+              📋 {table.name || `Table ${table.number}`} · {name} · ₹{runningTotal}
             </div>
-            <div style={{ fontSize: 12, color: TEXTL, marginTop: 8 }}>
-              ✓ Staff has been notified of your payment preference
-            </div>
+            <div style={{ fontSize: 12, color: TEXTL, marginTop: 8 }}>✓ Staff has been notified of your payment preference</div>
           </div>
-
           <button onClick={() => { setCart([]); setStep(STEP_MENU) }}
             style={{ width: '100%', background: TEAL, color: WHITE, border: 'none', borderRadius: 14, padding: '14px 0', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
             + Order More Items
