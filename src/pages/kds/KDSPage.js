@@ -2,13 +2,13 @@ import { useEffect, useState, useRef, useCallback } from 'react'
 import { supabase } from '../../lib/supabase'
 
 export default function KDSPage() {
-  const [orders, setOrders] = useState([])
-  const [time, setTime]     = useState('')
+  const [orders, setOrders]     = useState([])
+  const [batchItems, setBatchItems] = useState([]) // aggregated same items within 5 min
+  const [time, setTime]         = useState('')
   const [connected, setConnected] = useState(false)
+  const [activeView, setActiveView] = useState('orders') // 'orders' | 'batch'
   const debounceRef = useRef(null)
 
-  // Debounced fetch — waits 300ms after last event before fetching
-  // Prevents race conditions when KOT + kot_items fire back to back
   const debouncedFetch = useCallback(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current)
     debounceRef.current = setTimeout(() => fetchKOTs(), 300)
@@ -27,12 +27,11 @@ export default function KDSPage() {
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'orders' },    debouncedFetch)
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'orders' },    debouncedFetch)
       .subscribe((status) => {
-        console.log('KDS realtime status:', status)
         setConnected(status === 'SUBSCRIBED')
       })
 
     const clockTimer   = setInterval(updateClock, 1000)
-    const refreshTimer = setInterval(fetchKOTs, 15000) // fallback poll every 15s
+    const refreshTimer = setInterval(fetchKOTs, 15000)
 
     return () => {
       supabase.removeChannel(channel)
@@ -54,7 +53,7 @@ export default function KDSPage() {
         orders ( id, order_type, customer_name, covers, cafe_tables ( number ) ),
         kot_items (
           id,
-          order_items ( quantity, notes, menu_items ( name ) )
+          order_items ( quantity, notes, menu_items ( name, priority ) )
         )
       `)
       .in('status', ['pending', 'in_progress', 'ready'])
@@ -63,6 +62,7 @@ export default function KDSPage() {
 
     if (error) { console.error('KDS fetch error:', error); return }
 
+    // Build order map
     const orderMap = {}
     ;(data || []).forEach(kot => {
       const orderId = kot.orders?.id
@@ -78,13 +78,52 @@ export default function KDSPage() {
       }
       orderMap[orderId].kots.push(kot)
     })
-
     setOrders(Object.values(orderMap))
+
+    // Build batch view — same item ordered within 5 min window
+    const itemMap = {} // itemName -> [{ tableNumber, qty, kotTime, orderType, customerName }]
+    const fiveMinAgo = Date.now() - 5 * 60 * 1000
+
+    ;(data || []).forEach(kot => {
+      if (kot.status === 'ready') return // skip done kots
+      const kotTime = new Date(kot.created_at).getTime()
+      if (kotTime < fiveMinAgo) return // only last 5 min
+
+      const tableNum    = kot.orders?.cafe_tables?.number
+      const customerName = kot.orders?.customer_name
+      const orderType   = kot.orders?.order_type
+
+      kot.kot_items.forEach(ki => {
+        const name = ki.order_items?.menu_items?.name
+        const qty  = ki.order_items?.quantity || 0
+        if (!name) return
+
+        if (!itemMap[name]) itemMap[name] = []
+        // Check if this table is already in the list
+        const existing = itemMap[name].find(e => e.tableNumber === tableNum && e.orderType === orderType)
+        if (existing) {
+          existing.qty += qty
+        } else {
+          itemMap[name].push({ tableNumber: tableNum, qty, orderType, customerName, kotTime })
+        }
+      })
+    })
+
+    // Only include items appearing in more than 1 table/order
+    const batched = Object.entries(itemMap)
+      .filter(([, entries]) => entries.length > 1 || entries.reduce((s, e) => s + e.qty, 0) > 1)
+      .map(([name, entries]) => ({
+        name,
+        totalQty: entries.reduce((s, e) => s + e.qty, 0),
+        entries,
+      }))
+      .sort((a, b) => b.totalQty - a.totalQty)
+
+    setBatchItems(batched)
   }
 
   async function markKOTDone(kotId) {
     await supabase.from('kots').update({ status: 'ready' }).eq('id', kotId)
-    // Optimistically update UI immediately without waiting for realtime
     setOrders(prev => prev.map(order => ({
       ...order,
       kots: order.kots.map(k => k.id === kotId ? { ...k, status: 'ready' } : k)
@@ -121,7 +160,7 @@ export default function KDSPage() {
     <div style={{ minHeight: '100vh', background: '#0D1117', padding: '20px 24px', fontFamily: "'DM Sans', 'Segoe UI', sans-serif" }}>
 
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, flexWrap: 'wrap', gap: 12 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
           <div style={{ background: '#D4A853', borderRadius: 12, width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <span style={{ fontSize: 22 }}>☕</span>
@@ -132,7 +171,6 @@ export default function KDSPage() {
               {pendingCount === 0
                 ? <span style={{ color: '#22C55E', fontWeight: 600 }}>✓ All clear</span>
                 : <span style={{ color: '#94A3B8' }}>{pendingCount} order{pendingCount !== 1 ? 's' : ''} pending</span>}
-              {/* Connection indicator */}
               <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: connected ? '#22C55E' : '#EF4444' }}>
                 <span style={{ width: 6, height: 6, borderRadius: '50%', background: connected ? '#22C55E' : '#EF4444', display: 'inline-block' }} />
                 {connected ? 'Live' : 'Reconnecting...'}
@@ -140,102 +178,175 @@ export default function KDSPage() {
             </div>
           </div>
         </div>
-        <div style={{ background: '#161B22', border: '1px solid #30363D', borderRadius: 12, padding: '10px 20px' }}>
-          <div style={{ color: '#F8FAFC', fontSize: 24, fontWeight: 800, fontFamily: 'monospace', letterSpacing: 1, textTransform: 'uppercase' }}>{time}</div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          {/* View switcher */}
+          <div style={{ display: 'flex', background: '#161B22', border: '1px solid #30363D', borderRadius: 10, overflow: 'hidden' }}>
+            <button onClick={() => setActiveView('orders')}
+              style={{ padding: '8px 16px', fontSize: 12, fontWeight: 700, border: 'none', cursor: 'pointer', background: activeView === 'orders' ? '#092b33' : 'transparent', color: activeView === 'orders' ? '#fff' : '#94A3B8', transition: 'all 0.15s' }}>
+              🍽 Orders
+            </button>
+            <button onClick={() => setActiveView('batch')}
+              style={{ padding: '8px 16px', fontSize: 12, fontWeight: 700, border: 'none', cursor: 'pointer', background: activeView === 'batch' ? '#D4A853' : 'transparent', color: activeView === 'batch' ? '#092b33' : '#94A3B8', transition: 'all 0.15s', position: 'relative' }}>
+              🔥 Batch
+              {batchItems.length > 0 && (
+                <span style={{ background: '#EF4444', color: '#fff', borderRadius: 10, fontSize: 9, padding: '1px 5px', marginLeft: 5, fontWeight: 800 }}>{batchItems.length}</span>
+              )}
+            </button>
+          </div>
+
+          <div style={{ background: '#161B22', border: '1px solid #30363D', borderRadius: 12, padding: '10px 20px' }}>
+            <div style={{ color: '#F8FAFC', fontSize: 24, fontWeight: 800, fontFamily: 'monospace', letterSpacing: 1, textTransform: 'uppercase' }}>{time}</div>
+          </div>
         </div>
       </div>
 
-      {/* Empty state */}
-      {orders.length === 0 && (
-        <div style={{ textAlign: 'center', marginTop: 100 }}>
-          <div style={{ width: 72, height: 72, borderRadius: '50%', background: 'rgba(34,197,94,0.1)', border: '2px solid #22C55E', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px', fontSize: 32 }}>✓</div>
-          <div style={{ color: '#22C55E', fontSize: 24, fontWeight: 800 }}>All Orders Done</div>
-          <div style={{ color: '#475569', fontSize: 14, marginTop: 8 }}>Waiting for new orders...</div>
-        </div>
-      )}
+      {/* ── ORDERS VIEW ── */}
+      {activeView === 'orders' && (
+        <>
+          {orders.length === 0 && (
+            <div style={{ textAlign: 'center', marginTop: 100 }}>
+              <div style={{ width: 72, height: 72, borderRadius: '50%', background: 'rgba(34,197,94,0.1)', border: '2px solid #22C55E', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px', fontSize: 32 }}>✓</div>
+              <div style={{ color: '#22C55E', fontSize: 24, fontWeight: 800 }}>All Orders Done</div>
+              <div style={{ color: '#475569', fontSize: 14, marginTop: 8 }}>Waiting for new orders...</div>
+            </div>
+          )}
 
-      {/* Order Cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 16 }}>
-        {orders.map(order => {
-          const colors   = getAccentColor(order.kots)
-          const allReady = order.kots.every(k => k.status === 'ready')
-          const elapsed  = getElapsed(order.kots[0].created_at)
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 16 }}>
+            {orders.map(order => {
+              const colors   = getAccentColor(order.kots)
+              const allReady = order.kots.every(k => k.status === 'ready')
+              const elapsed  = getElapsed(order.kots[0].created_at)
 
-          return (
-            <div key={order.orderId} style={{ background: '#161B22', borderRadius: 16, overflow: 'hidden', border: '1.5px solid ' + colors.border, opacity: allReady ? 0.5 : 1, transition: 'opacity 0.3s' }}>
+              return (
+                <div key={order.orderId} style={{ background: '#161B22', borderRadius: 16, overflow: 'hidden', border: '1.5px solid ' + colors.border, opacity: allReady ? 0.5 : 1, transition: 'opacity 0.3s' }}>
+                  {/* Card header */}
+                  <div style={{ background: colors.bg, borderBottom: '1px solid ' + colors.border, padding: '14px 18px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <div style={{ color: '#F8FAFC', fontWeight: 900, fontSize: 22, letterSpacing: -0.5 }}>{getOrderLabel(order)}</div>
+                        <span style={{ fontSize: 11, fontWeight: 700, color: colors.badge, background: 'rgba(0,0,0,0.3)', padding: '3px 9px', borderRadius: 99, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                          {order.orderType?.replace('_', ' ')}
+                        </span>
+                      </div>
+                      <div style={{ fontSize: 10, fontWeight: 600, color: '#94A3B8', marginTop: 4 }}>
+                        {allReady ? 'All Ready' : `${order.kots.filter(k => k.status !== 'ready').length} pending`}
+                      </div>
+                    </div>
+                    <div style={{ textAlign: 'right' }}>
+                      <div style={{ color: colors.badge, fontWeight: 900, fontSize: 20 }}>{elapsed} min</div>
+                      <div style={{ color: '#475569', fontSize: 11, marginTop: 2 }}>{formatTime(order.kots[0].created_at)}</div>
+                    </div>
+                  </div>
 
-              {/* Card header */}
-<div style={{ background: colors.bg, borderBottom: '1px solid ' + colors.border, padding: '14px 18px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-  <div>
-    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-      <div style={{ color: '#F8FAFC', fontWeight: 900, fontSize: 22, letterSpacing: -0.5 }}>{getOrderLabel(order)}</div>
-      <span style={{ fontSize: 11, fontWeight: 700, color: colors.badge, background: 'rgba(0,0,0,0.3)', padding: '3px 9px', borderRadius: 99, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-        {order.orderType?.replace('_', ' ')}
-      </span>
-    </div>
-    <div style={{ fontSize: 10, fontWeight: 600, color: '#94A3B8', marginTop: 4 }}>
-      {allReady ? 'All Ready' : `${order.kots.filter(k => k.status !== 'ready').length} pending`}
-    </div>
-  </div>
-  <div style={{ textAlign: 'right' }}>
-    <div style={{ color: colors.badge, fontWeight: 900, fontSize: 20 }}>{elapsed} min</div>
-    <div style={{ color: '#475569', fontSize: 11, marginTop: 2 }}>{formatTime(order.kots[0].created_at)}</div>
-  </div>
-</div>
+                  {/* KOTs */}
+                  <div style={{ padding: '14px 18px' }}>
+                    {order.kots.map((kot, kotIdx) => {
+                      const isReady = kot.status === 'ready'
+                      return (
+                        <div key={kot.id} style={{ marginTop: kotIdx > 0 ? 16 : 0 }}>
+                          {order.kots.length > 1 && (
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                              <div style={{ fontSize: 11, fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: 0.8 }}>
+                                KOT {kotIdx + 1} · {formatTime(kot.created_at)}
+                              </div>
+                              {isReady && <span style={{ fontSize: 10, fontWeight: 700, color: '#22C55E', background: 'rgba(34,197,94,0.1)', padding: '2px 8px', borderRadius: 99 }}>READY</span>}
+                            </div>
+                          )}
 
-              {/* KOTs */}
-              <div style={{ padding: '14px 18px' }}>
-                {order.kots.map((kot, kotIdx) => {
-                  const isReady = kot.status === 'ready'
-                  return (
-                    <div key={kot.id} style={{ marginTop: kotIdx > 0 ? 16 : 0 }}>
-                      {order.kots.length > 1 && (
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-                          <div style={{ fontSize: 11, fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: 0.8 }}>
-                            KOT {kotIdx + 1} · {formatTime(kot.created_at)}
-                          </div>
-                          {isReady && (
-                            <span style={{ fontSize: 10, fontWeight: 700, color: '#22C55E', background: 'rgba(34,197,94,0.1)', padding: '2px 8px', borderRadius: 99 }}>READY</span>
+                          {kot.kot_items.map(kotItem => {
+                            const name     = kotItem.order_items?.menu_items?.name
+                            const qty      = kotItem.order_items?.quantity
+                            const notes    = kotItem.order_items?.notes
+                            const priority = kotItem.order_items?.menu_items?.priority ?? 2
+                            return (
+                              <div key={kotItem.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid #21262D', opacity: isReady ? 0.35 : 1 }}>
+                                <div>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                    <div style={{ color: '#F8FAFC', fontSize: 17, fontWeight: 700, textDecoration: isReady ? 'line-through' : 'none' }}>{name}</div>
+                                    {priority === 1 && <span style={{ fontSize: 9, fontWeight: 800, background: '#7F1D1D', color: '#FCA5A5', padding: '2px 6px', borderRadius: 99 }}>P1</span>}
+                                    {priority === 3 && <span style={{ fontSize: 9, fontWeight: 800, background: '#14532D', color: '#86EFAC', padding: '2px 6px', borderRadius: 99 }}>P3</span>}
+                                  </div>
+                                  {notes && <div style={{ fontSize: 12, color: '#F59E0B', marginTop: 3 }}>{notes}</div>}
+                                </div>
+                                <div style={{ background: '#21262D', border: '1px solid #30363D', color: '#F8FAFC', fontWeight: 900, fontSize: 18, borderRadius: 8, padding: '4px 12px', minWidth: 44, textAlign: 'center' }}>
+                                  ×{qty}
+                                </div>
+                              </div>
+                            )
+                          })}
+
+                          {!isReady && (
+                            <button onClick={() => markKOTDone(kot.id)}
+                              style={{ width: '100%', marginTop: 12, background: '#22C55E', color: '#fff', border: 'none', borderRadius: 8, padding: '10px 0', fontSize: 13, fontWeight: 700, cursor: 'pointer', letterSpacing: 0.3 }}>
+                              ✓ Mark as Done
+                            </button>
+                          )}
+                          {order.kots.length === 1 && isReady && (
+                            <div style={{ textAlign: 'center', color: '#22C55E', fontWeight: 700, fontSize: 13, paddingTop: 12 }}>✓ Ready</div>
                           )}
                         </div>
-                      )}
+                      )
+                    })}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </>
+      )}
 
-                      {kot.kot_items.map(kotItem => {
-                        const name  = kotItem.order_items?.menu_items?.name
-                        const qty   = kotItem.order_items?.quantity
-                        const notes = kotItem.order_items?.notes
-                        return (
-                          <div key={kotItem.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid #21262D', opacity: isReady ? 0.35 : 1 }}>
-                            <div>
-                              <div style={{ color: '#F8FAFC', fontSize: 17, fontWeight: 700, textDecoration: isReady ? 'line-through' : 'none' }}>{name}</div>
-                              {notes && <div style={{ fontSize: 12, color: '#F59E0B', marginTop: 3 }}>{notes}</div>}
-                            </div>
-                            <div style={{ background: '#21262D', border: '1px solid #30363D', color: '#F8FAFC', fontWeight: 900, fontSize: 18, borderRadius: 8, padding: '4px 12px', minWidth: 44, textAlign: 'center' }}>
-                              ×{qty}
-                            </div>
-                          </div>
-                        )
-                      })}
+      {/* ── BATCH VIEW ── */}
+      {activeView === 'batch' && (
+        <>
+          <div style={{ color: '#94A3B8', fontSize: 13, marginBottom: 16, background: '#161B22', borderRadius: 10, padding: '10px 16px', border: '1px solid #30363D' }}>
+            🔥 <strong style={{ color: '#D4A853' }}>Batch View</strong> — Same items ordered across multiple tables in the last <strong style={{ color: '#fff' }}>5 minutes</strong>. Cook them all together!
+          </div>
 
-                      {/* Mark as Done button — only on pending KOTs */}
-                      {!isReady && (
-                        <button onClick={() => markKOTDone(kot.id)}
-                          style={{ width: '100%', marginTop: 12, background: '#22C55E', color: '#fff', border: 'none', borderRadius: 8, padding: '10px 0', fontSize: 13, fontWeight: 700, cursor: 'pointer', letterSpacing: 0.3 }}>
-                          ✓ Mark as Done
-                        </button>
-                      )}
-
-                      {order.kots.length === 1 && isReady && (
-                        <div style={{ textAlign: 'center', color: '#22C55E', fontWeight: 700, fontSize: 13, paddingTop: 12 }}>✓ Ready</div>
-                      )}
-                    </div>
-                  )
-                })}
-              </div>
+          {batchItems.length === 0 ? (
+            <div style={{ textAlign: 'center', marginTop: 80 }}>
+              <div style={{ fontSize: 48, marginBottom: 16 }}>🍳</div>
+              <div style={{ color: '#475569', fontSize: 16, fontWeight: 700 }}>No batch items right now</div>
+              <div style={{ color: '#334155', fontSize: 13, marginTop: 8 }}>Items will appear here when the same dish is ordered from multiple tables within 5 minutes</div>
             </div>
-          )
-        })}
-      </div>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 16 }}>
+              {batchItems.map(batch => (
+                <div key={batch.name} style={{ background: '#161B22', borderRadius: 16, overflow: 'hidden', border: '1.5px solid #D4A853' }}>
+                  {/* Batch header */}
+                  <div style={{ background: '#78350F', borderBottom: '1px solid #D4A853', padding: '14px 18px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div>
+                      <div style={{ color: '#F8FAFC', fontWeight: 900, fontSize: 20 }}>{batch.name}</div>
+                      <div style={{ fontSize: 11, color: '#FCD34D', marginTop: 3, fontWeight: 600 }}>
+                        {batch.entries.length} orders · Cook all together
+                      </div>
+                    </div>
+                    <div style={{ background: '#D4A853', color: '#092b33', fontWeight: 900, fontSize: 28, borderRadius: 12, padding: '6px 16px', minWidth: 60, textAlign: 'center' }}>
+                      ×{batch.totalQty}
+                    </div>
+                  </div>
+
+                  {/* Table breakdown */}
+                  <div style={{ padding: '14px 18px' }}>
+                    {batch.entries.map((entry, i) => (
+                      <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 0', borderBottom: i < batch.entries.length - 1 ? '1px solid #21262D' : 'none' }}>
+                        <div style={{ color: '#F8FAFC', fontSize: 14, fontWeight: 600 }}>
+                          {entry.orderType === 'dine_in'
+                            ? `Table ${entry.tableNumber}`
+                            : entry.customerName || entry.orderType}
+                        </div>
+                        <div style={{ background: '#21262D', border: '1px solid #30363D', color: '#F8FAFC', fontWeight: 900, fontSize: 16, borderRadius: 8, padding: '4px 12px', minWidth: 44, textAlign: 'center' }}>
+                          ×{entry.qty}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </>
+      )}
     </div>
   )
 }

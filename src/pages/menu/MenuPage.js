@@ -8,25 +8,34 @@ const FOOD_TYPE = {
   egg:     { label: 'Egg',     color: '#B45309', bg: '#FEF3C7', border: '#FCD34D' },
 }
 
-export default function MenuPage() {
-  const [categories, setCategories]       = useState([])
-  const [items, setItems]                 = useState([])
-  const [activeCategory, setActiveCategory] = useState(null)
-  const [loading, setLoading]             = useState(true)
+const PRIORITY_CONFIG = {
+  1: { label: 'P1 — High',   color: '#B91C1C', bg: '#FEE2E2', border: '#FCA5A5', desc: 'Rush items, fire first' },
+  2: { label: 'P2 — Normal', color: '#B45309', bg: '#FEF3C7', border: '#FCD34D', desc: 'Standard priority' },
+  3: { label: 'P3 — Low',    color: '#15803D', bg: '#DCFCE7', border: '#86EFAC', desc: 'Can wait, fire last' },
+}
 
-  const [showCatForm, setShowCatForm]     = useState(false)
-  const [showItemForm, setShowItemForm]   = useState(false)
-  const [editCat, setEditCat]             = useState(null)
-  const [editItem, setEditItem]           = useState(null)
-  const [saving, setSaving]               = useState(false)
+export default function MenuPage() {
+  const [categories, setCategories]         = useState([])
+  const [items, setItems]                   = useState([])
+  const [activeCategory, setActiveCategory] = useState(null)
+  const [loading, setLoading]               = useState(true)
+
+  const [showCatForm, setShowCatForm]   = useState(false)
+  const [showItemForm, setShowItemForm] = useState(false)
+  const [editCat, setEditCat]           = useState(null)
+  const [editItem, setEditItem]         = useState(null)
+  const [saving, setSaving]             = useState(false)
 
   const [catForm, setCatForm]   = useState({ name: '', sort_order: 0 })
-  const [itemForm, setItemForm] = useState({ name: '', price: '', description: '', food_type: 'veg', is_available: true, sort_order: 0, gst_rate: 5 })
+  const [itemForm, setItemForm] = useState({
+    name: '', price: '', description: '', food_type: 'veg',
+    is_available: true, sort_order: 0, gst_rate: 5, priority: 2
+  })
 
   useEffect(() => { fetchAll() }, [])
 
   async function fetchAll() {
-    const { data: cats }  = await supabase.from('menu_categories').select('*').eq('is_active', true).order('sort_order')
+    const { data: cats }      = await supabase.from('menu_categories').select('*').eq('is_active', true).order('sort_order')
     const { data: menuItems } = await supabase.from('menu_items').select('*').order('sort_order')
     setCategories(cats || [])
     setItems(menuItems || [])
@@ -70,20 +79,20 @@ export default function MenuPage() {
     fetchAll()
   }
 
-  async function toggleCat(cat) {
-    await supabase.from('menu_categories').update({ is_active: !cat.is_active }).eq('id', cat.id)
-    fetchAll()
-  }
-
   // ── Item actions ──
   function openAddItem() {
-    setItemForm({ name: '', price: '', description: '', food_type: 'veg', is_available: true, sort_order: items.filter(i => i.category_id === activeCategory).length, gst_rate: 5 })
+    setItemForm({ name: '', price: '', description: '', food_type: 'veg', is_available: true, sort_order: items.filter(i => i.category_id === activeCategory).length, gst_rate: 5, priority: 2 })
     setEditItem(null)
     setShowItemForm(true)
   }
 
   function openEditItem(item) {
-    setItemForm({ name: item.name, price: item.price, description: item.description || '', food_type: item.food_type || 'veg', is_available: item.is_available, sort_order: item.sort_order, gst_rate: item.gst_rate ?? 5 })
+    setItemForm({
+      name: item.name, price: item.price, description: item.description || '',
+      food_type: item.food_type || 'veg', is_available: item.is_available,
+      sort_order: item.sort_order, gst_rate: item.gst_rate ?? 5,
+      priority: item.priority ?? 2
+    })
     setEditItem(item)
     setShowItemForm(true)
   }
@@ -93,21 +102,16 @@ export default function MenuPage() {
     if (!itemForm.price) return alert('Price is required')
     setSaving(true)
     try {
+      const payload = {
+        name: itemForm.name, price: parseFloat(itemForm.price),
+        description: itemForm.description || null, food_type: itemForm.food_type,
+        is_available: itemForm.is_available, sort_order: parseInt(itemForm.sort_order),
+        gst_rate: parseFloat(itemForm.gst_rate), priority: parseInt(itemForm.priority)
+      }
       if (editItem) {
-        await supabase.from('menu_items').update({
-          name: itemForm.name, price: parseFloat(itemForm.price),
-          description: itemForm.description || null, food_type: itemForm.food_type,
-          is_available: itemForm.is_available, sort_order: parseInt(itemForm.sort_order),
-          gst_rate: parseFloat(itemForm.gst_rate)
-        }).eq('id', editItem.id)
+        await supabase.from('menu_items').update(payload).eq('id', editItem.id)
       } else {
-        await supabase.from('menu_items').insert({
-          name: itemForm.name, price: parseFloat(itemForm.price),
-          description: itemForm.description || null, food_type: itemForm.food_type,
-          is_available: itemForm.is_available, sort_order: parseInt(itemForm.sort_order),
-          gst_rate: parseFloat(itemForm.gst_rate),
-          category_id: activeCategory
-        })
+        await supabase.from('menu_items').insert({ ...payload, category_id: activeCategory })
       }
       setShowItemForm(false)
       fetchAll()
@@ -134,7 +138,7 @@ export default function MenuPage() {
     <div style={{ display: 'flex', gap: 16, height: 'calc(100vh - 112px)' }}>
 
       {/* ── LEFT: Categories ── */}
-      <div style={{ width: 220, display: 'flex', flexDirection: 'column', gap: 0, background: '#fff', borderRadius: 14, border: '1px solid ' + theme.border, overflow: 'hidden' }}>
+      <div style={{ width: 220, display: 'flex', flexDirection: 'column', background: '#fff', borderRadius: 14, border: '1px solid ' + theme.border, overflow: 'hidden' }}>
         <div style={{ padding: '16px 16px 12px', borderBottom: '1px solid ' + theme.border, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div style={{ fontWeight: 800, fontSize: 13, color: theme.textDark }}>Categories</div>
           <button onClick={openAddCat}
@@ -148,8 +152,7 @@ export default function MenuPage() {
             const catItemCount = items.filter(i => i.category_id === cat.id).length
             const isActive = activeCategory === cat.id
             return (
-              <div key={cat.id}
-                onClick={() => setActiveCategory(cat.id)}
+              <div key={cat.id} onClick={() => setActiveCategory(cat.id)}
                 style={{ padding: '12px 16px', cursor: 'pointer', background: isActive ? '#092b33' : 'transparent', borderBottom: '1px solid ' + theme.bgWarm, transition: 'background 0.15s' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <div style={{ fontWeight: 700, fontSize: 13, color: isActive ? '#fff' : theme.textDark }}>{cat.name}</div>
@@ -171,12 +174,9 @@ export default function MenuPage() {
 
       {/* ── RIGHT: Items ── */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-        {/* Items header */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
           <div>
-            <h1 style={{ fontSize: 20, fontWeight: 800, color: theme.textDark, margin: 0 }}>
-              {activeCat ? activeCat.name : 'Menu'}
-            </h1>
+            <h1 style={{ fontSize: 20, fontWeight: 800, color: theme.textDark, margin: 0 }}>{activeCat ? activeCat.name : 'Menu'}</h1>
             <p style={{ color: theme.textLight, fontSize: 13, marginTop: 3 }}>
               {activeItems.length} item{activeItems.length !== 1 ? 's' : ''}
               {activeCat && (
@@ -195,7 +195,6 @@ export default function MenuPage() {
           </button>
         </div>
 
-        {/* Items list */}
         <div style={{ flex: 1, overflowY: 'auto' }}>
           {activeItems.length === 0 ? (
             <div style={{ background: '#fff', borderRadius: 14, padding: 56, textAlign: 'center', border: '2px dashed ' + theme.border }}>
@@ -206,39 +205,31 @@ export default function MenuPage() {
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {activeItems.map(item => {
-                const ft = FOOD_TYPE[item.food_type] || FOOD_TYPE.veg
+                const ft  = FOOD_TYPE[item.food_type] || FOOD_TYPE.veg
+                const pri = PRIORITY_CONFIG[item.priority ?? 2]
                 return (
-                  <div key={item.id} style={{ background: '#fff', borderRadius: 12, padding: '14px 18px', border: '1px solid ' + theme.border, display: 'flex', alignItems: 'center', gap: 14, boxShadow: '0 1px 3px rgba(0,0,0,0.04)', opacity: item.is_available ? 1 : 0.55 }}>
-                    {/* Veg/non-veg dot */}
+                  <div key={item.id} style={{ background: '#fff', borderRadius: 12, padding: '14px 18px', border: '1px solid ' + theme.border, display: 'flex', alignItems: 'center', gap: 14, opacity: item.is_available ? 1 : 0.55 }}>
                     <div style={{ width: 12, height: 12, borderRadius: 3, border: '2px solid ' + ft.color, background: ft.color, flexShrink: 0 }} />
-
-                    {/* Name + description */}
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontWeight: 700, fontSize: 14, color: theme.textDark }}>{item.name}</div>
                       {item.description && <div style={{ fontSize: 12, color: theme.textLight, marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.description}</div>}
                     </div>
-
-                    {/* Food type badge */}
+                    {/* Priority badge */}
+                    <span style={{ background: pri.bg, color: pri.color, border: '1px solid ' + pri.border, padding: '3px 10px', borderRadius: 20, fontSize: 10, fontWeight: 700, flexShrink: 0 }}>
+                      P{item.priority ?? 2}
+                    </span>
                     <span style={{ background: ft.bg, color: ft.color, border: '1px solid ' + ft.border, padding: '3px 10px', borderRadius: 20, fontSize: 10, fontWeight: 700, flexShrink: 0 }}>
                       {ft.label}
                     </span>
-
-                    {/* Price */}
                     <div style={{ fontWeight: 800, fontSize: 15, color: theme.textDark, minWidth: 60, textAlign: 'right' }}>₹{item.price}</div>
-
-                    {/* Availability toggle */}
                     <div onClick={() => toggleItem(item)}
                       style={{ background: item.is_available ? '#DCFCE7' : theme.bgWarm, color: item.is_available ? '#15803D' : theme.textMuted, border: '1px solid ' + (item.is_available ? '#86EFAC' : theme.border), padding: '4px 12px', borderRadius: 20, fontSize: 11, fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}>
                       {item.is_available ? 'Available' : 'Off'}
                     </div>
-
-                    {/* Edit */}
                     <button onClick={() => openEditItem(item)}
                       style={{ background: theme.bgWarm, border: '1px solid ' + theme.border, borderRadius: 7, padding: '6px 14px', fontSize: 12, fontWeight: 600, cursor: 'pointer', color: theme.textMid, flexShrink: 0 }}>
                       Edit
                     </button>
-
-                    {/* Delete */}
                     <button onClick={() => deleteItem(item.id)}
                       style={{ background: theme.redBg, border: '1px solid #FECACA', borderRadius: 7, padding: '6px 10px', fontSize: 12, fontWeight: 600, cursor: 'pointer', color: theme.red, flexShrink: 0 }}>
                       🗑
@@ -258,24 +249,11 @@ export default function MenuPage() {
             <h2 style={{ fontSize: 18, fontWeight: 800, color: theme.textDark, margin: '0 0 20px' }}>
               {editCat ? 'Edit Category' : 'Add Category'}
             </h2>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-              <div>
-                <label style={{ fontSize: 11, fontWeight: 700, color: theme.textLight, display: 'block', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5 }}>GST Rate (%)</label>
-                <div style={{ display: 'flex', gap: 8 }}>
-                  {[0, 5, 12, 18].map(rate => (
-                    <button key={rate} onClick={() => setItemForm(f => ({ ...f, gst_rate: rate }))}
-                      style={{ flex: 1, background: itemForm.gst_rate === rate ? '#092b33' : theme.bgWarm, color: itemForm.gst_rate === rate ? '#fff' : theme.textMid, border: '1.5px solid ' + (itemForm.gst_rate === rate ? '#092b33' : theme.border), borderRadius: 8, padding: '8px 0', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
-                      {rate}%
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div>
-                <label style={{ fontSize: 11, fontWeight: 700, color: theme.textLight, display: 'block', marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 }}>Food Type</label>
-                <input autoFocus value={catForm.name} onChange={e => setCatForm(f => ({ ...f, name: e.target.value }))}
-                  placeholder="e.g. Starters, Main Course, Beverages"
-                  style={{ width: '100%', border: '1.5px solid ' + theme.border, borderRadius: 9, padding: '10px 12px', fontSize: 13, outline: 'none', boxSizing: 'border-box' }} />
-              </div>
+            <div>
+              <label style={{ fontSize: 11, fontWeight: 700, color: theme.textLight, display: 'block', marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 }}>Category Name *</label>
+              <input autoFocus value={catForm.name} onChange={e => setCatForm(f => ({ ...f, name: e.target.value }))}
+                placeholder="e.g. Starters, Main Course, Beverages"
+                style={{ width: '100%', border: '1.5px solid ' + theme.border, borderRadius: 9, padding: '10px 12px', fontSize: 13, outline: 'none', boxSizing: 'border-box' }} />
             </div>
             <div style={{ display: 'flex', gap: 10, marginTop: 24 }}>
               <button onClick={() => setShowCatForm(false)}
@@ -294,17 +272,18 @@ export default function MenuPage() {
       {/* ── Item Modal ── */}
       {showItemForm && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-          <div style={{ background: '#fff', borderRadius: 18, padding: 32, width: 420, boxShadow: '0 24px 64px rgba(0,0,0,0.2)' }}>
+          <div style={{ background: '#fff', borderRadius: 18, padding: 32, width: 440, maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 24px 64px rgba(0,0,0,0.2)' }}>
             <h2 style={{ fontSize: 18, fontWeight: 800, color: theme.textDark, margin: '0 0 20px' }}>
               {editItem ? 'Edit Item' : 'Add Item'}
             </h2>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               <div>
                 <label style={{ fontSize: 11, fontWeight: 700, color: theme.textLight, display: 'block', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5 }}>Item Name *</label>
                 <input autoFocus value={itemForm.name} onChange={e => setItemForm(f => ({ ...f, name: e.target.value }))}
                   placeholder="e.g. Paneer Tikka"
                   style={{ width: '100%', border: '1.5px solid ' + theme.border, borderRadius: 9, padding: '10px 12px', fontSize: 13, outline: 'none', boxSizing: 'border-box' }} />
               </div>
+
               <div style={{ display: 'flex', gap: 12 }}>
                 <div style={{ flex: 1 }}>
                   <label style={{ fontSize: 11, fontWeight: 700, color: theme.textLight, display: 'block', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5 }}>Price (₹) *</label>
@@ -320,12 +299,14 @@ export default function MenuPage() {
                   </button>
                 </div>
               </div>
+
               <div>
                 <label style={{ fontSize: 11, fontWeight: 700, color: theme.textLight, display: 'block', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5 }}>Description <span style={{ fontWeight: 400 }}>(optional)</span></label>
                 <input value={itemForm.description} onChange={e => setItemForm(f => ({ ...f, description: e.target.value }))}
-                  placeholder="Short description for the item"
+                  placeholder="Short description"
                   style={{ width: '100%', border: '1.5px solid ' + theme.border, borderRadius: 9, padding: '10px 12px', fontSize: 13, outline: 'none', boxSizing: 'border-box' }} />
               </div>
+
               <div>
                 <label style={{ fontSize: 11, fontWeight: 700, color: theme.textLight, display: 'block', marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 }}>Food Type</label>
                 <div style={{ display: 'flex', gap: 8 }}>
@@ -337,7 +318,43 @@ export default function MenuPage() {
                   ))}
                 </div>
               </div>
+
+              {/* ── PRIORITY ── */}
+              <div>
+                <label style={{ fontSize: 11, fontWeight: 700, color: theme.textLight, display: 'block', marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                  Kitchen Priority <span style={{ fontWeight: 400, textTransform: 'none' }}>(1 = highest)</span>
+                </label>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  {[1, 2, 3].map(p => {
+                    const cfg = PRIORITY_CONFIG[p]
+                    const selected = parseInt(itemForm.priority) === p
+                    return (
+                      <button key={p} onClick={() => setItemForm(f => ({ ...f, priority: p }))}
+                        style={{ flex: 1, background: selected ? cfg.bg : theme.bgWarm, color: selected ? cfg.color : theme.textMid, border: '1.5px solid ' + (selected ? cfg.border : theme.border), borderRadius: 8, padding: '10px 8px', fontSize: 12, fontWeight: 700, cursor: 'pointer', textAlign: 'center' }}>
+                        <div style={{ fontSize: 15, fontWeight: 900, marginBottom: 2 }}>P{p}</div>
+                        <div style={{ fontSize: 10, fontWeight: 600, opacity: 0.8 }}>{p === 1 ? 'High' : p === 2 ? 'Normal' : 'Low'}</div>
+                      </button>
+                    )
+                  })}
+                </div>
+                <div style={{ fontSize: 11, color: theme.textLight, marginTop: 6 }}>
+                  {PRIORITY_CONFIG[itemForm.priority]?.desc}
+                </div>
+              </div>
+
+              <div>
+                <label style={{ fontSize: 11, fontWeight: 700, color: theme.textLight, display: 'block', marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 }}>GST Rate (%)</label>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  {[0, 5, 12, 18].map(rate => (
+                    <button key={rate} onClick={() => setItemForm(f => ({ ...f, gst_rate: rate }))}
+                      style={{ flex: 1, background: itemForm.gst_rate === rate ? '#092b33' : theme.bgWarm, color: itemForm.gst_rate === rate ? '#fff' : theme.textMid, border: '1.5px solid ' + (itemForm.gst_rate === rate ? '#092b33' : theme.border), borderRadius: 8, padding: '8px 0', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+                      {rate}%
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
+
             <div style={{ display: 'flex', gap: 10, marginTop: 24 }}>
               <button onClick={() => setShowItemForm(false)}
                 style={{ flex: 1, background: theme.bgWarm, border: '1px solid ' + theme.border, borderRadius: 9, padding: '12px', fontSize: 13, cursor: 'pointer', fontWeight: 600, color: theme.textMid }}>

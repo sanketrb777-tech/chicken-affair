@@ -12,83 +12,44 @@ const STATUS_CONFIG = {
 }
 
 export default function TablesPage() {
-  const [tables, setTables]         = useState([])
-  const [tableStats, setTableStats] = useState({}) // { tableId: { total, elapsed } }
-  const [loading, setLoading]       = useState(true)
-  const [now, setNow]               = useState(new Date())
+  const [tables, setTables]               = useState([])
+  const [tableStats, setTableStats]       = useState({})
+  const [loading, setLoading]             = useState(true)
+  const [now, setNow]                     = useState(new Date())
+  const [changeTableModal, setChangeTableModal] = useState(null) // { fromTable, orderId }
+  const [changingTable, setChangingTable] = useState(false)
   const navigate = useNavigate()
 
   useEffect(() => {
     fetchTables()
-
-    // Refresh elapsed time every 30 seconds
     const timer = setInterval(() => setNow(new Date()), 30000)
-
-    // Live updates when any table status changes
     const channel = supabase
       .channel('tables-changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'cafe_tables' }, () => fetchTables())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => fetchTables())
       .subscribe()
-
-    return () => {
-      supabase.removeChannel(channel)
-      clearInterval(timer)
-    }
+    return () => { supabase.removeChannel(channel); clearInterval(timer) }
   }, [])
 
   async function fetchTables() {
-    const { data: tablesData } = await supabase
-      .from('cafe_tables')
-      .select('*')
-      .order('number')
-
+    const { data: tablesData } = await supabase.from('cafe_tables').select('*').order('number')
     if (!tablesData) return
     setTables(tablesData)
 
-    // For occupied tables, fetch running total and last KOT time
     const occupiedTables = tablesData.filter(t => t.status === 'occupied' || t.status === 'bill_requested')
-
     if (occupiedTables.length > 0) {
       const stats = {}
-
       for (const table of occupiedTables) {
-        // Get active order for this table
         const { data: order } = await supabase
-          .from('orders')
-          .select('id, created_at')
-          .eq('table_id', table.id)
-          .eq('status', 'active')
-          .single()
-
+          .from('orders').select('id, created_at').eq('table_id', table.id).eq('status', 'active').single()
         if (!order) continue
-
-        // Get running total
-        const { data: orderItems } = await supabase
-          .from('order_items')
-          .select('quantity, unit_price')
-          .eq('order_id', order.id)
-
+        const { data: orderItems } = await supabase.from('order_items').select('quantity, unit_price').eq('order_id', order.id)
         const total = (orderItems || []).reduce((sum, i) => sum + i.quantity * i.unit_price, 0)
-
-        // Get last KOT time
-        const { data: lastKOT } = await supabase
-          .from('kots')
-          .select('created_at')
-          .eq('order_id', order.id)
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .single()
-
-        stats[table.id] = {
-          total,
-          lastKOTTime: lastKOT?.created_at || order.created_at,
-        }
+        const { data: lastKOT } = await supabase.from('kots').select('created_at').eq('order_id', order.id).order('created_at', { ascending: false }).limit(1).single()
+        stats[table.id] = { total, lastKOTTime: lastKOT?.created_at || order.created_at, orderId: order.id }
       }
-
       setTableStats(stats)
     }
-
     setLoading(false)
   }
 
@@ -100,14 +61,42 @@ export default function TablesPage() {
   }
 
   function handleTableClick(table) {
-    if (table.status === 'free') {
-      navigate('/orders/new?table=' + table.id + '&tableNumber=' + table.number)
-    } else {
-      navigate('/orders/new?table=' + table.id + '&tableNumber=' + table.number)
+    navigate('/orders/new?table=' + table.id + '&tableNumber=' + table.number)
+  }
+
+  function openChangeTable(e, table) {
+    e.stopPropagation()
+    const stats = tableStats[table.id]
+    if (!stats?.orderId) return
+    setChangeTableModal({ fromTable: table, orderId: stats.orderId })
+  }
+
+  async function handleChangeTable(toTable) {
+    if (!changeTableModal) return
+    setChangingTable(true)
+    try {
+      const { fromTable, orderId } = changeTableModal
+
+      // Update order to new table
+      await supabase.from('orders').update({ table_id: toTable.id }).eq('id', orderId)
+
+      // Free old table
+      await supabase.from('cafe_tables').update({ status: 'free', captain_id: null }).eq('id', fromTable.id)
+
+      // Occupy new table
+      await supabase.from('cafe_tables').update({ status: 'occupied' }).eq('id', toTable.id)
+
+      setChangeTableModal(null)
+      fetchTables()
+    } catch (err) {
+      alert('Failed to change table: ' + err.message)
+    } finally {
+      setChangingTable(false)
     }
   }
 
-  const freeCount     = tables.filter(t => t.status === 'free').length
+  const freeTables    = tables.filter(t => t.status === 'free')
+  const freeCount     = freeTables.length
   const occupiedCount = tables.filter(t => t.status === 'occupied' || t.status === 'bill_requested').length
 
   if (loading) return <div style={{ padding: 40, color: theme.textLight }}>Loading tables...</div>
@@ -144,69 +133,83 @@ export default function TablesPage() {
       {/* Table grid */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 14 }}>
         {tables.map(table => {
-          const cfg   = STATUS_CONFIG[table.status] || STATUS_CONFIG.free
-          const stats = tableStats[table.id]
+          const cfg    = STATUS_CONFIG[table.status] || STATUS_CONFIG.free
+          const stats  = tableStats[table.id]
           const isFree = table.status === 'free'
+          const isOccupied = table.status === 'occupied' || table.status === 'bill_requested'
 
           return (
             <div key={table.id} onClick={() => handleTableClick(table)}
-              style={{
-                borderRadius: 14,
-                padding: '16px 14px',
-                textAlign: 'center',
-                cursor: 'pointer',
-                border: '2px solid ' + cfg.border,
-                background: cfg.bg,
-                boxShadow: '0 1px 4px rgba(0,0,0,0.05)',
-                transition: 'transform 0.15s, box-shadow 0.15s',
-                minHeight: 130,
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 4,
-              }}
+              style={{ borderRadius: 14, padding: '16px 14px', textAlign: 'center', cursor: 'pointer', border: '2px solid ' + cfg.border, background: cfg.bg, boxShadow: '0 1px 4px rgba(0,0,0,0.05)', transition: 'transform 0.15s, box-shadow 0.15s', minHeight: 130, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4, position: 'relative' }}
               onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 8px 20px rgba(0,0,0,0.1)' }}
               onMouseLeave={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = '0 1px 4px rgba(0,0,0,0.05)' }}
             >
-              {/* Table number */}
-              <div style={{ fontWeight: 900, fontSize: 22, color: theme.textDark, letterSpacing: -0.5 }}>
-                T{table.number}
-              </div>
+              <div style={{ fontWeight: 900, fontSize: 22, color: theme.textDark, letterSpacing: -0.5 }}>T{table.number}</div>
+              {table.area && <div style={{ fontSize: 10, color: theme.textLight, textTransform: 'uppercase', letterSpacing: 0.5 }}>{table.area}</div>}
 
-              {/* Area */}
-              {table.area && (
-                <div style={{ fontSize: 10, color: theme.textLight, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-                  {table.area}
-                </div>
-              )}
-
-              {/* Stats for occupied tables */}
               {!isFree && stats ? (
                 <>
-                  <div style={{ fontWeight: 800, fontSize: 16, color: theme.textDark, marginTop: 4 }}>
-                    ₹{stats.total}
-                  </div>
-                  <div style={{ fontSize: 11, color: cfg.color, fontWeight: 700 }}>
-                    ⏱ {getElapsed(stats.lastKOTTime)}
-                  </div>
+                  <div style={{ fontWeight: 800, fontSize: 16, color: theme.textDark, marginTop: 4 }}>₹{stats.total}</div>
+                  <div style={{ fontSize: 11, color: cfg.color, fontWeight: 700 }}>⏱ {getElapsed(stats.lastKOTTime)}</div>
                 </>
               ) : isFree ? (
-                <div style={{ fontSize: 11, color: cfg.color, fontWeight: 600, marginTop: 4 }}>
-                  Tap to order
-                </div>
+                <div style={{ fontSize: 11, color: cfg.color, fontWeight: 600, marginTop: 4 }}>Tap to order</div>
               ) : (
                 <div style={{ fontSize: 11, color: theme.textMuted, marginTop: 4 }}>Loading...</div>
               )}
 
-              {/* Status badge */}
               <div style={{ background: '#fff', color: cfg.color, borderRadius: 20, padding: '2px 10px', fontSize: 10, fontWeight: 700, marginTop: 6, border: '1px solid ' + cfg.border }}>
                 {cfg.label}
               </div>
+
+              {/* Change table button for occupied tables */}
+              {isOccupied && stats && (
+                <button
+                  onClick={e => openChangeTable(e, table)}
+                  style={{ position: 'absolute', top: 8, right: 8, background: 'rgba(255,255,255,0.9)', border: '1px solid ' + cfg.border, borderRadius: 6, padding: '3px 7px', fontSize: 10, fontWeight: 700, cursor: 'pointer', color: cfg.color }}
+                  title="Change Table">
+                  ⇄
+                </button>
+              )}
             </div>
           )
         })}
       </div>
+
+      {/* Change Table Modal */}
+      {changeTableModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}
+          onClick={e => e.target === e.currentTarget && setChangeTableModal(null)}>
+          <div style={{ background: '#fff', borderRadius: 20, padding: 28, width: '100%', maxWidth: 480, boxShadow: '0 24px 64px rgba(0,0,0,0.2)' }}>
+            <div style={{ fontWeight: 800, fontSize: 18, color: theme.textDark, marginBottom: 6 }}>Change Table</div>
+            <div style={{ fontSize: 13, color: theme.textLight, marginBottom: 20 }}>
+              Moving order from <strong style={{ color: theme.textDark }}>T{changeTableModal.fromTable.number}</strong> to a free table. All order data stays unchanged.
+            </div>
+
+            {freeTables.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '24px 0', color: theme.textLight, fontSize: 13 }}>No free tables available to move to.</div>
+            ) : (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))', gap: 10, marginBottom: 20 }}>
+                {freeTables.map(t => (
+                  <button key={t.id} onClick={() => handleChangeTable(t)} disabled={changingTable}
+                    style={{ background: '#E6FAF8', border: '2px solid #99E6E0', borderRadius: 12, padding: '14px 10px', cursor: 'pointer', textAlign: 'center', transition: 'all 0.15s' }}
+                    onMouseEnter={e => e.currentTarget.style.background = '#092b33' + '18'}
+                    onMouseLeave={e => e.currentTarget.style.background = '#E6FAF8'}>
+                    <div style={{ fontWeight: 900, fontSize: 18, color: theme.textDark }}>T{t.number}</div>
+                    {t.area && <div style={{ fontSize: 10, color: theme.textLight, marginTop: 2 }}>{t.area}</div>}
+                    <div style={{ fontSize: 10, color: '#0D9488', fontWeight: 700, marginTop: 4 }}>Free</div>
+                  </button>
+                ))}
+              </div>
+            )}
+
+            <button onClick={() => setChangeTableModal(null)}
+              style={{ width: '100%', background: theme.bgWarm, border: '1px solid ' + theme.border, borderRadius: 10, padding: '11px 0', fontSize: 13, fontWeight: 700, cursor: 'pointer', color: theme.textMid }}>
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

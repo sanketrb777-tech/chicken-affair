@@ -3,56 +3,46 @@ import { supabase } from '../lib/supabase'
 
 const AuthContext = createContext({})
 
-// ─── ROLE DEFINITIONS ─────────────────────────────────────────────────────────
 export const ROLES = {
   OWNER:   'owner',
   MANAGER: 'manager',
   CAPTAIN: 'captain',
-  BILLER:  'biller',
 }
 
-// What each role can access
 export const ROLE_PERMISSIONS = {
   owner: {
-    dashboard: true,   orders: true,   tables: true,
-    billing: true,     menu: true,     inventory: true,
-    reports: true,     settings: true, staff: true,
-    kds: true,
+    dashboard: true,  orders: true,   tables: true,
+    billing:   true,  menu:   true,   inventory: true,
+    reports:   true,  settings: true, staff: true,
+    kds:       true,
   },
   manager: {
-    dashboard: true,   orders: true,   tables: true,
-    billing: true,     menu: true,     inventory: true,
-    reports: true,     settings: true, staff: false,
-    kds: true,
+    dashboard: true,  orders: true,   tables: true,
+    billing:   true,  menu:   true,   inventory: true,
+    reports:   true,  settings: true, staff: false,
+    kds:       true,
+    reportsMaxDays: 7,   // manager can only see up to 7 days of reports
   },
   captain: {
-    dashboard: true,   orders: true,   tables: 'own',
-    billing: true,     menu: false,    inventory: false,
-    reports: false,    settings: false, staff: false,
-    kds: false,
-  },
-  biller: {
-    dashboard: true,   orders: 'view', tables: true,
-    billing: true,     menu: false,    inventory: false,
-    reports: false,    settings: false, staff: false,
-    kds: false,
+    dashboard: true,  orders: true,   tables: true,
+    billing:   true,  menu:   false,  inventory: false,
+    reports:   false, settings: false, staff: false,
+    kds:       false,
   },
 }
 
 export function AuthProvider({ children }) {
   const [user, setUser]       = useState(null)
-  const [profile, setProfile] = useState(null)  // role, name, etc from our staff table
+  const [profile, setProfile] = useState(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // Check active session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null)
       if (session?.user) fetchProfile(session.user.id)
       else setLoading(false)
     })
 
-    // Listen for auth changes (login / logout)
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null)
       if (session?.user) fetchProfile(session.user.id)
@@ -69,7 +59,6 @@ export function AuthProvider({ children }) {
         .select('id, name, role, avatar_url, is_active')
         .eq('user_id', userId)
         .single()
-
       if (error) throw error
       setProfile(data)
     } catch (err) {
@@ -91,13 +80,17 @@ export function AuthProvider({ children }) {
     setProfile(null)
   }
 
-  // Check if current role has permission for a module
   function can(module) {
     if (!profile?.role) return false
     return !!ROLE_PERMISSIONS[profile.role]?.[module]
   }
 
-  const value = { user, profile, loading, signIn, signOut, can, ROLES }
+  // Returns max days for reports (null = unlimited)
+  function reportsMaxDays() {
+    return ROLE_PERMISSIONS[profile?.role]?.reportsMaxDays ?? null
+  }
+
+  const value = { user, profile, loading, signIn, signOut, can, reportsMaxDays, ROLES }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
