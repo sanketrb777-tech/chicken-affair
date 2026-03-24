@@ -1,7 +1,10 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
+import { useAuth } from '../../context/AuthContext'
 import { theme } from '../../lib/theme'
+
+const APP_URL = 'https://bambiniapp-hue.vercel.app'
 
 const STATUS_CONFIG = {
   free:           { label: 'Free',     bg: '#E6FAF8', color: '#0D9488', border: '#99E6E0' },
@@ -12,6 +15,9 @@ const STATUS_CONFIG = {
 }
 
 export default function TablesPage() {
+  const { profile } = useAuth()
+  const isManager = profile?.role === 'owner' || profile?.role === 'manager'
+
   const [tables, setTables]               = useState([])
   const [tableStats, setTableStats]       = useState({})
   const [loading, setLoading]             = useState(true)
@@ -20,9 +26,18 @@ export default function TablesPage() {
   const [changingTable, setChangingTable] = useState(false)
   const navigate = useNavigate()
 
+  // Add/Edit table state
+  const [showForm, setShowForm]   = useState(false)
+  const [editTable, setEditTable] = useState(null)
+  const [saving, setSaving]       = useState(false)
+  const [form, setForm]           = useState({ number: '', name: '', area: '', capacity: 4 })
+
+  // QR modal
+  const [qrModal, setQrModal]         = useState(null)
+  const [downloading, setDownloading] = useState(false)
+
   const fetchTables = useCallback(async () => {
-    const { data: tablesData } = await supabase
-      .from('cafe_tables').select('*').order('number')
+    const { data: tablesData } = await supabase.from('cafe_tables').select('*').order('number')
     if (!tablesData) return
     setTables(tablesData)
 
@@ -30,22 +45,18 @@ export default function TablesPage() {
     if (occupiedTables.length > 0) {
       const stats = {}
       await Promise.all(occupiedTables.map(async (table) => {
-        // Get active order
         const { data: order } = await supabase
           .from('orders').select('id, created_at')
           .eq('table_id', table.id).eq('status', 'active').single()
         if (!order) return
 
-        // Running total from ALL order_items for this order
         const { data: orderItems } = await supabase
           .from('order_items').select('quantity, unit_price').eq('order_id', order.id)
         const total = (orderItems || []).reduce((sum, i) => sum + i.quantity * i.unit_price, 0)
 
-        // Last KOT time
         const { data: lastKOT } = await supabase
           .from('kots').select('created_at')
-          .eq('order_id', order.id)
-          .order('created_at', { ascending: false }).limit(1).single()
+          .eq('order_id', order.id).order('created_at', { ascending: false }).limit(1).single()
 
         stats[table.id] = {
           total,
@@ -62,23 +73,16 @@ export default function TablesPage() {
 
   useEffect(() => {
     fetchTables()
-
     const timer = setInterval(() => setNow(new Date()), 30000)
-
-    // Subscribe to ALL relevant table changes for realtime updates
     const channel = supabase
       .channel('tables-live')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'cafe_tables' },  fetchTables)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' },       fetchTables)
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'order_items' }, fetchTables)
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'order_items' }, fetchTables)
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'kots' },    fetchTables)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'cafe_tables' },           fetchTables)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' },                fetchTables)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'order_items' },      fetchTables)
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'order_items' },      fetchTables)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'kots' },             fetchTables)
       .subscribe()
-
-    return () => {
-      supabase.removeChannel(channel)
-      clearInterval(timer)
-    }
+    return () => { supabase.removeChannel(channel); clearInterval(timer) }
   }, [fetchTables])
 
   function getElapsed(dateString) {
@@ -116,6 +120,63 @@ export default function TablesPage() {
     }
   }
 
+  // ── Table management ──
+  function openAdd() {
+    setForm({ number: '', name: '', area: '', capacity: 4 })
+    setEditTable(null)
+    setShowForm(true)
+  }
+
+  function openEdit(e, table) {
+    e.stopPropagation()
+    setForm({ number: table.number, name: table.name || '', area: table.area || '', capacity: table.capacity || 4 })
+    setEditTable(table)
+    setShowForm(true)
+  }
+
+  async function saveTable() {
+    if (!form.number) return alert('Table number is required')
+    setSaving(true)
+    try {
+      if (editTable) {
+        await supabase.from('cafe_tables').update({
+          number: parseInt(form.number), name: form.name || null,
+          area: form.area || null, capacity: parseInt(form.capacity)
+        }).eq('id', editTable.id)
+      } else {
+        await supabase.from('cafe_tables').insert({
+          number: parseInt(form.number), name: form.name || null,
+          area: form.area || null, capacity: parseInt(form.capacity), status: 'free'
+        })
+      }
+      setShowForm(false)
+      fetchTables()
+    } catch (err) {
+      alert('Error: ' + err.message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function deleteTable(e, id) {
+    e.stopPropagation()
+    if (!window.confirm('Delete this table?')) return
+    await supabase.from('cafe_tables').delete().eq('id', id)
+    fetchTables()
+  }
+
+  async function downloadQR(table) {
+    setDownloading(true)
+    const url  = `https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${APP_URL}/menu/table/${table.id}`
+    const res  = await fetch(url)
+    const blob = await res.blob()
+    const a    = document.createElement('a')
+    a.href     = URL.createObjectURL(blob)
+    a.download = `QR-${table.name || 'Table-' + table.number}.png`
+    a.click()
+    setDownloading(false)
+  }
+
   const freeTables    = tables.filter(t => t.status === 'free')
   const freeCount     = freeTables.length
   const occupiedCount = tables.filter(t => t.status === 'occupied' || t.status === 'bill_requested').length
@@ -136,18 +197,30 @@ export default function TablesPage() {
             {tables.length} total
           </p>
         </div>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-          {Object.entries(STATUS_CONFIG).map(([key, cfg]) => (
-            <span key={key} style={{ background: cfg.bg, color: cfg.color, border: '1px solid ' + cfg.border, padding: '4px 12px', borderRadius: 20, fontSize: 11, fontWeight: 700 }}>
-              {cfg.label}
-            </span>
-          ))}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          {/* Status legend */}
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+            {Object.entries(STATUS_CONFIG).map(([key, cfg]) => (
+              <span key={key} style={{ background: cfg.bg, color: cfg.color, border: '1px solid ' + cfg.border, padding: '4px 10px', borderRadius: 20, fontSize: 10, fontWeight: 700 }}>
+                {cfg.label}
+              </span>
+            ))}
+          </div>
+          {/* Add Table — owner/manager only */}
+          {isManager && (
+            <button onClick={openAdd}
+              style={{ background: '#092b33', color: '#fff', border: 'none', borderRadius: 9, padding: '9px 18px', fontSize: 13, fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}>
+              + Add Table
+            </button>
+          )}
         </div>
       </div>
 
       {tables.length === 0 && (
-        <div style={{ textAlign: 'center', padding: 48, color: theme.textLight }}>
-          No tables found. Add tables in Settings first.
+        <div style={{ textAlign: 'center', padding: 48, color: theme.textLight, background: '#fff', borderRadius: 14, border: '2px dashed ' + theme.border }}>
+          <div style={{ fontSize: 32, marginBottom: 12 }}>🪑</div>
+          <div style={{ fontWeight: 700, color: theme.textDark, marginBottom: 6 }}>No tables yet</div>
+          {isManager && <button onClick={openAdd} style={{ background: '#092b33', color: '#fff', border: 'none', borderRadius: 8, padding: '9px 20px', fontSize: 13, fontWeight: 700, cursor: 'pointer', marginTop: 8 }}>+ Add your first table</button>}
         </div>
       )}
 
@@ -163,8 +236,8 @@ export default function TablesPage() {
             <div key={table.id} onClick={() => handleTableClick(table)}
               style={{ borderRadius: 14, padding: '16px 14px', textAlign: 'center', cursor: 'pointer', border: '2px solid ' + cfg.border, background: cfg.bg, boxShadow: '0 1px 4px rgba(0,0,0,0.05)', transition: 'transform 0.15s, box-shadow 0.15s', minHeight: 130, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4, position: 'relative' }}
               onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 8px 20px rgba(0,0,0,0.1)' }}
-              onMouseLeave={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = '0 1px 4px rgba(0,0,0,0.05)' }}
-            >
+              onMouseLeave={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = '0 1px 4px rgba(0,0,0,0.05)' }}>
+
               <div style={{ fontWeight: 900, fontSize: 22, color: theme.textDark, letterSpacing: -0.5 }}>T{table.number}</div>
               {table.area && <div style={{ fontSize: 10, color: theme.textLight, textTransform: 'uppercase', letterSpacing: 0.5 }}>{table.area}</div>}
 
@@ -183,18 +256,84 @@ export default function TablesPage() {
                 {cfg.label}
               </div>
 
-              {/* Change table button */}
+              {/* Change table button — occupied tables */}
               {isOccupied && stats && (
                 <button onClick={e => openChangeTable(e, table)}
-                  style={{ position: 'absolute', top: 8, right: 8, background: 'rgba(255,255,255,0.9)', border: '1px solid ' + cfg.border, borderRadius: 6, padding: '3px 7px', fontSize: 10, fontWeight: 700, cursor: 'pointer', color: cfg.color }}
-                  title="Change Table">
-                  ⇄
-                </button>
+                  style={{ position: 'absolute', top: 8, right: isManager ? 28 : 8, background: 'rgba(255,255,255,0.9)', border: '1px solid ' + cfg.border, borderRadius: 6, padding: '3px 6px', fontSize: 10, fontWeight: 700, cursor: 'pointer', color: cfg.color }}
+                  title="Change Table">⇄</button>
+              )}
+
+              {/* Edit button — owner/manager on free tables */}
+              {isManager && isFree && (
+                <button onClick={e => openEdit(e, table)}
+                  style={{ position: 'absolute', top: 8, right: 8, background: 'rgba(255,255,255,0.9)', border: '1px solid ' + theme.border, borderRadius: 6, padding: '3px 6px', fontSize: 10, fontWeight: 700, cursor: 'pointer', color: theme.textMid }}
+                  title="Edit Table">✏️</button>
+              )}
+
+              {/* QR button */}
+              {isManager && (
+                <button onClick={e => { e.stopPropagation(); setQrModal(table) }}
+                  style={{ position: 'absolute', top: 8, left: 8, background: 'rgba(255,255,255,0.9)', border: '1px solid ' + theme.border, borderRadius: 6, padding: '3px 6px', fontSize: 10, fontWeight: 700, cursor: 'pointer', color: '#1D4ED8' }}
+                  title="View QR">🔲</button>
               )}
             </div>
           )
         })}
       </div>
+
+      {/* Add / Edit Table Modal */}
+      {showForm && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+          <div style={{ background: '#fff', borderRadius: 18, padding: 32, width: 400, boxShadow: '0 24px 64px rgba(0,0,0,0.2)' }}>
+            <h2 style={{ fontSize: 18, fontWeight: 800, color: theme.textDark, margin: '0 0 20px' }}>
+              {editTable ? 'Edit Table' : 'Add Table'}
+            </h2>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <div style={{ display: 'flex', gap: 12 }}>
+                <div style={{ flex: 1 }}>
+                  <label style={{ fontSize: 11, fontWeight: 700, color: theme.textLight, display: 'block', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5 }}>Table No. *</label>
+                  <input type="number" value={form.number} onChange={e => setForm(f => ({ ...f, number: e.target.value }))} placeholder="1"
+                    style={{ width: '100%', border: '1.5px solid ' + theme.border, borderRadius: 9, padding: '10px 12px', fontSize: 14, fontWeight: 700, outline: 'none', boxSizing: 'border-box' }} />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label style={{ fontSize: 11, fontWeight: 700, color: theme.textLight, display: 'block', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5 }}>Capacity</label>
+                  <input type="number" value={form.capacity} onChange={e => setForm(f => ({ ...f, capacity: e.target.value }))} placeholder="4"
+                    style={{ width: '100%', border: '1.5px solid ' + theme.border, borderRadius: 9, padding: '10px 12px', fontSize: 14, fontWeight: 700, outline: 'none', boxSizing: 'border-box' }} />
+                </div>
+              </div>
+              <div>
+                <label style={{ fontSize: 11, fontWeight: 700, color: theme.textLight, display: 'block', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5 }}>Display Name <span style={{ fontWeight: 400 }}>(optional)</span></label>
+                <input type="text" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="e.g. Window Table, Corner Booth"
+                  style={{ width: '100%', border: '1.5px solid ' + theme.border, borderRadius: 9, padding: '10px 12px', fontSize: 13, outline: 'none', boxSizing: 'border-box' }} />
+              </div>
+              <div>
+                <label style={{ fontSize: 11, fontWeight: 700, color: theme.textLight, display: 'block', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5 }}>Area <span style={{ fontWeight: 400 }}>(optional)</span></label>
+                <input type="text" value={form.area} onChange={e => setForm(f => ({ ...f, area: e.target.value }))} placeholder="e.g. Indoor, Rooftop, Garden, Terrace"
+                  style={{ width: '100%', border: '1.5px solid ' + theme.border, borderRadius: 9, padding: '10px 12px', fontSize: 13, outline: 'none', boxSizing: 'border-box' }} />
+                <div style={{ fontSize: 11, color: theme.textLight, marginTop: 5 }}>Type any area name you like</div>
+              </div>
+            </div>
+
+            {editTable && (
+              <button onClick={e => { deleteTable(e, editTable.id); setShowForm(false) }}
+                style={{ width: '100%', marginTop: 16, background: theme.redBg, border: '1px solid #FECACA', borderRadius: 9, padding: '10px', fontSize: 13, fontWeight: 700, cursor: 'pointer', color: theme.red }}>
+                🗑 Delete this table
+              </button>
+            )}
+
+            <div style={{ display: 'flex', gap: 10, marginTop: 12 }}>
+              <button onClick={() => setShowForm(false)}
+                style={{ flex: 1, background: theme.bgWarm, border: '1px solid ' + theme.border, borderRadius: 9, padding: '12px', fontSize: 13, cursor: 'pointer', fontWeight: 600, color: theme.textMid }}>
+                Cancel
+              </button>
+              <button onClick={saveTable} disabled={saving}
+                style={{ flex: 2, background: '#092b33', color: '#fff', border: 'none', borderRadius: 9, padding: '12px', fontSize: 13, fontWeight: 700, cursor: saving ? 'not-allowed' : 'pointer' }}>
+                {saving ? 'Saving...' : editTable ? 'Save Changes' : 'Add Table'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Change Table Modal */}
       {changeTableModal && (
@@ -223,6 +362,29 @@ export default function TablesPage() {
               style={{ width: '100%', background: theme.bgWarm, border: '1px solid ' + theme.border, borderRadius: 10, padding: '11px 0', fontSize: 13, fontWeight: 700, cursor: 'pointer', color: theme.textMid }}>
               Cancel
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* QR Modal */}
+      {qrModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}
+          onClick={e => e.target === e.currentTarget && setQrModal(null)}>
+          <div style={{ background: '#fff', borderRadius: 20, padding: 32, textAlign: 'center', width: 320, boxShadow: '0 24px 64px rgba(0,0,0,0.2)' }}>
+            <div style={{ fontWeight: 800, fontSize: 18, color: theme.textDark, marginBottom: 4 }}>{qrModal.name || `Table ${qrModal.number}`}</div>
+            <div style={{ fontSize: 12, color: theme.textLight, marginBottom: 20 }}>Scan to order from this table</div>
+            <img src={`https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${APP_URL}/menu/table/${qrModal.id}`}
+              alt="QR Code" style={{ width: 220, height: 220, borderRadius: 12, border: '1px solid ' + theme.border }} />
+            <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
+              <button onClick={() => setQrModal(null)}
+                style={{ flex: 1, background: theme.bgWarm, border: '1px solid ' + theme.border, borderRadius: 9, padding: '11px', fontSize: 13, cursor: 'pointer', fontWeight: 600, color: theme.textMid }}>
+                Close
+              </button>
+              <button onClick={() => downloadQR(qrModal)} disabled={downloading}
+                style={{ flex: 2, background: '#092b33', color: '#fff', border: 'none', borderRadius: 9, padding: '11px', fontSize: 13, fontWeight: 700, cursor: downloading ? 'not-allowed' : 'pointer' }}>
+                {downloading ? 'Downloading...' : '⬇ Download QR'}
+              </button>
+            </div>
           </div>
         </div>
       )}
