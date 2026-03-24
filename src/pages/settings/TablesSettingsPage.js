@@ -1,13 +1,8 @@
-import { useEffect, useState } from 'react'
+﻿import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { theme } from '../../lib/theme'
 
-const AREAS = ['Main', 'Garden', 'Terrace', 'Indoor', 'Outdoor', 'Rooftop', 'Private']
-const AREA_ICONS = {
-  Main: '🏠', Garden: '🌿', Terrace: '☀️', Indoor: '🪟',
-  Outdoor: '🌳', Rooftop: '🌆', Private: '🔒',
-}
 
 const APP_URL = 'https://bambiniapp-hue.vercel.app'
 
@@ -37,7 +32,7 @@ export default function TablesSettingsPage() {
   const [downloading, setDownloading] = useState(false)
   const navigate = useNavigate()
 
-  const [form, setForm] = useState({ number: '', name: '', area: 'Main', capacity: 4 })
+  const [form, setForm] = useState({ number: '', name: '', area: '', capacity: 4 })
 
   useEffect(() => { fetchTables() }, [])
 
@@ -48,7 +43,7 @@ export default function TablesSettingsPage() {
   }
 
   function openAdd() {
-    setForm({ number: '', name: '', area: 'Main', capacity: 4 })
+    setForm({ number: '', name: '', area: '', capacity: 4 })
     setEditTable(null)
     setShowForm(true)
   }
@@ -95,8 +90,7 @@ export default function TablesSettingsPage() {
     setDownloading(false)
   }
 
-  const areas = [...new Set(tables.map(t => t.area || 'Main'))]
-
+  
   if (loading) return <div style={{ padding: 40, color: theme.textLight }}>Loading...</div>
 
   return (
@@ -105,7 +99,7 @@ export default function TablesSettingsPage() {
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 32 }}>
         <button onClick={() => navigate('/settings')}
           style={{ background: '#fff', border: '1px solid ' + theme.border, borderRadius: 8, padding: '7px 14px', fontSize: 13, cursor: 'pointer', color: theme.textMid, fontWeight: 600 }}>
-          ← Back
+          â† Back
         </button>
         <div style={{ flex: 1 }}>
           <h1 style={{ fontSize: 22, fontWeight: 800, color: theme.textDark, margin: 0 }}>Tables & Areas</h1>
@@ -119,7 +113,7 @@ export default function TablesSettingsPage() {
 
       {tables.length === 0 && (
         <div style={{ background: '#fff', borderRadius: 14, padding: 56, textAlign: 'center', color: theme.textLight, border: '1px solid ' + theme.border }}>
-          <div style={{ fontSize: 36, marginBottom: 12 }}>🪑</div>
+          <div style={{ fontSize: 36, marginBottom: 12 }}>ðŸª‘</div>
           <div style={{ fontWeight: 700, fontSize: 15, color: theme.textDark, marginBottom: 6 }}>No tables yet</div>
           <div style={{ fontSize: 13 }}>Click "+ Add Table" to get started</div>
         </div>
@@ -132,7 +126,7 @@ export default function TablesSettingsPage() {
           <div key={area} style={{ marginBottom: 32 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
               <div style={{ width: 32, height: 32, background: '#092b33', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15 }}>
-                {AREA_ICONS[area] || '🪑'}
+                {AREA_ICONS[area] || 'ðŸª‘'}
               </div>
               <div>
                 <div style={{ fontWeight: 800, fontSize: 15, color: theme.textDark }}>{area}</div>
@@ -151,7 +145,7 @@ export default function TablesSettingsPage() {
                     <div style={{ fontWeight: 700, fontSize: 13, color: theme.textDark }}>
                       {table.name || 'Table ' + table.number}
                     </div>
-                    <div style={{ fontSize: 11, color: theme.textLight, marginTop: 2 }}>👥 {table.capacity} seats</div>
+                    <div style={{ fontSize: 11, color: theme.textLight, marginTop: 2 }}>ðŸ‘¥ {table.capacity} seats</div>
 
                     {/* Mini QR preview */}
                     <div style={{ marginTop: 10, cursor: 'pointer' }} onClick={() => setQrModal(table)}>
@@ -164,15 +158,15 @@ export default function TablesSettingsPage() {
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr' }}>
                     <button onClick={() => openEdit(table)}
                       style={{ background: 'none', border: 'none', borderRight: '1px solid ' + theme.border, padding: '9px 0', fontSize: 11, fontWeight: 700, color: theme.primary, cursor: 'pointer' }}>
-                      ✏️ Edit
+                      âœï¸ Edit
                     </button>
                     <button onClick={() => setQrModal(table)}
                       style={{ background: 'none', border: 'none', borderRight: '1px solid ' + theme.border, padding: '9px 0', fontSize: 11, fontWeight: 700, color: '#7C3AED', cursor: 'pointer' }}>
-                      📲 QR
+                      ðŸ“² QR
                     </button>
                     <button onClick={() => deleteTable(table.id)}
                       style={{ background: 'none', border: 'none', padding: '9px 0', fontSize: 11, fontWeight: 700, color: theme.red, cursor: 'pointer' }}>
-                      🗑 Del
+                      ðŸ—‘ Del
                     </button>
                   </div>
                 </div>
@@ -190,7 +184,7 @@ export default function TablesSettingsPage() {
         )
       })}
 
-      {/* ── QR MODAL ── */}
+      {/* â”€â”€ QR MODAL â”€â”€ */}
       {qrModal && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}
           onClick={e => e.target === e.currentTarget && setQrModal(null)}>
@@ -216,14 +210,14 @@ export default function TablesSettingsPage() {
               </button>
               <button onClick={() => handleDownload(qrModal)} disabled={downloading}
                 style={{ flex: 2, background: '#092b33', color: '#fff', border: 'none', borderRadius: 10, padding: '12px 0', fontSize: 13, fontWeight: 700, cursor: downloading ? 'not-allowed' : 'pointer' }}>
-                {downloading ? 'Downloading...' : '⬇️ Download QR'}
+                {downloading ? 'Downloading...' : 'â¬‡ï¸ Download QR'}
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* ── ADD/EDIT MODAL ── */}
+      {/* â”€â”€ ADD/EDIT MODAL â”€â”€ */}
       {showForm && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
           <div style={{ background: '#fff', borderRadius: 18, padding: 32, width: 400, boxShadow: '0 24px 64px rgba(0,0,0,0.2)' }}>
@@ -231,7 +225,7 @@ export default function TablesSettingsPage() {
               {editTable ? 'Edit Table' : 'Add New Table'}
             </h2>
             <p style={{ fontSize: 13, color: theme.textLight, margin: '0 0 24px' }}>
-              {editTable ? 'Update table details below' : '🎉 A QR code will be auto-generated for ordering'}
+              {editTable ? 'Update table details below' : 'ðŸŽ‰ A QR code will be auto-generated for ordering'}
             </p>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -256,16 +250,8 @@ export default function TablesSettingsPage() {
 
               <div>
                 <label style={{ fontSize: 11, fontWeight: 700, color: theme.textLight, display: 'block', marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 }}>Area</label>
-                <input type="text" value={form.area} onChange={e => setForm(f => ({ ...f, area: e.target.value }))} placeholder="Type or pick below"
+                <input type="text" value={form.area} onChange={e => setForm(f => ({ ...f, area: e.target.value }))} placeholder="e.g. Indoor, Rooftop, Garden"
                   style={{ width: '100%', border: '1.5px solid ' + theme.border, borderRadius: 9, padding: '10px 12px', fontSize: 13, outline: 'none', boxSizing: 'border-box', marginBottom: 10 }} />
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                  {AREAS.map(a => (
-                    <button key={a} onClick={() => setForm(f => ({ ...f, area: a }))}
-                      style={{ background: form.area === a ? '#092b33' : theme.bgWarm, color: form.area === a ? '#fff' : theme.textMid, border: '1.5px solid ' + (form.area === a ? '#092b33' : theme.border), borderRadius: 8, padding: '6px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
-                      {AREA_ICONS[a]} {a}
-                    </button>
-                  ))}
-                </div>
               </div>
             </div>
 
