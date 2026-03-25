@@ -285,7 +285,7 @@ export default function TablesPage() {
                   {/* 👁 View Order */}
                   <button
                     onClick={e => { e.stopPropagation(); navigate('/orders/new?table=' + table.id + '&tableNumber=' + table.number) }}
-                    title="View Order"
+                    
                     style={{ flex: 1, background: '#0D9488', border: 'none', borderRadius: 10, padding: '9px 0', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, color: '#fff', fontSize: 12, fontWeight: 700, transition: 'opacity 0.15s' }}
                     onMouseEnter={e => e.currentTarget.style.opacity = '0.85'}
                     onMouseLeave={e => e.currentTarget.style.opacity = '1'}>
@@ -299,7 +299,7 @@ export default function TablesPage() {
                   {/* 🧾 Process Bill */}
                   <button
                     onClick={e => { e.stopPropagation(); navigate('/billing/order/' + stats.orderId) }}
-                    title="Process Bill"
+                    
                     style={{ flex: 1, background: '#092b33', border: 'none', borderRadius: 10, padding: '9px 0', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, color: '#fff', fontSize: 12, fontWeight: 700, transition: 'opacity 0.15s' }}
                     onMouseEnter={e => e.currentTarget.style.opacity = '0.85'}
                     onMouseLeave={e => e.currentTarget.style.opacity = '1'}>
