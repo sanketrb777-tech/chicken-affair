@@ -2,11 +2,12 @@ import { useEffect, useState, useRef, useCallback } from 'react'
 import { supabase } from '../../lib/supabase'
 
 export default function KDSPage() {
-  const [orders, setOrders]     = useState([])
-  const [batchItems, setBatchItems] = useState([]) // aggregated same items within 5 min
-  const [time, setTime]         = useState('')
-  const [connected, setConnected] = useState(false)
-  const [activeView, setActiveView] = useState('orders') // 'orders' | 'batch'
+  const [orders, setOrders]         = useState([])
+  const [batchItems, setBatchItems] = useState([])
+  const [categoryOrder, setCategoryOrder] = useState({}) // categoryId -> sort_order
+  const [time, setTime]             = useState('')
+  const [connected, setConnected]   = useState(false)
+  const [activeView, setActiveView] = useState('orders')
   const debounceRef = useRef(null)
 
   const debouncedFetch = useCallback(() => {
@@ -16,19 +17,19 @@ export default function KDSPage() {
 
   useEffect(() => {
     updateClock()
+    fetchCategories()
     fetchKOTs()
 
     const channel = supabase
-      .channel('kds-realtime-v2')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'kots' },      debouncedFetch)
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'kots' },      debouncedFetch)
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'kot_items' }, debouncedFetch)
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'kot_items' }, debouncedFetch)
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'orders' },    debouncedFetch)
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'orders' },    debouncedFetch)
-      .subscribe((status) => {
-        setConnected(status === 'SUBSCRIBED')
-      })
+      .channel('kds-realtime-v3')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'kots' },           debouncedFetch)
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'kots' },           debouncedFetch)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'kot_items' },      debouncedFetch)
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'kot_items' },      debouncedFetch)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'orders' },         debouncedFetch)
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'orders' },         debouncedFetch)
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'menu_categories' }, fetchCategories)
+      .subscribe(status => setConnected(status === 'SUBSCRIBED'))
 
     const clockTimer   = setInterval(updateClock, 1000)
     const refreshTimer = setInterval(fetchKOTs, 15000)
@@ -45,6 +46,14 @@ export default function KDSPage() {
     setTime(new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true }))
   }
 
+  async function fetchCategories() {
+    const { data } = await supabase.from('menu_categories').select('id, sort_order').order('sort_order')
+    if (!data) return
+    const map = {}
+    data.forEach(c => { map[c.id] = c.sort_order })
+    setCategoryOrder(map)
+  }
+
   async function fetchKOTs() {
     const { data, error } = await supabase
       .from('kots')
@@ -53,7 +62,7 @@ export default function KDSPage() {
         orders ( id, order_type, customer_name, covers, cafe_tables ( number ) ),
         kot_items (
           id,
-          order_items ( quantity, notes, menu_items ( name, priority ) )
+          order_items ( quantity, notes, menu_items ( id, name, priority, category_id ) )
         )
       `)
       .in('status', ['pending', 'in_progress', 'ready'])
@@ -78,46 +87,57 @@ export default function KDSPage() {
       }
       orderMap[orderId].kots.push(kot)
     })
+
+    // Sort kot_items within each KOT by: category sort_order first, then item priority
+    Object.values(orderMap).forEach(order => {
+      order.kots.forEach(kot => {
+        kot.kot_items.sort((a, b) => {
+          const catA = a.order_items?.menu_items?.category_id
+          const catB = b.order_items?.menu_items?.category_id
+          const catOrderA = categoryOrder[catA] ?? 999
+          const catOrderB = categoryOrder[catB] ?? 999
+          if (catOrderA !== catOrderB) return catOrderA - catOrderB
+          // Within same category, sort by item priority (1 = highest)
+          const priA = a.order_items?.menu_items?.priority ?? 2
+          const priB = b.order_items?.menu_items?.priority ?? 2
+          return priA - priB
+        })
+      })
+    })
+
     setOrders(Object.values(orderMap))
 
-    // Build batch view — same item ordered within 5 min window
-    const itemMap = {} // itemName -> [{ tableNumber, qty, kotTime, orderType, customerName }]
+    // Build batch view — same item within 5 min
+    const itemMap    = {}
     const fiveMinAgo = Date.now() - 5 * 60 * 1000
 
     ;(data || []).forEach(kot => {
-      if (kot.status === 'ready') return // skip done kots
+      if (kot.status === 'ready') return
       const kotTime = new Date(kot.created_at).getTime()
-      if (kotTime < fiveMinAgo) return // only last 5 min
+      if (kotTime < fiveMinAgo) return
 
-      const tableNum    = kot.orders?.cafe_tables?.number
+      const tableNum     = kot.orders?.cafe_tables?.number
       const customerName = kot.orders?.customer_name
-      const orderType   = kot.orders?.order_type
+      const orderType    = kot.orders?.order_type
 
       kot.kot_items.forEach(ki => {
-        const name = ki.order_items?.menu_items?.name
-        const qty  = ki.order_items?.quantity || 0
+        const name     = ki.order_items?.menu_items?.name
+        const qty      = ki.order_items?.quantity || 0
+        const catId    = ki.order_items?.menu_items?.category_id
+        const catOrder = categoryOrder[catId] ?? 999
         if (!name) return
-
-        if (!itemMap[name]) itemMap[name] = []
-        // Check if this table is already in the list
-        const existing = itemMap[name].find(e => e.tableNumber === tableNum && e.orderType === orderType)
-        if (existing) {
-          existing.qty += qty
-        } else {
-          itemMap[name].push({ tableNumber: tableNum, qty, orderType, customerName, kotTime })
+        if (!itemMap[name]) itemMap[name] = { name, catOrder, entries: [] }
+        const existing = itemMap[name].entries.find(e => e.tableNumber === tableNum && e.orderType === orderType)
+        if (existing) { existing.qty += qty } else {
+          itemMap[name].entries.push({ tableNumber: tableNum, qty, orderType, customerName })
         }
       })
     })
 
-    // Only include items appearing in more than 1 table/order
-    const batched = Object.entries(itemMap)
-      .filter(([, entries]) => entries.length > 1 || entries.reduce((s, e) => s + e.qty, 0) > 1)
-      .map(([name, entries]) => ({
-        name,
-        totalQty: entries.reduce((s, e) => s + e.qty, 0),
-        entries,
-      }))
-      .sort((a, b) => b.totalQty - a.totalQty)
+    const batched = Object.values(itemMap)
+      .filter(b => b.entries.length > 1 || b.entries.reduce((s, e) => s + e.qty, 0) > 1)
+      .sort((a, b) => a.catOrder - b.catOrder || b.entries.reduce((s,e)=>s+e.qty,0) - a.entries.reduce((s,e)=>s+e.qty,0))
+      .map(b => ({ ...b, totalQty: b.entries.reduce((s, e) => s + e.qty, 0) }))
 
     setBatchItems(batched)
   }
@@ -180,21 +200,19 @@ export default function KDSPage() {
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          {/* View switcher */}
           <div style={{ display: 'flex', background: '#161B22', border: '1px solid #30363D', borderRadius: 10, overflow: 'hidden' }}>
             <button onClick={() => setActiveView('orders')}
-              style={{ padding: '8px 16px', fontSize: 12, fontWeight: 700, border: 'none', cursor: 'pointer', background: activeView === 'orders' ? '#092b33' : 'transparent', color: activeView === 'orders' ? '#fff' : '#94A3B8', transition: 'all 0.15s' }}>
+              style={{ padding: '8px 16px', fontSize: 12, fontWeight: 700, border: 'none', cursor: 'pointer', background: activeView === 'orders' ? '#092b33' : 'transparent', color: activeView === 'orders' ? '#fff' : '#94A3B8' }}>
               🍽 Orders
             </button>
             <button onClick={() => setActiveView('batch')}
-              style={{ padding: '8px 16px', fontSize: 12, fontWeight: 700, border: 'none', cursor: 'pointer', background: activeView === 'batch' ? '#D4A853' : 'transparent', color: activeView === 'batch' ? '#092b33' : '#94A3B8', transition: 'all 0.15s', position: 'relative' }}>
+              style={{ padding: '8px 16px', fontSize: 12, fontWeight: 700, border: 'none', cursor: 'pointer', background: activeView === 'batch' ? '#D4A853' : 'transparent', color: activeView === 'batch' ? '#092b33' : '#94A3B8', position: 'relative' }}>
               🔥 Batch
               {batchItems.length > 0 && (
                 <span style={{ background: '#EF4444', color: '#fff', borderRadius: 10, fontSize: 9, padding: '1px 5px', marginLeft: 5, fontWeight: 800 }}>{batchItems.length}</span>
               )}
             </button>
           </div>
-
           <div style={{ background: '#161B22', border: '1px solid #30363D', borderRadius: 12, padding: '10px 20px' }}>
             <div style={{ color: '#F8FAFC', fontSize: 24, fontWeight: 800, fontFamily: 'monospace', letterSpacing: 1, textTransform: 'uppercase' }}>{time}</div>
           </div>
@@ -211,7 +229,6 @@ export default function KDSPage() {
               <div style={{ color: '#475569', fontSize: 14, marginTop: 8 }}>Waiting for new orders...</div>
             </div>
           )}
-
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 16 }}>
             {orders.map(order => {
               const colors   = getAccentColor(order.kots)
@@ -220,7 +237,6 @@ export default function KDSPage() {
 
               return (
                 <div key={order.orderId} style={{ background: '#161B22', borderRadius: 16, overflow: 'hidden', border: '1.5px solid ' + colors.border, opacity: allReady ? 0.5 : 1, transition: 'opacity 0.3s' }}>
-                  {/* Card header */}
                   <div style={{ background: colors.bg, borderBottom: '1px solid ' + colors.border, padding: '14px 18px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -239,7 +255,6 @@ export default function KDSPage() {
                     </div>
                   </div>
 
-                  {/* KOTs */}
                   <div style={{ padding: '14px 18px' }}>
                     {order.kots.map((kot, kotIdx) => {
                       const isReady = kot.status === 'ready'
@@ -259,6 +274,9 @@ export default function KDSPage() {
                             const qty      = kotItem.order_items?.quantity
                             const notes    = kotItem.order_items?.notes
                             const priority = kotItem.order_items?.menu_items?.priority ?? 2
+                            const catId    = kotItem.order_items?.menu_items?.category_id
+                            const catPos   = categoryOrder[catId] ?? 999
+
                             return (
                               <div key={kotItem.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid #21262D', opacity: isReady ? 0.35 : 1 }}>
                                 <div>
@@ -300,7 +318,7 @@ export default function KDSPage() {
       {activeView === 'batch' && (
         <>
           <div style={{ color: '#94A3B8', fontSize: 13, marginBottom: 16, background: '#161B22', borderRadius: 10, padding: '10px 16px', border: '1px solid #30363D' }}>
-            🔥 <strong style={{ color: '#D4A853' }}>Batch View</strong> — Same items ordered across multiple tables in the last <strong style={{ color: '#fff' }}>5 minutes</strong>. Cook them all together!
+            🔥 <strong style={{ color: '#D4A853' }}>Batch View</strong> — Same items ordered across multiple tables in the last <strong style={{ color: '#fff' }}>5 minutes</strong>. Sorted by category priority. Cook them all together!
           </div>
 
           {batchItems.length === 0 ? (
@@ -313,27 +331,20 @@ export default function KDSPage() {
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 16 }}>
               {batchItems.map(batch => (
                 <div key={batch.name} style={{ background: '#161B22', borderRadius: 16, overflow: 'hidden', border: '1.5px solid #D4A853' }}>
-                  {/* Batch header */}
                   <div style={{ background: '#78350F', borderBottom: '1px solid #D4A853', padding: '14px 18px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div>
                       <div style={{ color: '#F8FAFC', fontWeight: 900, fontSize: 20 }}>{batch.name}</div>
-                      <div style={{ fontSize: 11, color: '#FCD34D', marginTop: 3, fontWeight: 600 }}>
-                        {batch.entries.length} orders · Cook all together
-                      </div>
+                      <div style={{ fontSize: 11, color: '#FCD34D', marginTop: 3, fontWeight: 600 }}>{batch.entries.length} orders · Cook all together</div>
                     </div>
                     <div style={{ background: '#D4A853', color: '#092b33', fontWeight: 900, fontSize: 28, borderRadius: 12, padding: '6px 16px', minWidth: 60, textAlign: 'center' }}>
                       ×{batch.totalQty}
                     </div>
                   </div>
-
-                  {/* Table breakdown */}
                   <div style={{ padding: '14px 18px' }}>
                     {batch.entries.map((entry, i) => (
                       <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 0', borderBottom: i < batch.entries.length - 1 ? '1px solid #21262D' : 'none' }}>
                         <div style={{ color: '#F8FAFC', fontSize: 14, fontWeight: 600 }}>
-                          {entry.orderType === 'dine_in'
-                            ? `Table ${entry.tableNumber}`
-                            : entry.customerName || entry.orderType}
+                          {entry.orderType === 'dine_in' ? `Table ${entry.tableNumber}` : entry.customerName || entry.orderType}
                         </div>
                         <div style={{ background: '#21262D', border: '1px solid #30363D', color: '#F8FAFC', fontWeight: 900, fontSize: 16, borderRadius: 8, padding: '4px 12px', minWidth: 44, textAlign: 'center' }}>
                           ×{entry.qty}
