@@ -22,21 +22,24 @@ export function NewOrderPage() {
   const [orderType, setOrderType]           = useState(tableId ? 'dine_in' : (typeParam || 'takeaway'))
   const [categories, setCategories]         = useState([])
   const [items, setItems]                   = useState([])
+  const [portions, setPortions]             = useState({}) // itemId -> portions[]
   const [activeCategory, setActiveCategory] = useState(null)
   const [cart, setCart]                     = useState([])
   const [loading, setLoading]               = useState(true)
   const [submitting, setSubmitting]         = useState(false)
   const [covers, setCovers]                 = useState(1)
-  const [held, setHeld]                     = useState(false)
   const [existingOrder, setExistingOrder]   = useState(null)
   const [existingKOTs, setExistingKOTs]     = useState([])
   const [runningTotal, setRunningTotal]     = useState(0)
   const [mobileTab, setMobileTab]           = useState('menu')
+  const [search, setSearch]                 = useState('')
+
+  // Portion picker
+  const [portionPickerItem, setPortionPickerItem] = useState(null) // item to pick portion for
 
   const [customerName, setCustomerName]   = useState('')
   const [customerPhone, setCustomerPhone] = useState('')
   const [roomNumber, setRoomNumber]       = useState('')
-  const [search, setSearch] = useState('')
 
   const isOffTable = !tableId
 
@@ -48,21 +51,27 @@ export function NewOrderPage() {
   async function fetchMenu() {
     const { data: cats }      = await supabase.from('menu_categories').select('*').eq('is_active', true).order('sort_order')
     const { data: menuItems } = await supabase.from('menu_items').select('*').eq('is_available', true).order('sort_order')
+    const { data: allPortions } = await supabase.from('item_portions').select('*').eq('is_available', true).order('sort_order')
     setCategories(cats || [])
     setItems(menuItems || [])
+    const portionMap = {}
+    ;(allPortions || []).forEach(p => {
+      if (!portionMap[p.menu_item_id]) portionMap[p.menu_item_id] = []
+      portionMap[p.menu_item_id].push(p)
+    })
+    setPortions(portionMap)
     if (cats && cats.length > 0) setActiveCategory(cats[0].id)
     setLoading(false)
   }
 
   async function fetchExistingOrder() {
-    const { data: order } = await supabase
-      .from('orders').select('*').eq('table_id', tableId).eq('status', 'active').single()
+    const { data: order } = await supabase.from('orders').select('*').eq('table_id', tableId).eq('status', 'active').single()
     if (!order) return
     setExistingOrder(order)
     setCovers(order.covers)
     const { data: kots } = await supabase
       .from('kots')
-      .select(`id, status, created_at, kot_number, kot_items (id, is_done, order_items ( quantity, unit_price, notes, menu_items ( name ) ))`)
+      .select(`id, status, created_at, kot_items (id, is_done, order_items ( quantity, unit_price, notes, portion_name, menu_items ( name ) ))`)
       .eq('order_id', order.id).order('created_at')
     setExistingKOTs(kots || [])
     const { data: orderItems } = await supabase.from('order_items').select('quantity, unit_price').eq('order_id', order.id)
@@ -71,32 +80,46 @@ export function NewOrderPage() {
   }
 
   function getItemsForCategory(categoryId) {
-    let filtered = items.filter(i => i.category_id === categoryId)
-    if (search) filtered = items.filter(i => i.name.toLowerCase().includes(search.toLowerCase()))
-    return filtered
+    if (search) return items.filter(i => i.name.toLowerCase().includes(search.toLowerCase()))
+    return items.filter(i => i.category_id === categoryId)
   }
 
-  function addToCart(item) {
+  // Cart key includes portionId so same item with different portions = separate cart lines
+  function cartKey(itemId, portionId) { return portionId ? `${itemId}_${portionId}` : itemId }
+
+  function addToCart(item, portion = null) {
+    const itemPortions = portions[item.id] || []
+    // If item has portions and no portion selected, show picker
+    if (itemPortions.length > 0 && !portion) {
+      setPortionPickerItem(item)
+      return
+    }
+    const key       = cartKey(item.id, portion?.id)
+    const unitPrice = portion ? parseFloat(portion.price) : parseFloat(item.price)
+    const portionLabel = portion
+      ? `${portion.name}${portion.value ? ` · ${portion.value}${portion.unit || ''}` : ''}`
+      : null
+
     setCart(prev => {
-      const existing = prev.find(c => c.item.id === item.id)
-      if (existing) return prev.map(c => c.item.id === item.id ? { ...c, quantity: c.quantity + 1 } : c)
-      return [...prev, { item, quantity: 1, notes: '' }]
+      const existing = prev.find(c => c.key === key)
+      if (existing) return prev.map(c => c.key === key ? { ...c, quantity: c.quantity + 1 } : c)
+      return [...prev, { key, item, quantity: 1, notes: '', portionId: portion?.id || null, portionName: portionLabel, unitPrice }]
     })
   }
 
-  function removeFromCart(itemId) {
+  function removeFromCart(key) {
     setCart(prev => {
-      const existing = prev.find(c => c.item.id === itemId)
-      if (existing && existing.quantity > 1) return prev.map(c => c.item.id === itemId ? { ...c, quantity: c.quantity - 1 } : c)
-      return prev.filter(c => c.item.id !== itemId)
+      const existing = prev.find(c => c.key === key)
+      if (existing && existing.quantity > 1) return prev.map(c => c.key === key ? { ...c, quantity: c.quantity - 1 } : c)
+      return prev.filter(c => c.key !== key)
     })
   }
 
-  function getCartQuantity(itemId) {
-    return cart.find(c => c.item.id === itemId)?.quantity || 0
+  function getCartQuantityForItem(itemId) {
+    return cart.filter(c => c.item.id === itemId).reduce((sum, c) => sum + c.quantity, 0)
   }
 
-  const cartTotal = cart.reduce((sum, c) => sum + c.item.price * c.quantity, 0)
+  const cartTotal = cart.reduce((sum, c) => sum + c.unitPrice * c.quantity, 0)
   const cartCount = cart.reduce((sum, c) => sum + c.quantity, 0)
 
   async function markKOTReady(kotId) {
@@ -110,9 +133,7 @@ export function NewOrderPage() {
     try {
       let orderId = existingOrder?.id
       if (!orderId) {
-        if (tableId) {
-          await supabase.from('cafe_tables').update({ status: 'occupied', captain_id: profile.id }).eq('id', tableId)
-        }
+        if (tableId) await supabase.from('cafe_tables').update({ status: 'occupied', captain_id: profile.id }).eq('id', tableId)
         const { data: order, error: orderError } = await supabase
           .from('orders')
           .insert({ table_id: tableId || null, captain_id: profile.id, order_type: orderType, covers, customer_name: customerName || null, customer_phone: customerPhone || null, room_number: roomNumber || null, status: 'active' })
@@ -121,8 +142,17 @@ export function NewOrderPage() {
         orderId = order.id
         setExistingOrder(order)
       }
-      if (hold) { setHeld(true); setSubmitting(false); return }
-      const orderItems = cart.map(c => ({ order_id: orderId, item_id: c.item.id, quantity: c.quantity, unit_price: c.item.price, notes: c.notes, status: 'pending' }))
+      if (hold) { setSubmitting(false); return }
+      const orderItems = cart.map(c => ({
+        order_id: orderId,
+        item_id: c.item.id,
+        quantity: c.quantity,
+        unit_price: c.unitPrice,
+        notes: c.notes,
+        portion_id: c.portionId || null,
+        portion_name: c.portionName || null,
+        status: 'pending'
+      }))
       const { data: createdItems, error: itemsError } = await supabase.from('order_items').insert(orderItems).select()
       if (itemsError) throw itemsError
       const { data: kot, error: kotError } = await supabase.from('kots').insert({ order_id: orderId, status: 'pending' }).select().single()
@@ -133,9 +163,7 @@ export function NewOrderPage() {
     } catch (err) {
       console.error('Error firing KOT:', err)
       alert('Something went wrong. Please try again.')
-    } finally {
-      setSubmitting(false)
-    }
+    } finally { setSubmitting(false) }
   }
 
   if (loading) return <div style={{ padding: 40, color: theme.textLight }}>Loading menu...</div>
@@ -144,41 +172,32 @@ export function NewOrderPage() {
     ? items.filter(i => i.name.toLowerCase().includes(search.toLowerCase()))
     : getItemsForCategory(activeCategory)
 
-  // ── CUSTOMER INFO CARD (takeaway / delivery) ──────────────────
   const customerPanel = isOffTable && !existingOrder && (
     <div style={{ background: '#fff', borderRadius: 12, border: '1px solid ' + theme.border, padding: '14px 16px', marginBottom: 12 }}>
-      {/* Type switcher */}
       <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
         {Object.entries(ORDER_TYPES).filter(([k]) => k !== 'dine_in').map(([key, cfg]) => (
           <button key={key} onClick={() => setOrderType(key)}
-            style={{ flex: 1, background: orderType === key ? cfg.color : theme.bgWarm, color: orderType === key ? '#fff' : theme.textMid, border: 'none', borderRadius: 8, padding: '9px 0', fontSize: 13, fontWeight: 700, cursor: 'pointer', transition: 'all 0.15s' }}>
+            style={{ flex: 1, background: orderType === key ? cfg.color : theme.bgWarm, color: orderType === key ? '#fff' : theme.textMid, border: 'none', borderRadius: 8, padding: '9px 0', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
             {cfg.icon} {cfg.label}
           </button>
         ))}
       </div>
-      {/* Fields */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         <div style={{ display: 'flex', gap: 10 }}>
           <div style={{ flex: 1 }}>
-            <label style={{ fontSize: 11, fontWeight: 700, color: theme.textLight, textTransform: 'uppercase', letterSpacing: 0.5, display: 'block', marginBottom: 5 }}>
-              Customer Name <span style={{ color: '#B91C1C' }}>*</span>
-            </label>
+            <label style={{ fontSize: 11, fontWeight: 700, color: theme.textLight, textTransform: 'uppercase', letterSpacing: 0.5, display: 'block', marginBottom: 5 }}>Customer Name <span style={{ color: '#B91C1C' }}>*</span></label>
             <input value={customerName} onChange={e => setCustomerName(e.target.value)} placeholder="e.g. Rahul Sharma"
               style={{ width: '100%', border: '1.5px solid ' + (customerName ? '#0D9488' : theme.border), borderRadius: 8, padding: '9px 12px', fontSize: 13, outline: 'none', boxSizing: 'border-box', color: theme.textDark }} />
           </div>
           <div style={{ flex: 1 }}>
-            <label style={{ fontSize: 11, fontWeight: 700, color: theme.textLight, textTransform: 'uppercase', letterSpacing: 0.5, display: 'block', marginBottom: 5 }}>
-              Phone <span style={{ color: '#B91C1C' }}>*</span>
-            </label>
+            <label style={{ fontSize: 11, fontWeight: 700, color: theme.textLight, textTransform: 'uppercase', letterSpacing: 0.5, display: 'block', marginBottom: 5 }}>Phone <span style={{ color: '#B91C1C' }}>*</span></label>
             <input value={customerPhone} onChange={e => setCustomerPhone(e.target.value)} placeholder="e.g. 9876543210" type="tel"
               style={{ width: '100%', border: '1.5px solid ' + (customerPhone ? '#0D9488' : theme.border), borderRadius: 8, padding: '9px 12px', fontSize: 13, outline: 'none', boxSizing: 'border-box', color: theme.textDark }} />
           </div>
         </div>
         {orderType === 'delivery' && (
           <div>
-            <label style={{ fontSize: 11, fontWeight: 700, color: theme.textLight, textTransform: 'uppercase', letterSpacing: 0.5, display: 'block', marginBottom: 5 }}>
-              Room / Address
-            </label>
+            <label style={{ fontSize: 11, fontWeight: 700, color: theme.textLight, textTransform: 'uppercase', letterSpacing: 0.5, display: 'block', marginBottom: 5 }}>Room / Address</label>
             <input value={roomNumber} onChange={e => setRoomNumber(e.target.value)} placeholder="e.g. Room 12, Villa B"
               style={{ width: '100%', border: '1.5px solid ' + theme.border, borderRadius: 8, padding: '9px 12px', fontSize: 13, outline: 'none', boxSizing: 'border-box', color: theme.textDark }} />
           </div>
@@ -187,7 +206,6 @@ export function NewOrderPage() {
     </div>
   )
 
-  // show existing order customer badge
   const existingCustomerBadge = isOffTable && existingOrder && (
     <div style={{ background: ORDER_TYPES[orderType]?.color + '18', border: '1px solid ' + ORDER_TYPES[orderType]?.color + '33', borderRadius: 10, padding: '10px 14px', marginBottom: 12, display: 'flex', gap: 12, alignItems: 'center' }}>
       <span style={{ fontSize: 20 }}>{ORDER_TYPES[orderType]?.icon}</span>
@@ -200,15 +218,11 @@ export function NewOrderPage() {
     </div>
   )
 
-  // ── SHARED PANELS ──────────────────────────────────────────────
-
   const menuPanel = (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
-
       {customerPanel}
       {existingCustomerBadge}
 
-      {/* Dine-in header */}
       {!isOffTable && (
         <div style={{ background: '#092b33', borderRadius: 12, padding: '12px 16px', marginBottom: 12 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
@@ -234,27 +248,19 @@ export function NewOrderPage() {
         </div>
       )}
 
-      {/* Off-table top bar */}
       {isOffTable && (
         <div style={{ background: '#092b33', borderRadius: 12, padding: '10px 16px', marginBottom: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div style={{ color: '#fff', fontWeight: 800, fontSize: 15 }}>
-            {ORDER_TYPES[orderType]?.icon} {ORDER_TYPES[orderType]?.label} Order
-          </div>
-          <button onClick={() => navigate('/orders')}
-            style={{ background: 'rgba(255,255,255,0.1)', border: 'none', color: 'rgba(255,255,255,0.7)', borderRadius: 7, padding: '5px 12px', fontSize: 12, cursor: 'pointer', fontWeight: 600 }}>
-            ← Back
-          </button>
+          <div style={{ color: '#fff', fontWeight: 800, fontSize: 15 }}>{ORDER_TYPES[orderType]?.icon} {ORDER_TYPES[orderType]?.label} Order</div>
+          <button onClick={() => navigate('/orders')} style={{ background: 'rgba(255,255,255,0.1)', border: 'none', color: 'rgba(255,255,255,0.7)', borderRadius: 7, padding: '5px 12px', fontSize: 12, cursor: 'pointer', fontWeight: 600 }}>← Back</button>
         </div>
       )}
 
-      {/* Search */}
       <div style={{ position: 'relative', marginBottom: 10 }}>
         <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search menu items..."
           style={{ width: '100%', background: '#fff', border: '1px solid ' + theme.border, borderRadius: 9, padding: '9px 14px 9px 36px', fontSize: 13, color: theme.textDark, outline: 'none', boxSizing: 'border-box' }} />
         <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', fontSize: 14, color: theme.textLight }}>🔍</span>
       </div>
 
-      {/* Category tabs */}
       {!search && (
         <div style={{ display: 'flex', gap: 6, marginBottom: 10, overflowX: 'auto', paddingBottom: 4, flexShrink: 0 }}>
           {categories.map(cat => (
@@ -266,27 +272,29 @@ export function NewOrderPage() {
         </div>
       )}
 
-      {/* Menu grid */}
       <div style={{ flex: 1, overflowY: 'auto' }}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 8 }}>
           {displayItems.map(item => {
-            const qty = getCartQuantity(item.id)
+            const qty = getCartQuantityForItem(item.id)
+            const itemPortions = portions[item.id] || []
+            const hasPortions = itemPortions.length > 0
             return (
               <div key={item.id} style={{ background: '#fff', borderRadius: 10, padding: 12, border: qty > 0 ? '2px solid #0D9488' : '1px solid ' + theme.border, boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
                 <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6, marginBottom: 6 }}>
                   <div style={{ width: 9, height: 9, borderRadius: 2, border: '2px solid ' + (item.food_type === 'veg' ? '#15803D' : '#B91C1C'), background: item.food_type === 'veg' ? '#15803D' : '#B91C1C', flexShrink: 0, marginTop: 3 }} />
                   <div style={{ fontWeight: 700, fontSize: 12, color: theme.textDark, lineHeight: 1.3 }}>{item.name}</div>
                 </div>
-                <div style={{ fontWeight: 800, fontSize: 13, color: theme.textDark, marginBottom: 8 }}>₹{item.price}</div>
-                {qty === 0 ? (
-                  <button onClick={() => addToCart(item)} style={{ width: '100%', background: '#092b33', color: '#fff', border: 'none', borderRadius: 6, padding: '6px 0', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>+ Add</button>
-                ) : (
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#0D9488', borderRadius: 6, overflow: 'hidden' }}>
-                    <button onClick={() => removeFromCart(item.id)} style={{ background: 'none', border: 'none', color: '#fff', padding: '6px 12px', fontSize: 16, cursor: 'pointer', fontWeight: 700 }}>-</button>
-                    <span style={{ color: '#fff', fontWeight: 800, fontSize: 13 }}>{qty}</span>
-                    <button onClick={() => addToCart(item)} style={{ background: 'none', border: 'none', color: '#fff', padding: '6px 12px', fontSize: 16, cursor: 'pointer', fontWeight: 700 }}>+</button>
+                {hasPortions ? (
+                  <div style={{ fontSize: 10, color: '#0D9488', fontWeight: 700, marginBottom: 6 }}>
+                    {itemPortions.length} portion{itemPortions.length !== 1 ? 's' : ''} available
                   </div>
+                ) : (
+                  <div style={{ fontWeight: 800, fontSize: 13, color: theme.textDark, marginBottom: 8 }}>₹{item.price}</div>
                 )}
+                <button onClick={() => addToCart(item)}
+                  style={{ width: '100%', background: hasPortions ? '#0D9488' : '#092b33', color: '#fff', border: 'none', borderRadius: 6, padding: '6px 0', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+                  {hasPortions ? 'Choose →' : qty === 0 ? '+ Add' : `+ Add (${qty})`}
+                </button>
               </div>
             )
           })}
@@ -308,25 +316,21 @@ export function NewOrderPage() {
             <div key={kot.id} style={{ padding: '10px 14px', borderBottom: '1px solid ' + theme.bgWarm }}>
               <div style={{ fontSize: 10, fontWeight: 700, color: theme.textLight, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 }}>
                 KOT {idx + 1} · {new Date(kot.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
-                <span style={{ marginLeft: 8, background: kot.status === 'ready' ? theme.greenBg : theme.yellowBg, color: kot.status === 'ready' ? theme.green : theme.yellow, padding: '1px 6px', borderRadius: 10, fontSize: 9 }}>
-                  {kot.status}
-                </span>
+                <span style={{ marginLeft: 8, background: kot.status === 'ready' ? theme.greenBg : theme.yellowBg, color: kot.status === 'ready' ? theme.green : theme.yellow, padding: '1px 6px', borderRadius: 10, fontSize: 9 }}>{kot.status}</span>
               </div>
               {kot.kot_items.map((ki, i) => (
                 <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: theme.textMid, padding: '2px 0' }}>
-                  <span>{ki.order_items?.menu_items?.name}</span>
+                  <span>
+                    {ki.order_items?.menu_items?.name}
+                    {ki.order_items?.portion_name && <span style={{ color: '#0D9488', fontWeight: 600 }}> ({ki.order_items.portion_name})</span>}
+                  </span>
                   <span style={{ color: theme.textLight }}>×{ki.order_items?.quantity}</span>
                 </div>
               ))}
               {kot.status !== 'ready' ? (
-                <button onClick={() => markKOTReady(kot.id)}
-                  style={{ width: '100%', marginTop: 8, background: '#DCFCE7', color: '#15803D', border: '1px solid #86EFAC', borderRadius: 7, padding: '7px 0', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
-                  ✓ Mark as Ready
-                </button>
+                <button onClick={() => markKOTReady(kot.id)} style={{ width: '100%', marginTop: 8, background: '#DCFCE7', color: '#15803D', border: '1px solid #86EFAC', borderRadius: 7, padding: '7px 0', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>✓ Mark as Ready</button>
               ) : (
-                <div style={{ width: '100%', marginTop: 8, background: '#DCFCE7', color: '#15803D', border: '1px solid #86EFAC', borderRadius: 7, padding: '7px 0', fontSize: 11, fontWeight: 700, textAlign: 'center' }}>
-                  ✓ Ready
-                </div>
+                <div style={{ width: '100%', marginTop: 8, background: '#DCFCE7', color: '#15803D', border: '1px solid #86EFAC', borderRadius: 7, padding: '7px 0', fontSize: 11, fontWeight: 700, textAlign: 'center' }}>✓ Ready</div>
               )}
             </div>
           ))}
@@ -340,24 +344,25 @@ export function NewOrderPage() {
           </div>
         ) : (
           <>
-            {existingKOTs.length > 0 && (
-              <div style={{ fontSize: 10, fontWeight: 700, color: theme.primary, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>New Round</div>
-            )}
+            {existingKOTs.length > 0 && <div style={{ fontSize: 10, fontWeight: 700, color: theme.primary, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>New Round</div>}
             {cart.map(c => (
-              <div key={c.item.id} style={{ padding: '8px 0', borderBottom: '1px solid ' + theme.bgWarm }}>
+              <div key={c.key} style={{ padding: '8px 0', borderBottom: '1px solid ' + theme.bgWarm }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <div style={{ flex: 1 }}>
                     <div style={{ fontWeight: 700, fontSize: 13, color: theme.textDark }}>{c.item.name}</div>
-                    <div style={{ fontSize: 11, color: theme.textLight }}>₹{c.item.price} × {c.quantity}</div>
+                    {c.portionName && <div style={{ fontSize: 11, color: '#0D9488', fontWeight: 600, marginTop: 1 }}>{c.portionName}</div>}
+                    <div style={{ fontSize: 11, color: theme.textLight }}>₹{c.unitPrice} × {c.quantity}</div>
                   </div>
-                  <div style={{ fontWeight: 700, fontSize: 13, color: theme.textDark }}>₹{c.item.price * c.quantity}</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <button onClick={() => removeFromCart(c.key)} style={{ background: theme.bgWarm, border: '1px solid ' + theme.border, borderRadius: 5, width: 22, height: 22, fontSize: 14, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, color: theme.textMid }}>-</button>
+                    <span style={{ fontWeight: 700, fontSize: 13, color: theme.textDark, minWidth: 20, textAlign: 'center' }}>{c.quantity}</span>
+                    <button onClick={() => addToCart(c.item, c.portionId ? portions[c.item.id]?.find(p => p.id === c.portionId) : null)} style={{ background: '#0D9488', border: 'none', borderRadius: 5, width: 22, height: 22, fontSize: 14, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, color: '#fff' }}>+</button>
+                  </div>
+                  <div style={{ fontWeight: 700, fontSize: 13, color: theme.textDark }}>₹{c.unitPrice * c.quantity}</div>
                 </div>
-                <input
-                  value={c.notes}
-                  onChange={e => setCart(prev => prev.map(ci => ci.item.id === c.item.id ? { ...ci, notes: e.target.value } : ci))}
+                <input value={c.notes} onChange={e => setCart(prev => prev.map(ci => ci.key === c.key ? { ...ci, notes: e.target.value } : ci))}
                   placeholder="Add note (e.g. no onion, extra spicy...)"
-                  style={{ width: '100%', marginTop: 6, background: '#F8F6F2', border: '1px solid ' + theme.border, borderRadius: 6, padding: '5px 10px', fontSize: 11, color: theme.textDark, outline: 'none', boxSizing: 'border-box' }}
-                />
+                  style={{ width: '100%', marginTop: 6, background: '#F8F6F2', border: '1px solid ' + theme.border, borderRadius: 6, padding: '5px 10px', fontSize: 11, color: theme.textDark, outline: 'none', boxSizing: 'border-box' }} />
               </div>
             ))}
           </>
@@ -397,6 +402,39 @@ export function NewOrderPage() {
 
   return (
     <>
+      {/* ── PORTION PICKER MODAL ── */}
+      {portionPickerItem && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000, padding: 20 }}
+          onClick={e => e.target === e.currentTarget && setPortionPickerItem(null)}>
+          <div style={{ background: '#fff', borderRadius: 20, padding: 28, width: '100%', maxWidth: 400, boxShadow: '0 24px 64px rgba(0,0,0,0.25)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
+              <div style={{ width: 10, height: 10, borderRadius: 2, background: portionPickerItem.food_type === 'veg' ? '#15803D' : '#B91C1C', flexShrink: 0 }} />
+              <div style={{ fontWeight: 800, fontSize: 17, color: theme.textDark }}>{portionPickerItem.name}</div>
+            </div>
+            <div style={{ fontSize: 12, fontWeight: 700, color: theme.textLight, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 12 }}>Select Portion / Size</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 16 }}>
+              {(portions[portionPickerItem.id] || []).map(p => (
+                <button key={p.id}
+                  onClick={() => { addToCart(portionPickerItem, p); setPortionPickerItem(null) }}
+                  style={{ background: '#F9FAFB', border: '2px solid ' + theme.border, borderRadius: 12, padding: '14px 18px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', transition: 'all 0.15s', textAlign: 'left' }}
+                  onMouseEnter={e => { e.currentTarget.style.borderColor = '#0D9488'; e.currentTarget.style.background = '#E6FAF8' }}
+                  onMouseLeave={e => { e.currentTarget.style.borderColor = theme.border; e.currentTarget.style.background = '#F9FAFB' }}>
+                  <div>
+                    <div style={{ fontWeight: 700, fontSize: 14, color: theme.textDark }}>{p.name}</div>
+                    {(p.value > 0 && p.unit) && <div style={{ fontSize: 12, color: theme.textLight, marginTop: 2 }}>{p.value}{p.unit}</div>}
+                  </div>
+                  <div style={{ fontWeight: 900, fontSize: 16, color: '#092b33' }}>₹{p.price}</div>
+                </button>
+              ))}
+            </div>
+            <button onClick={() => setPortionPickerItem(null)}
+              style={{ width: '100%', background: theme.bgWarm, border: '1px solid ' + theme.border, borderRadius: 10, padding: '11px 0', fontSize: 13, fontWeight: 700, cursor: 'pointer', color: theme.textMid }}>
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="orders-desktop" style={{ display: 'flex', gap: 16, height: 'calc(100vh - 112px)' }}>
         {menuPanel}
         <div style={{ width: 290, background: '#fff', borderRadius: 12, border: '1px solid ' + theme.border, display: 'flex', flexDirection: 'column', overflow: 'hidden', flexShrink: 0 }}>
@@ -406,38 +444,27 @@ export function NewOrderPage() {
 
       <div className="orders-mobile" style={{ display: 'none', flexDirection: 'column', height: 'calc(100vh - 120px)' }}>
         <div style={{ display: 'flex', background: '#092b33', borderRadius: 10, padding: 4, marginBottom: 12, flexShrink: 0 }}>
-          <button onClick={() => setMobileTab('menu')}
-            style={{ flex: 1, padding: '8px 0', borderRadius: 7, border: 'none', fontWeight: 700, fontSize: 13, cursor: 'pointer', background: mobileTab === 'menu' ? '#fff' : 'transparent', color: mobileTab === 'menu' ? '#092b33' : 'rgba(255,255,255,0.6)', transition: 'all 0.15s' }}>
-            🍽 Menu
-          </button>
-          <button onClick={() => setMobileTab('order')}
-            style={{ flex: 1, padding: '8px 0', borderRadius: 7, border: 'none', fontWeight: 700, fontSize: 13, cursor: 'pointer', background: mobileTab === 'order' ? '#fff' : 'transparent', color: mobileTab === 'order' ? '#092b33' : 'rgba(255,255,255,0.6)', transition: 'all 0.15s', position: 'relative' }}>
+          <button onClick={() => setMobileTab('menu')} style={{ flex: 1, padding: '8px 0', borderRadius: 7, border: 'none', fontWeight: 700, fontSize: 13, cursor: 'pointer', background: mobileTab === 'menu' ? '#fff' : 'transparent', color: mobileTab === 'menu' ? '#092b33' : 'rgba(255,255,255,0.6)' }}>🍽 Menu</button>
+          <button onClick={() => setMobileTab('order')} style={{ flex: 1, padding: '8px 0', borderRadius: 7, border: 'none', fontWeight: 700, fontSize: 13, cursor: 'pointer', background: mobileTab === 'order' ? '#fff' : 'transparent', color: mobileTab === 'order' ? '#092b33' : 'rgba(255,255,255,0.6)', position: 'relative' }}>
             🧾 Order {cartCount > 0 && <span style={{ background: '#0D9488', color: '#fff', borderRadius: 10, fontSize: 10, padding: '1px 6px', marginLeft: 4 }}>{cartCount}</span>}
           </button>
         </div>
         <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
           {mobileTab === 'menu' ? menuPanel : (
-            <div style={{ background: '#fff', borderRadius: 12, border: '1px solid ' + theme.border, display: 'flex', flexDirection: 'column', overflow: 'hidden', flex: 1 }}>
-              {orderPanel}
-            </div>
+            <div style={{ background: '#fff', borderRadius: 12, border: '1px solid ' + theme.border, display: 'flex', flexDirection: 'column', overflow: 'hidden', flex: 1 }}>{orderPanel}</div>
           )}
         </div>
       </div>
 
-      <style>{`
-        @media (max-width: 768px) {
-          .orders-desktop { display: none !important; }
-          .orders-mobile  { display: flex !important; }
-        }
-      `}</style>
+      <style>{`@media (max-width: 768px) { .orders-desktop { display: none !important; } .orders-mobile { display: flex !important; } }`}</style>
     </>
   )
 }
 
 // ─── ORDERS LIST PAGE ──────────────────────────────────────────────────────────
 export default function OrdersPage() {
-  const [orders, setOrders]             = useState([])
-  const [loading, setLoading]           = useState(true)
+  const [orders, setOrders]               = useState([])
+  const [loading, setLoading]             = useState(true)
   const [showTypeMenu, setShowTypeMenu]   = useState(false)
   const [deleteOrderId, setDeleteOrderId] = useState(null)
   const dropdownRef = useRef(null)
@@ -446,18 +473,13 @@ export default function OrdersPage() {
 
   useEffect(() => {
     fetchOrders()
-    // Refresh at next midnight to reset the day
-    const now      = new Date()
-    const midnight = new Date(now)
-    midnight.setHours(24, 0, 0, 0)
+    const now = new Date(); const midnight = new Date(now); midnight.setHours(24, 0, 0, 0)
     const timer = setTimeout(() => fetchOrders(), midnight - now)
     return () => clearTimeout(timer)
   }, [])
 
   useEffect(() => {
-    function handleClick(e) {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) setShowTypeMenu(false)
-    }
+    function handleClick(e) { if (dropdownRef.current && !dropdownRef.current.contains(e.target)) setShowTypeMenu(false) }
     document.addEventListener('mousedown', handleClick)
     return () => document.removeEventListener('mousedown', handleClick)
   }, [])
@@ -465,12 +487,7 @@ export default function OrdersPage() {
   async function fetchOrders() {
     const start = new Date(); start.setHours(0, 0, 0, 0)
     const end   = new Date(); end.setHours(23, 59, 59, 999)
-    const { data, error } = await supabase
-      .from('orders')
-      .select('*, cafe_tables(number), staff(name)')
-      .gte('created_at', start.toISOString())
-      .lte('created_at', end.toISOString())
-      .order('created_at', { ascending: false })
+    const { data, error } = await supabase.from('orders').select('*, cafe_tables(number), staff(name)').gte('created_at', start.toISOString()).lte('created_at', end.toISOString()).order('created_at', { ascending: false })
     if (!error) {
       const sorted = (data || []).sort((a, b) => {
         if (a.status === 'active' && b.status !== 'active') return -1
@@ -485,40 +502,17 @@ export default function OrdersPage() {
   async function deleteOrder(id) {
     try {
       const order = orders.find(o => o.id === id)
-
-      // Free the table if dine-in
-      if (order?.table_id) {
-        await supabase.from('cafe_tables').update({ status: 'free', captain_id: null }).eq('id', order.table_id)
-      }
-
-      // Delete bills linked to this order
-      const { error: billErr } = await supabase.from('bills').delete().eq('order_id', id)
-      if (billErr) throw new Error('bills: ' + billErr.message)
-
-      // Get all KOTs for this order
+      if (order?.table_id) await supabase.from('cafe_tables').update({ status: 'free', captain_id: null }).eq('id', order.table_id)
+      await supabase.from('bills').delete().eq('order_id', id)
       const { data: kots } = await supabase.from('kots').select('id').eq('order_id', id)
-
       if (kots?.length) {
-        const kotIds = kots.map(k => k.id)
-        const { error: kiErr } = await supabase.from('kot_items').delete().in('kot_id', kotIds)
-        if (kiErr) throw new Error('kot_items: ' + kiErr.message)
-
-        const { error: kotErr } = await supabase.from('kots').delete().eq('order_id', id)
-        if (kotErr) throw new Error('kots: ' + kotErr.message)
+        await supabase.from('kot_items').delete().in('kot_id', kots.map(k => k.id))
+        await supabase.from('kots').delete().eq('order_id', id)
       }
-
-      const { error: oiErr } = await supabase.from('order_items').delete().eq('order_id', id)
-      if (oiErr) throw new Error('order_items: ' + oiErr.message)
-
-      const { error: ordErr } = await supabase.from('orders').delete().eq('id', id)
-      if (ordErr) throw new Error('orders: ' + ordErr.message)
-
-      setDeleteOrderId(null)
-      fetchOrders()
-    } catch (err) {
-      console.error('Delete failed:', err)
-      alert('Delete failed: ' + err.message)
-    }
+      await supabase.from('order_items').delete().eq('order_id', id)
+      await supabase.from('orders').delete().eq('id', id)
+      setDeleteOrderId(null); fetchOrders()
+    } catch (err) { console.error('Delete failed:', err); alert('Delete failed: ' + err.message) }
   }
 
   function handleTypeSelect(type) {
@@ -538,10 +532,8 @@ export default function OrdersPage() {
             {orders.filter(o => o.status === 'active').length} active · {orders.filter(o => o.status !== 'active').length} completed
           </p>
         </div>
-
         <div ref={dropdownRef} style={{ position: 'relative' }}>
-          <button onClick={() => setShowTypeMenu(d => !d)}
-            style={{ background: '#092b33', color: '#fff', border: 'none', borderRadius: 9, padding: '10px 20px', fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}>
+          <button onClick={() => setShowTypeMenu(d => !d)} style={{ background: '#092b33', color: '#fff', border: 'none', borderRadius: 9, padding: '10px 20px', fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}>
             + New Order <span style={{ fontSize: 10, opacity: 0.6 }}>▼</span>
           </button>
           {showTypeMenu && (
@@ -554,9 +546,7 @@ export default function OrdersPage() {
                   <span style={{ fontSize: 20 }}>{cfg.icon}</span>
                   <div>
                     <div style={{ fontWeight: 700 }}>{cfg.label}</div>
-                    <div style={{ fontSize: 11, color: theme.textLight }}>
-                      {key === 'dine_in' ? 'Select a table' : key === 'takeaway' ? 'Customer picks up' : 'Deliver to address'}
-                    </div>
+                    <div style={{ fontSize: 11, color: theme.textLight }}>{key === 'dine_in' ? 'Select a table' : key === 'takeaway' ? 'Customer picks up' : 'Deliver to address'}</div>
                   </div>
                 </div>
               ))}
@@ -566,53 +556,31 @@ export default function OrdersPage() {
       </div>
 
       {orders.length === 0 ? (
-        <div style={{ background: '#fff', borderRadius: 14, border: '1px solid ' + theme.border, textAlign: 'center', padding: 48, color: theme.textLight }}>
-          No orders today. Click "+ New Order" to get started.
-        </div>
+        <div style={{ background: '#fff', borderRadius: 14, border: '1px solid ' + theme.border, textAlign: 'center', padding: 48, color: theme.textLight }}>No orders today. Click "+ New Order" to get started.</div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {orders.map(order => {
-            const typeConfig  = ORDER_TYPES[order.order_type] || ORDER_TYPES.dine_in
-            const isOffTable  = !order.table_id
-            const isActive    = order.status === 'active'
-            const canDelete   = ['owner', 'manager'].includes(profile?.role)
+            const typeConfig = ORDER_TYPES[order.order_type] || ORDER_TYPES.dine_in
+            const isOffTable = !order.table_id
+            const isActive   = order.status === 'active'
+            const canDelete  = ['owner', 'manager'].includes(profile?.role)
             return (
               <div key={order.id} style={{ position: 'relative' }}>
                 <div
-                  onClick={() => isActive
-                    ? isOffTable
-                      ? navigate('/orders/new?type=' + order.order_type)
-                      : navigate('/orders/new?table=' + order.table_id + '&tableNumber=' + order.cafe_tables?.number)
-                    : null
-                  }
+                  onClick={() => isActive ? (isOffTable ? navigate('/orders/new?type=' + order.order_type) : navigate('/orders/new?table=' + order.table_id + '&tableNumber=' + order.cafe_tables?.number)) : null}
                   style={{ background: '#fff', borderRadius: 12, padding: '14px 18px', paddingRight: canDelete ? 52 : 18, border: '1px solid ' + (isActive ? theme.border : theme.bgWarm), cursor: isActive ? 'pointer' : 'default', display: 'flex', alignItems: 'center', gap: 14, boxShadow: '0 1px 3px rgba(0,0,0,0.05)', opacity: isActive ? 1 : 0.65 }}>
-                  <div style={{ width: 42, height: 42, background: typeConfig.color + '18', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>
-                    {typeConfig.icon}
-                  </div>
+                  <div style={{ width: 42, height: 42, background: typeConfig.color + '18', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>{typeConfig.icon}</div>
                   <div style={{ flex: 1 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <div style={{ fontWeight: 700, fontSize: 14, color: theme.textDark }}>
-                        {order.cafe_tables ? 'Table ' + order.cafe_tables.number : order.customer_name || typeConfig.label}
-                      </div>
-                      {!isActive && (
-                        <span style={{ fontSize: 10, fontWeight: 700, background: '#DCFCE7', color: '#15803D', padding: '2px 8px', borderRadius: 20 }}>
-                          ✓ Done
-                        </span>
-                      )}
+                      <div style={{ fontWeight: 700, fontSize: 14, color: theme.textDark }}>{order.cafe_tables ? 'Table ' + order.cafe_tables.number : order.customer_name || typeConfig.label}</div>
+                      {!isActive && <span style={{ fontSize: 10, fontWeight: 700, background: '#DCFCE7', color: '#15803D', padding: '2px 8px', borderRadius: 20 }}>✓ Done</span>}
                     </div>
-                    <div style={{ fontSize: 12, color: theme.textLight, marginTop: 2 }}>
-                      {typeConfig.label}
-                      {order.customer_phone && ` · 📞 ${order.customer_phone}`}
-                      {!isOffTable && ` · ${order.covers} cover${order.covers !== 1 ? 's' : ''}`}
-                    </div>
+                    <div style={{ fontSize: 12, color: theme.textLight, marginTop: 2 }}>{typeConfig.label}{order.customer_phone && ` · 📞 ${order.customer_phone}`}{!isOffTable && ` · ${order.covers} cover${order.covers !== 1 ? 's' : ''}`}</div>
                   </div>
-                  <div style={{ fontSize: 12, color: theme.textLight }}>
-                    {new Date(order.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
-                  </div>
+                  <div style={{ fontSize: 12, color: theme.textLight }}>{new Date(order.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}</div>
                 </div>
                 {canDelete && (
-                  <button
-                    onClick={e => { e.stopPropagation(); setDeleteOrderId(order.id) }}
+                  <button onClick={e => { e.stopPropagation(); setDeleteOrderId(order.id) }}
                     style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 7, padding: '6px 8px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
                     <Trash2 size={14} color='#DC2626' />
                   </button>
@@ -623,24 +591,15 @@ export default function OrdersPage() {
         </div>
       )}
 
-      {/* Delete Order Confirm */}
       {deleteOrderId && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
           <div style={{ background: '#fff', borderRadius: 16, padding: 28, width: '100%', maxWidth: 360, textAlign: 'center', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}>
-            <div style={{ width: 52, height: 52, borderRadius: '50%', background: '#FEF2F2', border: '2px solid #FECACA', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
-              <Trash2 size={22} color='#DC2626' />
-            </div>
+            <div style={{ width: 52, height: 52, borderRadius: '50%', background: '#FEF2F2', border: '2px solid #FECACA', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}><Trash2 size={22} color='#DC2626' /></div>
             <div style={{ fontWeight: 800, fontSize: 16, color: theme.textDark, marginBottom: 8 }}>Delete Order?</div>
             <div style={{ fontSize: 13, color: theme.textLight, marginBottom: 22 }}>This will permanently delete the order, its bill, all KOTs, and free the table. This cannot be undone.</div>
             <div style={{ display: 'flex', gap: 10 }}>
-              <button onClick={() => setDeleteOrderId(null)}
-                style={{ flex: 1, background: theme.bgWarm, border: 'none', borderRadius: 9, padding: '11px 0', fontSize: 13, fontWeight: 700, cursor: 'pointer', color: theme.textMid }}>
-                Cancel
-              </button>
-              <button onClick={() => deleteOrder(deleteOrderId)}
-                style={{ flex: 1, background: '#DC2626', color: '#fff', border: 'none', borderRadius: 9, padding: '11px 0', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
-                Delete
-              </button>
+              <button onClick={() => setDeleteOrderId(null)} style={{ flex: 1, background: theme.bgWarm, border: 'none', borderRadius: 9, padding: '11px 0', fontSize: 13, fontWeight: 700, cursor: 'pointer', color: theme.textMid }}>Cancel</button>
+              <button onClick={() => deleteOrder(deleteOrderId)} style={{ flex: 1, background: '#DC2626', color: '#fff', border: 'none', borderRadius: 9, padding: '11px 0', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>Delete</button>
             </div>
           </div>
         </div>
