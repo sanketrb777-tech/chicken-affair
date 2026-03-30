@@ -6,12 +6,13 @@ import { theme } from '../../lib/theme'
 
 const APP_URL = 'https://bambiniapp-hue.vercel.app'
 
-const STATUS_CONFIG = {
-  free:           { label: 'Free',     bg: '#E6FAF8', color: '#0D9488', border: '#99E6E0' },
-  occupied:       { label: 'Occupied', bg: '#FEF3C7', color: '#B45309', border: '#FCD34D' },
-  bill_requested: { label: 'Bill',     bg: '#FEE2E2', color: '#B91C1C', border: '#FCA5A5' },
-  reserved:       { label: 'Reserved', bg: '#EDE9FE', color: '#6D28D9', border: '#C4B5FD' },
-  cleaning:       { label: 'Cleaning', bg: '#F1F5F9', color: '#64748B', border: '#CBD5E1' },
+// Card color by status — matching Petpooja style
+const STATUS_CFG = {
+  free:           { bg: '#F0F4FF', border: '#C7D7FF', borderStyle: '2px dashed', color: '#374151' },
+  occupied:       { bg: '#FFFBEB', border: '#FCD34D', borderStyle: '2px solid',  color: '#92400E' },
+  bill_requested: { bg: '#FEF2F2', border: '#FCA5A5', borderStyle: '2px solid',  color: '#991B1B' },
+  reserved:       { bg: '#F5F3FF', border: '#C4B5FD', borderStyle: '2px solid',  color: '#5B21B6' },
+  cleaning:       { bg: '#F8FAFC', border: '#CBD5E1', borderStyle: '2px dashed', color: '#64748B' },
 }
 
 export default function TablesPage() {
@@ -26,13 +27,11 @@ export default function TablesPage() {
   const [changingTable, setChangingTable] = useState(false)
   const navigate = useNavigate()
 
-  // Add/Edit table state
   const [showForm, setShowForm]   = useState(false)
   const [editTable, setEditTable] = useState(null)
   const [saving, setSaving]       = useState(false)
   const [form, setForm]           = useState({ number: '', name: '', area: '', capacity: 4 })
 
-  // QR modal
   const [qrModal, setQrModal]         = useState(null)
   const [downloading, setDownloading] = useState(false)
 
@@ -49,17 +48,15 @@ export default function TablesPage() {
           .from('orders').select('id, created_at')
           .eq('table_id', table.id).eq('status', 'active').single()
         if (!order) return
-
         const { data: orderItems } = await supabase
           .from('order_items').select('quantity, unit_price').eq('order_id', order.id)
         const total = (orderItems || []).reduce((sum, i) => sum + i.quantity * i.unit_price, 0)
-
         const { data: lastKOT } = await supabase
           .from('kots').select('created_at')
           .eq('order_id', order.id).order('created_at', { ascending: false }).limit(1).single()
-
         stats[table.id] = {
           total,
+          firstOrderTime: order.created_at,
           lastKOTTime: lastKOT?.created_at || order.created_at,
           orderId: order.id,
         }
@@ -76,20 +73,23 @@ export default function TablesPage() {
     const timer = setInterval(() => setNow(new Date()), 30000)
     const channel = supabase
       .channel('tables-live')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'cafe_tables' },           fetchTables)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' },                fetchTables)
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'order_items' },      fetchTables)
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'order_items' },      fetchTables)
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'kots' },             fetchTables)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'cafe_tables' },      fetchTables)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' },           fetchTables)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'order_items' }, fetchTables)
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'order_items' }, fetchTables)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'kots' },        fetchTables)
       .subscribe()
     return () => { supabase.removeChannel(channel); clearInterval(timer) }
   }, [fetchTables])
 
-  function getElapsed(dateString) {
-    if (!dateString) return null
-    const diff = Math.floor((now - new Date(dateString)) / 60000)
-    if (diff < 60) return diff + 'm'
-    return Math.floor(diff / 60) + 'h ' + (diff % 60) + 'm'
+  function getElapsedMins(dateString) {
+    if (!dateString) return 0
+    return Math.floor((now - new Date(dateString)) / 60000)
+  }
+
+  function formatElapsed(mins) {
+    if (mins < 60) return `${mins} Min`
+    return `${Math.floor(mins / 60)}h ${mins % 60}m`
   }
 
   function handleTableClick(table) {
@@ -120,7 +120,6 @@ export default function TablesPage() {
     }
   }
 
-  // ── Table management ──
   function openAdd() {
     setForm({ number: '', name: '', area: '', capacity: 4 })
     setEditTable(null)
@@ -154,14 +153,13 @@ export default function TablesPage() {
     } catch (err) {
       alert('Error: ' + err.message)
     } finally {
-      setSaving(false)
-    }
+      setSaving(false) }
   }
 
-  async function deleteTable(e, id) {
-    e.stopPropagation()
+  async function deleteTable(id) {
     if (!window.confirm('Delete this table?')) return
     await supabase.from('cafe_tables').delete().eq('id', id)
+    setShowForm(false)
     fetchTables()
   }
 
@@ -177,16 +175,132 @@ export default function TablesPage() {
     setDownloading(false)
   }
 
+  // ── Group tables by area ──
+  const areaMap = {}
+  tables.forEach(t => {
+    const area = t.area?.trim() || 'General'
+    if (!areaMap[area]) areaMap[area] = []
+    areaMap[area].push(t)
+  })
+  const areas = Object.keys(areaMap).sort()
+
   const freeTables    = tables.filter(t => t.status === 'free')
   const freeCount     = freeTables.length
   const occupiedCount = tables.filter(t => t.status === 'occupied' || t.status === 'bill_requested').length
 
   if (loading) return <div style={{ padding: 40, color: theme.textLight }}>Loading tables...</div>
 
+  // ── SINGLE TABLE CARD ──
+  function TableCard({ table }) {
+    const cfg      = STATUS_CFG[table.status] || STATUS_CFG.free
+    const stats    = tableStats[table.id]
+    const isFree   = table.status === 'free'
+    const isOcc    = table.status === 'occupied' || table.status === 'bill_requested'
+    const elapsedMins = stats ? getElapsedMins(stats.firstOrderTime) : 0
+    const displayName = table.name || `${table.number}`
+
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+        <div
+          onClick={() => handleTableClick(table)}
+          style={{
+            width: 130, height: 130,
+            borderRadius: 12,
+            border: cfg.borderStyle + ' ' + cfg.border,
+            background: cfg.bg,
+            cursor: 'pointer',
+            display: 'flex', flexDirection: 'column',
+            alignItems: 'center', justifyContent: 'space-between',
+            padding: '10px 8px 8px',
+            position: 'relative',
+            boxShadow: isOcc ? '0 2px 8px rgba(0,0,0,0.1)' : 'none',
+            transition: 'transform 0.1s, box-shadow 0.1s',
+          }}
+          onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.03)'; e.currentTarget.style.boxShadow = '0 6px 16px rgba(0,0,0,0.12)' }}
+          onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.boxShadow = isOcc ? '0 2px 8px rgba(0,0,0,0.1)' : 'none' }}>
+
+          {/* Top: elapsed time or status */}
+          <div style={{ width: '100%', textAlign: 'center' }}>
+            {isOcc && stats ? (
+              <div style={{ fontSize: 11, fontWeight: 800, color: cfg.color }}>{formatElapsed(elapsedMins)}</div>
+            ) : (
+              <div style={{ fontSize: 10, fontWeight: 600, color: cfg.color, opacity: 0.7 }}>
+                {isFree ? 'Free' : table.status?.replace('_',' ')}
+              </div>
+            )}
+          </div>
+
+          {/* Center: table number */}
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: 26, fontWeight: 900, color: cfg.color, lineHeight: 1 }}>{displayName}</div>
+            {isOcc && stats && (
+              <div style={{ fontSize: 13, fontWeight: 800, color: cfg.color, marginTop: 4 }}>
+                ₹{stats.total.toFixed(2)}
+              </div>
+            )}
+          </div>
+
+          {/* Bottom: action icon buttons */}
+          <div style={{ display: 'flex', gap: 6, width: '100%', justifyContent: 'center' }}>
+            {isOcc && stats ? (
+              <>
+                {/* Print / Bill */}
+                <button
+                  onClick={e => { e.stopPropagation(); navigate('/billing/order/' + stats.orderId) }}
+                  style={{ background: 'rgba(255,255,255,0.85)', border: '1.5px solid ' + cfg.border, borderRadius: 8, width: 34, height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+                  title="Generate Bill">
+                  {/* Receipt icon */}
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={cfg.color} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16l3-2 2 2 3-2 3 2 3-2V8z"/>
+                    <line x1="8" y1="10" x2="16" y2="10"/>
+                    <line x1="8" y1="14" x2="14" y2="14"/>
+                  </svg>
+                </button>
+                {/* View / Eye */}
+                <button
+                  onClick={e => { e.stopPropagation(); navigate('/orders/new?table=' + table.id + '&tableNumber=' + table.number) }}
+                  style={{ background: 'rgba(255,255,255,0.85)', border: '1.5px solid ' + cfg.border, borderRadius: 8, width: 34, height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+                  title="View Order">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={cfg.color} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                    <circle cx="12" cy="12" r="3"/>
+                  </svg>
+                </button>
+                {/* Change table */}
+                <button
+                  onClick={e => openChangeTable(e, table)}
+                  style={{ background: 'rgba(255,255,255,0.85)', border: '1.5px solid ' + cfg.border, borderRadius: 8, width: 30, height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: 13, fontWeight: 700, color: cfg.color }}
+                  title="Change Table">⇄</button>
+              </>
+            ) : isFree && isManager ? (
+              <>
+                {/* QR */}
+                <button
+                  onClick={e => { e.stopPropagation(); setQrModal(table) }}
+                  style={{ background: 'rgba(255,255,255,0.85)', border: '1.5px solid ' + cfg.border, borderRadius: 8, width: 34, height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: 13 }}
+                  title="QR Code">🔲</button>
+                {/* Edit */}
+                <button
+                  onClick={e => openEdit(e, table)}
+                  style={{ background: 'rgba(255,255,255,0.85)', border: '1.5px solid ' + cfg.border, borderRadius: 8, width: 34, height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: 13 }}
+                  title="Edit Table">✏️</button>
+              </>
+            ) : isFree ? (
+              <button
+                onClick={e => { e.stopPropagation(); setQrModal(table) }}
+                style={{ background: 'rgba(255,255,255,0.85)', border: '1.5px solid ' + cfg.border, borderRadius: 8, width: 34, height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: 13 }}
+                title="QR Code">🔲</button>
+            ) : null}
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div>
-      {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 28 }}>
+      {/* ── HEADER ── */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
         <div>
           <h1 style={{ fontSize: 22, fontWeight: 800, color: theme.textDark, margin: 0 }}>Tables</h1>
           <p style={{ color: theme.textLight, fontSize: 14, marginTop: 4 }}>
@@ -198,10 +312,15 @@ export default function TablesPage() {
           </p>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-            {Object.entries(STATUS_CONFIG).map(([key, cfg]) => (
-              <span key={key} style={{ background: cfg.bg, color: cfg.color, border: '1px solid ' + cfg.border, padding: '4px 10px', borderRadius: 20, fontSize: 10, fontWeight: 700 }}>
-                {cfg.label}
+          {/* Legend */}
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+            {[
+              { label: 'Free',     bg: '#F0F4FF', border: '#C7D7FF', color: '#374151' },
+              { label: 'Occupied', bg: '#FFFBEB', border: '#FCD34D', color: '#92400E' },
+              { label: 'Bill',     bg: '#FEF2F2', border: '#FCA5A5', color: '#991B1B' },
+            ].map(s => (
+              <span key={s.label} style={{ background: s.bg, color: s.color, border: '1.5px solid ' + s.border, padding: '4px 12px', borderRadius: 20, fontSize: 11, fontWeight: 700 }}>
+                {s.label}
               </span>
             ))}
           </div>
@@ -222,104 +341,28 @@ export default function TablesPage() {
         </div>
       )}
 
-      {/* Table grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 14 }}>
-        {tables.map(table => {
-          const cfg        = STATUS_CONFIG[table.status] || STATUS_CONFIG.free
-          const stats      = tableStats[table.id]
-          const isFree     = table.status === 'free'
-          const isOccupied = table.status === 'occupied' || table.status === 'bill_requested'
-
-          return (
-            <div key={table.id} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-
-              {/* Table card */}
-              <div onClick={() => handleTableClick(table)}
-                style={{ borderRadius: 14, padding: '16px 14px', textAlign: 'center', cursor: 'pointer', border: '2px solid ' + cfg.border, background: cfg.bg, boxShadow: '0 1px 4px rgba(0,0,0,0.05)', transition: 'transform 0.15s, box-shadow 0.15s', minHeight: 130, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4, position: 'relative' }}
-                onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 8px 20px rgba(0,0,0,0.1)' }}
-                onMouseLeave={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = '0 1px 4px rgba(0,0,0,0.05)' }}>
-
-                <div style={{ fontWeight: 900, fontSize: 22, color: theme.textDark, letterSpacing: -0.5 }}>T{table.number}</div>
-                {table.area && <div style={{ fontSize: 10, color: theme.textLight, textTransform: 'uppercase', letterSpacing: 0.5 }}>{table.area}</div>}
-
-                {!isFree && stats ? (
-                  <>
-                    <div style={{ fontWeight: 800, fontSize: 16, color: theme.textDark, marginTop: 4 }}>₹{stats.total}</div>
-                    <div style={{ fontSize: 11, color: cfg.color, fontWeight: 700 }}>⏱ {getElapsed(stats.lastKOTTime)}</div>
-                  </>
-                ) : isFree ? (
-                  <div style={{ fontSize: 11, color: cfg.color, fontWeight: 600, marginTop: 4 }}>Tap to order</div>
-                ) : (
-                  <div style={{ fontSize: 11, color: theme.textMuted, marginTop: 4 }}>Loading...</div>
-                )}
-
-                <div style={{ background: '#fff', color: cfg.color, borderRadius: 20, padding: '2px 10px', fontSize: 10, fontWeight: 700, marginTop: 6, border: '1px solid ' + cfg.border }}>
-                  {cfg.label}
-                </div>
-
-                {/* Change table button */}
-                {isOccupied && stats && (
-                  <button onClick={e => openChangeTable(e, table)}
-                    style={{ position: 'absolute', top: 8, right: isManager ? 30 : 8, background: 'rgba(255,255,255,0.9)', border: '1px solid ' + cfg.border, borderRadius: 6, padding: '3px 6px', fontSize: 10, fontWeight: 700, cursor: 'pointer', color: cfg.color }}
-                    title="Change Table">⇄</button>
-                )}
-
-                {/* Edit button — free tables, manager only */}
-                {isManager && isFree && (
-                  <button onClick={e => openEdit(e, table)}
-                    style={{ position: 'absolute', top: 8, right: 8, background: 'rgba(255,255,255,0.9)', border: '1px solid ' + theme.border, borderRadius: 6, padding: '3px 6px', fontSize: 10, fontWeight: 700, cursor: 'pointer', color: theme.textMid }}
-                    title="Edit Table">✏️</button>
-                )}
-
-                {/* QR button — manager only */}
-                {isManager && (
-                  <button onClick={e => { e.stopPropagation(); setQrModal(table) }}
-                    style={{ position: 'absolute', top: 8, left: 8, background: 'rgba(255,255,255,0.9)', border: '1px solid ' + theme.border, borderRadius: 6, padding: '3px 6px', fontSize: 10, fontWeight: 700, cursor: 'pointer', color: '#1D4ED8' }}
-                    title="View QR">🔲</button>
-                )}
-              </div>
-
-              {/* Action buttons — only for occupied tables */}
-              {isOccupied && stats && (
-                <div style={{ display: 'flex', gap: 6 }}>
-                  {/* 👁 View Order */}
-                  <button
-                    onClick={e => { e.stopPropagation(); navigate('/orders/new?table=' + table.id + '&tableNumber=' + table.number) }}
-                    
-                    style={{ flex: 1, background: '#0D9488', border: 'none', borderRadius: 10, padding: '9px 0', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, color: '#fff', fontSize: 12, fontWeight: 700, transition: 'opacity 0.15s' }}
-                    onMouseEnter={e => e.currentTarget.style.opacity = '0.85'}
-                    onMouseLeave={e => e.currentTarget.style.opacity = '1'}>
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                      <circle cx="12" cy="12" r="3"/>
-                    </svg>
-                    View
-                  </button>
-
-                  {/* 🧾 Process Bill */}
-                  <button
-                    onClick={e => { e.stopPropagation(); navigate('/billing/order/' + stats.orderId) }}
-                    
-                    style={{ flex: 1, background: '#092b33', border: 'none', borderRadius: 10, padding: '9px 0', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, color: '#fff', fontSize: 12, fontWeight: 700, transition: 'opacity 0.15s' }}
-                    onMouseEnter={e => e.currentTarget.style.opacity = '0.85'}
-                    onMouseLeave={e => e.currentTarget.style.opacity = '1'}>
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                      <polyline points="14 2 14 8 20 8"/>
-                      <line x1="16" y1="13" x2="8" y2="13"/>
-                      <line x1="16" y1="17" x2="8" y2="17"/>
-                      <polyline points="10 9 9 9 8 9"/>
-                    </svg>
-                    Bill
-                  </button>
-                </div>
-              )}
+      {/* ── AREAS ── */}
+      {areas.map(area => (
+        <div key={area} style={{ marginBottom: 28 }}>
+          {/* Area section header */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
+            <div style={{ fontSize: 13, fontWeight: 800, color: theme.textDark, textTransform: 'uppercase', letterSpacing: 1 }}>{area}</div>
+            <div style={{ flex: 1, height: 1, background: theme.border }} />
+            <div style={{ fontSize: 11, color: theme.textLight, fontWeight: 600 }}>
+              {areaMap[area].filter(t => t.status === 'free').length} free / {areaMap[area].length} tables
             </div>
-          )
-        })}
-      </div>
+          </div>
 
-      {/* Add / Edit Table Modal */}
+          {/* Table cards grid */}
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
+            {areaMap[area].map(table => (
+              <TableCard key={table.id} table={table} />
+            ))}
+          </div>
+        </div>
+      ))}
+
+      {/* ── ADD / EDIT MODAL ── */}
       {showForm && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
           <div style={{ background: '#fff', borderRadius: 18, padding: 32, width: 400, boxShadow: '0 24px 64px rgba(0,0,0,0.2)' }}>
@@ -346,15 +389,15 @@ export default function TablesPage() {
               </div>
               <div>
                 <label style={{ fontSize: 11, fontWeight: 700, color: theme.textLight, display: 'block', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5 }}>Area <span style={{ fontWeight: 400 }}>(optional)</span></label>
-                <input type="text" value={form.area} onChange={e => setForm(f => ({ ...f, area: e.target.value }))} placeholder="e.g. Indoor, Rooftop, Garden, Terrace"
+                <input type="text" value={form.area} onChange={e => setForm(f => ({ ...f, area: e.target.value }))} placeholder="e.g. Indoor, Outdoor, Rooftop, Garden"
                   style={{ width: '100%', border: '1.5px solid ' + theme.border, borderRadius: 9, padding: '10px 12px', fontSize: 13, outline: 'none', boxSizing: 'border-box' }} />
-                <div style={{ fontSize: 11, color: theme.textLight, marginTop: 5 }}>Type any area name you like</div>
+                <div style={{ fontSize: 11, color: theme.textLight, marginTop: 5 }}>Tables with the same area name are grouped together</div>
               </div>
             </div>
 
             {editTable && (
-              <button onClick={e => { deleteTable(e, editTable.id); setShowForm(false) }}
-                style={{ width: '100%', marginTop: 16, background: theme.redBg, border: '1px solid #FECACA', borderRadius: 9, padding: '10px', fontSize: 13, fontWeight: 700, cursor: 'pointer', color: theme.red }}>
+              <button onClick={() => deleteTable(editTable.id)}
+                style={{ width: '100%', marginTop: 16, background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 9, padding: '10px', fontSize: 13, fontWeight: 700, cursor: 'pointer', color: '#DC2626' }}>
                 🗑 Delete this table
               </button>
             )}
@@ -373,7 +416,7 @@ export default function TablesPage() {
         </div>
       )}
 
-      {/* Change Table Modal */}
+      {/* ── CHANGE TABLE MODAL ── */}
       {changeTableModal && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}
           onClick={e => e.target === e.currentTarget && setChangeTableModal(null)}>
@@ -385,11 +428,11 @@ export default function TablesPage() {
             {freeTables.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '24px 0', color: theme.textLight, fontSize: 13 }}>No free tables available.</div>
             ) : (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))', gap: 10, marginBottom: 20 }}>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 20 }}>
                 {freeTables.map(t => (
                   <button key={t.id} onClick={() => handleChangeTable(t)} disabled={changingTable}
-                    style={{ background: '#E6FAF8', border: '2px solid #99E6E0', borderRadius: 12, padding: '14px 10px', cursor: 'pointer', textAlign: 'center' }}>
-                    <div style={{ fontWeight: 900, fontSize: 18, color: theme.textDark }}>T{t.number}</div>
+                    style={{ background: '#F0F4FF', border: '2px solid #C7D7FF', borderRadius: 12, padding: '14px 10px', cursor: 'pointer', textAlign: 'center', minWidth: 80 }}>
+                    <div style={{ fontWeight: 900, fontSize: 18, color: theme.textDark }}>{t.number}</div>
                     {t.area && <div style={{ fontSize: 10, color: theme.textLight, marginTop: 2 }}>{t.area}</div>}
                     <div style={{ fontSize: 10, color: '#0D9488', fontWeight: 700, marginTop: 4 }}>Free</div>
                   </button>
@@ -404,7 +447,7 @@ export default function TablesPage() {
         </div>
       )}
 
-      {/* QR Modal */}
+      {/* ── QR MODAL ── */}
       {qrModal && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}
           onClick={e => e.target === e.currentTarget && setQrModal(null)}>
