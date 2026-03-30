@@ -33,7 +33,9 @@ export default function CustomerMenuPage() {
   const [table, setTable]           = useState(null)
   const [categories, setCategories] = useState([])
   const [items, setItems]           = useState([])
-  const [portions, setPortions]     = useState({}) // itemId -> portions[]
+  const [portions, setPortions]     = useState({})    // itemId -> []
+  const [variations, setVariations] = useState({})    // itemId -> []
+  const [addonGroups, setAddonGroups] = useState({})  // itemId -> [{...group, addons:[]}]
   const [activeCategory, setActiveCategory] = useState(null)
   const [cart, setCart]             = useState([])
   const [search, setSearch]         = useState('')
@@ -45,8 +47,8 @@ export default function CustomerMenuPage() {
   const [roundCount, setRoundCount]       = useState(0)
   const [runningTotal, setRunningTotal]   = useState(0)
 
-  const [name, setName]         = useState('')
-  const [phone, setPhone]       = useState('')
+  const [name, setName]   = useState('')
+  const [phone, setPhone] = useState('')
   const [nameErr, setNameErr]   = useState('')
   const [phoneErr, setPhoneErr] = useState('')
 
@@ -56,8 +58,10 @@ export default function CustomerMenuPage() {
   const [resendTimer, setResendTimer]   = useState(30)
   const otpRefs = useRef([])
 
-  // Portion picker
-  const [portionPickerItem, setPortionPickerItem] = useState(null)
+  // Unified item picker (variations + addons + portions)
+  const [pickerItem, setPickerItem]           = useState(null)
+  const [pickerVariation, setPickerVariation] = useState(null)
+  const [pickerAddons, setPickerAddons]       = useState({}) // groupId -> {addonId: qty}
 
   useEffect(() => { fetchData() }, [tableId])
   useEffect(() => {
@@ -68,18 +72,20 @@ export default function CustomerMenuPage() {
   }, [step])
 
   async function fetchData() {
-    const [{ data: tableData }, { data: cats }, { data: menuItems }, { data: allPortions }] = await Promise.all([
+    const [{ data: tableData }, { data: cats }, { data: menuItems }, { data: allPortions }, { data: allVariations }, { data: allAddonGroups }, { data: allAddons }] = await Promise.all([
       supabase.from('cafe_tables').select('*').eq('id', tableId).single(),
       supabase.from('menu_categories').select('*').eq('is_active', true).order('sort_order'),
       supabase.from('menu_items').select('*').eq('is_available', true).order('sort_order'),
       supabase.from('item_portions').select('*').eq('is_available', true).order('sort_order'),
+      supabase.from('item_variations').select('*').eq('is_available', true).order('sort_order'),
+      supabase.from('item_addon_groups').select('*').order('sort_order'),
+      supabase.from('item_addons').select('*').eq('is_available', true).order('sort_order'),
     ])
     setTable(tableData)
     setCategories(cats || [])
 
-    // Filter items by availability time window
-    const now = new Date()
-    const nowMins = now.getHours() * 60 + now.getMinutes()
+    // Time filter
+    const now = new Date(); const nowMins = now.getHours() * 60 + now.getMinutes()
     const toMins = t => { const [h, m] = t.split(':').map(Number); return h * 60 + m }
     const timeFiltered = (menuItems || []).filter(item => {
       if (!item.available_from && !item.available_until) return true
@@ -87,21 +93,32 @@ export default function CustomerMenuPage() {
       const until = item.available_until ? toMins(item.available_until) : 1439
       return nowMins >= from && nowMins <= until
     })
-
     setItems(timeFiltered)
+
     const portionMap = {}
-    ;(allPortions || []).forEach(p => {
-      if (!portionMap[p.menu_item_id]) portionMap[p.menu_item_id] = []
-      portionMap[p.menu_item_id].push(p)
-    })
+    ;(allPortions || []).forEach(p => { if (!portionMap[p.menu_item_id]) portionMap[p.menu_item_id] = []; portionMap[p.menu_item_id].push(p) })
     setPortions(portionMap)
+
+    const varMap = {}
+    ;(allVariations || []).forEach(v => { if (!varMap[v.menu_item_id]) varMap[v.menu_item_id] = []; varMap[v.menu_item_id].push(v) })
+    setVariations(varMap)
+
+    const addonsByGroup = {}
+    ;(allAddons || []).forEach(a => { if (!addonsByGroup[a.group_id]) addonsByGroup[a.group_id] = []; addonsByGroup[a.group_id].push(a) })
+    const groupMap = {}
+    ;(allAddonGroups || []).forEach(g => {
+      if (!groupMap[g.menu_item_id]) groupMap[g.menu_item_id] = []
+      groupMap[g.menu_item_id].push({ ...g, addons: addonsByGroup[g.id] || [] })
+    })
+    setAddonGroups(groupMap)
+
     if (cats?.length) setActiveCategory(cats[0].id)
     setLoading(false)
   }
 
   async function refreshRunningTotal(orderId) {
-    const { data } = await supabase.from('order_items').select('quantity, unit_price').eq('order_id', orderId)
-    setRunningTotal((data || []).reduce((s, i) => s + i.quantity * i.unit_price, 0))
+    const { data } = await supabase.from('order_items').select('quantity, unit_price, addons_total').eq('order_id', orderId)
+    setRunningTotal((data || []).reduce((s, i) => s + i.quantity * (i.unit_price + (i.addons_total || 0)), 0))
   }
 
   async function handleSendOTP() {
@@ -133,19 +150,68 @@ export default function CustomerMenuPage() {
     await sendOTPviaWATI(phone, newOtp)
   }
 
-  // Cart uses key = itemId_portionId
-  function cartKey(itemId, portionId) { return portionId ? `${itemId}_${portionId}` : itemId }
+  // ── Item Picker ──
+  function itemNeedsPicker(item) {
+    return (variations[item.id]?.length > 0) || (addonGroups[item.id]?.length > 0) || (portions[item.id]?.length > 0)
+  }
 
-  function addToCart(item, portion = null) {
-    const itemPortions = portions[item.id] || []
-    if (itemPortions.length > 0 && !portion) { setPortionPickerItem(item); return }
-    const key       = cartKey(item.id, portion?.id)
-    const unitPrice = portion ? parseFloat(portion.price) : parseFloat(item.price)
+  function openPicker(item) { setPickerItem(item); setPickerVariation(null); setPickerAddons({}) }
+  function closePicker() { setPickerItem(null); setPickerVariation(null); setPickerAddons({}) }
+
+  function pickerAddonCount(groupId) { return Object.values(pickerAddons[groupId] || {}).reduce((s, q) => s + q, 0) }
+
+  function adjustAddon(group, addon, delta) {
+    setPickerAddons(prev => {
+      const groupState = { ...(prev[group.id] || {}) }
+      const current = groupState[addon.id] || 0
+      const newQty = Math.max(0, current + delta)
+      const total = Object.values(groupState).reduce((s, q) => s + q, 0) - current + newQty
+      if (delta > 0 && total > group.max_select) return prev
+      if (newQty === 0) delete groupState[addon.id]
+      else groupState[addon.id] = newQty
+      return { ...prev, [group.id]: groupState }
+    })
+  }
+
+  function canConfirmPicker() {
+    const item = pickerItem; if (!item) return false
+    const itemVariations = variations[item.id] || []
+    const itemAddonGroups = addonGroups[item.id] || []
+    if (itemVariations.length > 0 && !pickerVariation) return false
+    for (const g of itemAddonGroups) { if (g.min_select > 0 && pickerAddonCount(g.id) < g.min_select) return false }
+    return true
+  }
+
+  function confirmPicker(portion = null) {
+    const item = pickerItem; if (!item) return
+    let addonsTotal = 0; const addonsArr = []
+    const itemAddonGroups = addonGroups[item.id] || []
+    itemAddonGroups.forEach(g => {
+      const groupState = pickerAddons[g.id] || {}
+      g.addons.forEach(a => {
+        const qty = groupState[a.id] || 0
+        if (qty > 0) { addonsTotal += a.price * qty; addonsArr.push({ id: a.id, name: a.name, price: a.price, qty, group: g.name }) }
+      })
+    })
+    const unitPrice = portion ? parseFloat(portion.price) : pickerVariation ? parseFloat(pickerVariation.price) : parseFloat(item.price)
     const portionLabel = portion ? `${portion.name}${portion.value ? ` · ${portion.value}${portion.unit || ''}` : ''}` : null
+    const variationLabel = pickerVariation ? pickerVariation.name : null
+    const key = `${item.id}_${pickerVariation?.id || 'base'}_${portion?.id || 'noport'}_${Object.entries(pickerAddons).sort().map(([g, a]) => g + ':' + Object.entries(a).sort().map(e => e.join('x')).join(',')).join('|')}`
     setCart(prev => {
       const ex = prev.find(c => c.key === key)
       if (ex) return prev.map(c => c.key === key ? { ...c, qty: c.qty + 1 } : c)
-      return [...prev, { key, item, qty: 1, portionId: portion?.id || null, portionName: portionLabel, unitPrice }]
+      return [...prev, { key, item, qty: 1, portionId: portion?.id || null, portionName: portionLabel, variationId: pickerVariation?.id || null, variationName: variationLabel, unitPrice, addons: addonsArr, addonsTotal }]
+    })
+    closePicker()
+  }
+
+  function addToCart(item) {
+    if (itemNeedsPicker(item)) { openPicker(item); return }
+    const key = `${item.id}_base_noport_`
+    setCart(prev => {
+      const ex = prev.find(c => c.key === key)
+      if (ex) return prev.map(c => c.key === key ? { ...c, qty: c.qty + 1 } : c)
+      return [...prev, { key, item, qty: 1, portionId: null, portionName: null, variationId: null, variationName: null, unitPrice: parseFloat(item.price), addons: [], addonsTotal: 0 }]
     })
   }
 
@@ -157,10 +223,9 @@ export default function CustomerMenuPage() {
     })
   }
 
-  function getQtyForKey(key) { return cart.find(c => c.key === key)?.qty || 0 }
   function getQtyForItem(itemId) { return cart.filter(c => c.item.id === itemId).reduce((s, c) => s + c.qty, 0) }
 
-  const cartTotal = cart.reduce((s, c) => s + c.unitPrice * c.qty, 0)
+  const cartTotal = cart.reduce((s, c) => s + (c.unitPrice + c.addonsTotal) * c.qty, 0)
   const cartCount = cart.reduce((s, c) => s + c.qty, 0)
 
   async function placeOrder() {
@@ -174,7 +239,12 @@ export default function CustomerMenuPage() {
         orderId = order.id; setPlacedOrderId(orderId)
         await supabase.from('cafe_tables').update({ status: 'occupied' }).eq('id', tableId)
       }
-      const orderItems = cart.map(c => ({ order_id: orderId, item_id: c.item.id, quantity: c.qty, unit_price: c.unitPrice, status: 'pending', portion_id: c.portionId || null, portion_name: c.portionName || null }))
+      const orderItems = cart.map(c => ({
+        order_id: orderId, item_id: c.item.id, quantity: c.qty, unit_price: c.unitPrice, status: 'pending',
+        portion_id: c.portionId || null, portion_name: c.portionName || null,
+        variation_id: c.variationId || null, variation_name: c.variationName || null,
+        addons: c.addons || [], addons_total: c.addonsTotal || 0
+      }))
       const { data: createdItems, error: iErr } = await supabase.from('order_items').insert(orderItems).select()
       if (iErr) throw iErr
       const { data: kot, error: kErr } = await supabase.from('kots').insert({ order_id: orderId, status: 'pending' }).select().single()
@@ -226,41 +296,117 @@ export default function CustomerMenuPage() {
         </div>
         {step === STEP_MENU && cartCount > 0 && (
           <button onClick={() => setStep(STEP_CONFIRM)} style={{ marginLeft: 'auto', background: GOLD, border: 'none', borderRadius: 20, padding: '6px 14px', color: TEAL, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>
-            🛒 {cartCount} · ₹{cartTotal}
+            🛒 {cartCount} · ₹{cartTotal.toFixed(0)}
           </button>
         )}
         {step === STEP_MENU && runningTotal > 0 && cartCount === 0 && (
-          <div style={{ marginLeft: 'auto', color: GOLD, fontWeight: 700, fontSize: 13 }}>Total: ₹{runningTotal}</div>
+          <div style={{ marginLeft: 'auto', color: GOLD, fontWeight: 700, fontSize: 13 }}>Total: ₹{runningTotal.toFixed(0)}</div>
         )}
       </div>
 
-      {/* ── PORTION PICKER MODAL ── */}
-      {portionPickerItem && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', zIndex: 200, padding: '0 0 20px' }}
-          onClick={e => e.target === e.currentTarget && setPortionPickerItem(null)}>
-          <div style={{ background: WHITE, borderRadius: '20px 20px 16px 16px', padding: 24, width: '100%', maxWidth: 480, boxShadow: '0 -8px 32px rgba(0,0,0,0.2)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18 }}>
-              <div style={{ width: 10, height: 10, borderRadius: 2, background: portionPickerItem.food_type === 'veg' ? '#15803D' : '#B91C1C', flexShrink: 0 }} />
-              <div style={{ fontWeight: 800, fontSize: 17, color: TEXTD }}>{portionPickerItem.name}</div>
+      {/* ── ITEM PICKER BOTTOM SHEET ── */}
+      {pickerItem && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', zIndex: 200 }}
+          onClick={e => e.target === e.currentTarget && closePicker()}>
+          <div style={{ background: WHITE, borderRadius: '20px 20px 0 0', padding: 24, width: '100%', maxWidth: 480, maxHeight: '85vh', overflowY: 'auto', boxShadow: '0 -8px 32px rgba(0,0,0,0.2)' }}>
+            {/* Item header */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
+              <div style={{ width: 10, height: 10, borderRadius: 2, background: pickerItem.food_type === 'veg' ? '#15803D' : '#B91C1C', flexShrink: 0 }} />
+              <div style={{ fontWeight: 800, fontSize: 17, color: TEXTD, flex: 1 }}>{pickerItem.name}</div>
+              {!variations[pickerItem.id]?.length && !portions[pickerItem.id]?.length && (
+                <div style={{ fontWeight: 900, fontSize: 16, color: TEAL }}>₹{pickerItem.price}</div>
+              )}
             </div>
-            <div style={{ fontSize: 11, fontWeight: 700, color: TEXTL, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 12 }}>Choose Portion / Size</div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 16 }}>
-              {(portions[portionPickerItem.id] || []).map(p => (
-                <button key={p.id}
-                  onClick={() => { addToCart(portionPickerItem, p); setPortionPickerItem(null) }}
-                  style={{ background: '#F9FAFB', border: '2px solid ' + BORDER, borderRadius: 14, padding: '14px 18px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', textAlign: 'left' }}>
-                  <div>
-                    <div style={{ fontWeight: 700, fontSize: 15, color: TEXTD }}>{p.name}</div>
-                    {(p.value > 0 && p.unit) && <div style={{ fontSize: 12, color: TEXTL, marginTop: 2 }}>{p.value}{p.unit}</div>}
-                  </div>
-                  <div style={{ fontWeight: 900, fontSize: 18, color: TEAL }}>₹{p.price}</div>
+
+            {/* Variations */}
+            {(variations[pickerItem.id] || []).length > 0 && (
+              <div style={{ marginBottom: 20 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: TEXTD, marginBottom: 12 }}>
+                  Variation <span style={{ color: '#B91C1C', fontSize: 11, fontWeight: 600 }}>* Required</span>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: 10 }}>
+                  {(variations[pickerItem.id] || []).map(v => (
+                    <button key={v.id} onClick={() => setPickerVariation(v)}
+                      style={{ background: pickerVariation?.id === v.id ? '#5B21B6' : '#F5F3FF', color: pickerVariation?.id === v.id ? WHITE : '#3B0764', border: '2px solid ' + (pickerVariation?.id === v.id ? '#5B21B6' : '#C4B5FD'), borderRadius: 14, padding: '16px 10px', cursor: 'pointer', textAlign: 'center' }}>
+                      <div style={{ fontWeight: 800, fontSize: 15 }}>{v.name}</div>
+                      <div style={{ fontSize: 14, marginTop: 4 }}>₹{v.price}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Portions (only if no variations) */}
+            {(portions[pickerItem.id] || []).length > 0 && !(variations[pickerItem.id] || []).length && (
+              <div style={{ marginBottom: 20 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: TEXTD, marginBottom: 12 }}>
+                  Portion / Size <span style={{ color: '#B91C1C', fontSize: 11, fontWeight: 600 }}>* Required</span>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {(portions[pickerItem.id] || []).map(p => (
+                    <button key={p.id} onClick={() => confirmPicker(p)}
+                      style={{ background: '#F0FDF4', border: '2px solid #86EFAC', borderRadius: 14, padding: '14px 18px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div>
+                        <div style={{ fontWeight: 700, fontSize: 15, color: TEXTD }}>{p.name}</div>
+                        {p.value > 0 && p.unit && <div style={{ fontSize: 12, color: TEXTL, marginTop: 2 }}>{p.value}{p.unit}</div>}
+                      </div>
+                      <div style={{ fontWeight: 900, fontSize: 18, color: TEAL }}>₹{p.price}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Add-on Groups */}
+            {(addonGroups[pickerItem.id] || []).map(group => (
+              <div key={group.id} style={{ marginBottom: 20 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: TEXTD, marginBottom: 8 }}>
+                  {group.name}
+                  <span style={{ marginLeft: 8, fontSize: 11, fontWeight: 600, color: group.min_select > 0 ? '#B91C1C' : TEXTL }}>
+                    {group.min_select > 0 ? `* Min ${group.min_select} · ` : ''}Max {group.max_select}
+                  </span>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {group.addons.map(addon => {
+                    const qty = (pickerAddons[group.id] || {})[addon.id] || 0
+                    return (
+                      <div key={addon.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: qty > 0 ? '#FFF7ED' : '#F9FAFB', borderRadius: 12, border: '1px solid ' + (qty > 0 ? '#FED7AA' : BORDER) }}>
+                        <div>
+                          <div style={{ fontWeight: 600, fontSize: 15, color: TEXTD }}>{addon.name}</div>
+                          {addon.price > 0 && <div style={{ fontSize: 12, color: '#C2410C', fontWeight: 600, marginTop: 2 }}>+₹{addon.price}</div>}
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                          {qty > 0 && (
+                            <>
+                              <button onClick={() => adjustAddon(group, addon, -1)}
+                                style={{ background: '#FEE2E2', border: 'none', borderRadius: 8, width: 32, height: 32, fontSize: 18, cursor: 'pointer', fontWeight: 700, color: '#B91C1C', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>-</button>
+                              <span style={{ fontWeight: 800, fontSize: 16, minWidth: 20, textAlign: 'center' }}>{qty}</span>
+                            </>
+                          )}
+                          <button onClick={() => adjustAddon(group, addon, 1)}
+                            disabled={pickerAddonCount(group.id) >= group.max_select && qty === 0}
+                            style={{ background: TEAL, border: 'none', borderRadius: 8, width: 32, height: 32, fontSize: 18, cursor: 'pointer', fontWeight: 700, color: WHITE, display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: (pickerAddonCount(group.id) >= group.max_select && qty === 0) ? 0.3 : 1 }}>+</button>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            ))}
+
+            {/* Confirm button — for variations/addons (not portion-only) */}
+            {((variations[pickerItem.id] || []).length > 0 || (addonGroups[pickerItem.id] || []).length > 0) && (
+              <div style={{ display: 'flex', gap: 10, paddingTop: 8 }}>
+                <button onClick={closePicker}
+                  style={{ flex: 1, background: BG, border: '1px solid ' + BORDER, borderRadius: 14, padding: '14px 0', fontSize: 14, fontWeight: 700, cursor: 'pointer', color: TEXTL }}>
+                  Cancel
                 </button>
-              ))}
-            </div>
-            <button onClick={() => setPortionPickerItem(null)}
-              style={{ width: '100%', background: BG, border: '1px solid ' + BORDER, borderRadius: 12, padding: '12px 0', fontSize: 14, fontWeight: 700, cursor: 'pointer', color: TEXTL }}>
-              Cancel
-            </button>
+                <button onClick={() => confirmPicker()} disabled={!canConfirmPicker()}
+                  style={{ flex: 2, background: canConfirmPicker() ? TEAL : '#E5E7EB', color: canConfirmPicker() ? WHITE : TEXTL, border: 'none', borderRadius: 14, padding: '14px 0', fontSize: 15, fontWeight: 700, cursor: canConfirmPicker() ? 'pointer' : 'not-allowed' }}>
+                  {canConfirmPicker() ? `Add to Order →` : 'Select required options'}
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -328,7 +474,7 @@ export default function CustomerMenuPage() {
         <div style={{ animation: 'fadeIn 0.3s ease', paddingBottom: cartCount > 0 ? 80 : 20 }}>
           <div style={{ background: TEAL + '18', borderBottom: '1px solid ' + TEAL + '22', padding: '10px 20px', fontSize: 13, color: TEAL, fontWeight: 600, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span>👋 Hi <strong>{name}</strong>! {roundCount > 0 ? `Round ${roundCount + 1}` : 'What would you like to order?'}</span>
-            {runningTotal > 0 && <span style={{ fontWeight: 800 }}>₹{runningTotal} so far</span>}
+            {runningTotal > 0 && <span style={{ fontWeight: 800 }}>₹{runningTotal.toFixed(0)} so far</span>}
           </div>
           <div style={{ padding: '14px 16px 0', position: 'relative' }}>
             <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search dishes..."
@@ -347,9 +493,11 @@ export default function CustomerMenuPage() {
           )}
           <div style={{ padding: '0 16px' }}>
             {displayItems.map(item => {
-              const itemPortions = portions[item.id] || []
-              const hasPortions  = itemPortions.length > 0
-              const totalQty     = getQtyForItem(item.id)
+              const hasOptions = itemNeedsPicker(item)
+              const totalQty   = getQtyForItem(item.id)
+              const itemVars   = variations[item.id] || []
+              const itemAGs    = addonGroups[item.id] || []
+              const itemPorts  = portions[item.id] || []
               return (
                 <div key={item.id} style={{ background: WHITE, borderRadius: 12, padding: 14, marginBottom: 10, border: '1px solid ' + (totalQty > 0 ? TEAL2 : BORDER), boxShadow: '0 1px 4px rgba(0,0,0,0.05)', display: 'flex', alignItems: 'center', gap: 12 }}>
                   <div style={{ flex: 1 }}>
@@ -357,28 +505,35 @@ export default function CustomerMenuPage() {
                       <div style={{ width: 10, height: 10, borderRadius: 2, border: '2px solid ' + (item.food_type === 'veg' ? '#15803D' : '#B91C1C'), background: item.food_type === 'veg' ? '#15803D' : '#B91C1C', flexShrink: 0 }} />
                       <div style={{ fontWeight: 700, fontSize: 15, color: TEXTD }}>{item.name}</div>
                     </div>
-                    {hasPortions ? (
-                      <div style={{ fontSize: 11, color: TEAL2, fontWeight: 700 }}>{itemPortions.length} sizes available</div>
+                    {hasOptions ? (
+                      <div style={{ fontSize: 11, fontWeight: 700, color: '#5B21B6' }}>
+                        {itemVars.length > 0 ? `${itemVars.length} variation${itemVars.length !== 1 ? 's' : ''}` : ''}
+                        {itemVars.length > 0 && (itemAGs.length > 0 || itemPorts.length > 0) ? ' · ' : ''}
+                        {itemAGs.length > 0 ? `${itemAGs.length} add-on${itemAGs.length !== 1 ? 's' : ''}` : ''}
+                        {itemPorts.length > 0 && !itemVars.length ? `${itemPorts.length} sizes` : ''}
+                      </div>
                     ) : (
                       <div style={{ fontWeight: 800, fontSize: 15, color: TEAL }}>₹{item.price}</div>
                     )}
                     {item.description && <div style={{ fontSize: 11, color: TEXTL, marginTop: 2 }}>{item.description}</div>}
-                    {/* Show cart lines for this item */}
+                    {/* Cart lines for this item */}
                     {cart.filter(c => c.item.id === item.id).map(c => (
-                      <div key={c.key} style={{ marginTop: 6, display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <span style={{ fontSize: 11, color: TEAL2, fontWeight: 600 }}>{c.portionName || 'Regular'} ×{c.qty} — ₹{c.unitPrice * c.qty}</span>
+                      <div key={c.key} style={{ marginTop: 6, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                        <span style={{ fontSize: 11, color: TEAL2, fontWeight: 600 }}>
+                          {c.variationName || c.portionName || 'Regular'} ×{c.qty} — ₹{((c.unitPrice + c.addonsTotal) * c.qty).toFixed(0)}
+                        </span>
+                        {c.addons?.length > 0 && <span style={{ fontSize: 10, color: '#C2410C' }}>+ {c.addons.map(a => a.name).join(', ')}</span>}
                         <div style={{ display: 'flex', alignItems: 'center', background: TEAL, borderRadius: 6, overflow: 'hidden' }}>
                           <button onClick={() => removeFromCart(c.key)} style={{ background: 'none', border: 'none', color: WHITE, padding: '3px 8px', fontSize: 14, cursor: 'pointer', fontWeight: 700 }}>-</button>
                           <span style={{ color: WHITE, fontWeight: 800, fontSize: 12, minWidth: 16, textAlign: 'center' }}>{c.qty}</span>
-                          <button onClick={() => addToCart(item, c.portionId ? itemPortions.find(p => p.id === c.portionId) : null)} style={{ background: 'none', border: 'none', color: WHITE, padding: '3px 8px', fontSize: 14, cursor: 'pointer', fontWeight: 700 }}>+</button>
+                          <button onClick={() => addToCart(item)} style={{ background: 'none', border: 'none', color: WHITE, padding: '3px 8px', fontSize: 14, cursor: 'pointer', fontWeight: 700 }}>+</button>
                         </div>
                       </div>
                     ))}
                   </div>
-                  {/* Add button */}
                   <button onClick={() => addToCart(item)}
-                    style={{ background: hasPortions ? TEAL2 : TEAL, color: WHITE, border: 'none', borderRadius: 8, padding: '8px 14px', fontSize: 13, fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}>
-                    {hasPortions ? 'Choose →' : totalQty === 0 ? '+ Add' : '+ More'}
+                    style={{ background: hasOptions ? '#5B21B6' : TEAL, color: WHITE, border: 'none', borderRadius: 8, padding: '8px 14px', fontSize: 13, fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}>
+                    {hasOptions ? 'Choose →' : totalQty === 0 ? '+ Add' : '+ More'}
                   </button>
                 </div>
               )
@@ -389,7 +544,7 @@ export default function CustomerMenuPage() {
               <button onClick={() => setStep(STEP_CONFIRM)}
                 style={{ width: '100%', background: TEAL, color: WHITE, border: 'none', borderRadius: 14, padding: '14px 20px', fontSize: 15, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', boxShadow: '0 8px 24px rgba(9,43,51,0.4)' }}>
                 <span>🛒 {cartCount} item{cartCount !== 1 ? 's' : ''}</span>
-                <span>View Order · ₹{cartTotal}</span>
+                <span>View Order · ₹{cartTotal.toFixed(0)}</span>
               </button>
             </div>
           )}
@@ -403,31 +558,33 @@ export default function CustomerMenuPage() {
           <div style={{ fontWeight: 800, fontSize: 20, color: TEXTD, marginBottom: roundCount > 0 ? 6 : 20 }}>
             {roundCount > 0 ? `Round ${roundCount + 1} — Add to Order` : 'Your Order'}
           </div>
-          {roundCount > 0 && <div style={{ fontSize: 13, color: TEXTL, marginBottom: 16 }}>These items will be added to your existing order (₹{runningTotal} so far)</div>}
+          {roundCount > 0 && <div style={{ fontSize: 13, color: TEXTL, marginBottom: 16 }}>These items will be added to your existing order (₹{runningTotal.toFixed(0)} so far)</div>}
           <div style={{ background: WHITE, borderRadius: 16, overflow: 'hidden', border: '1px solid ' + BORDER, marginBottom: 16 }}>
             {cart.map((c, i) => (
               <div key={c.key} style={{ padding: '14px 16px', borderBottom: i < cart.length - 1 ? '1px solid ' + BORDER : 'none', display: 'flex', alignItems: 'center', gap: 12 }}>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontWeight: 700, fontSize: 14, color: TEXTD }}>{c.item.name}</div>
+                  {c.variationName && <div style={{ fontSize: 12, color: '#5B21B6', fontWeight: 600, marginTop: 2 }}>{c.variationName}</div>}
                   {c.portionName && <div style={{ fontSize: 12, color: TEAL2, fontWeight: 600, marginTop: 2 }}>{c.portionName}</div>}
-                  <div style={{ fontSize: 12, color: TEXTL }}>₹{c.unitPrice} each</div>
+                  {c.addons?.length > 0 && <div style={{ fontSize: 11, color: '#C2410C', marginTop: 2 }}>+ {c.addons.map(a => a.name).join(', ')}</div>}
+                  <div style={{ fontSize: 12, color: TEXTL }}>₹{(c.unitPrice + c.addonsTotal).toFixed(0)} each</div>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <div style={{ display: 'flex', alignItems: 'center', background: BG, borderRadius: 8, overflow: 'hidden' }}>
                     <button onClick={() => removeFromCart(c.key)} style={{ background: 'none', border: 'none', padding: '6px 10px', fontSize: 16, cursor: 'pointer', color: TEAL, fontWeight: 700 }}>-</button>
                     <span style={{ fontWeight: 800, fontSize: 14, minWidth: 20, textAlign: 'center', color: TEXTD }}>{c.qty}</span>
-                    <button onClick={() => addToCart(c.item, c.portionId ? (portions[c.item.id] || []).find(p => p.id === c.portionId) : null)} style={{ background: 'none', border: 'none', padding: '6px 10px', fontSize: 16, cursor: 'pointer', color: TEAL, fontWeight: 700 }}>+</button>
+                    <button onClick={() => addToCart(c.item)} style={{ background: 'none', border: 'none', padding: '6px 10px', fontSize: 16, cursor: 'pointer', color: TEAL, fontWeight: 700 }}>+</button>
                   </div>
-                  <div style={{ fontWeight: 800, fontSize: 14, color: TEXTD, minWidth: 60, textAlign: 'right' }}>₹{c.unitPrice * c.qty}</div>
+                  <div style={{ fontWeight: 800, fontSize: 14, color: TEXTD, minWidth: 60, textAlign: 'right' }}>₹{((c.unitPrice + c.addonsTotal) * c.qty).toFixed(0)}</div>
                 </div>
               </div>
             ))}
           </div>
           <div style={{ background: WHITE, borderRadius: 16, padding: 16, border: '1px solid ' + BORDER, marginBottom: 20 }}>
-            {roundCount > 0 && <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, color: TEXTL, marginBottom: 8 }}><span>Previous rounds</span><span>₹{runningTotal}</span></div>}
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, color: TEXTL, marginBottom: 8 }}><span>This round</span><span>₹{cartTotal}</span></div>
+            {roundCount > 0 && <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, color: TEXTL, marginBottom: 8 }}><span>Previous rounds</span><span>₹{runningTotal.toFixed(0)}</span></div>}
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, color: TEXTL, marginBottom: 8 }}><span>This round</span><span>₹{cartTotal.toFixed(0)}</span></div>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, color: TEXTL, paddingBottom: 12, borderBottom: '1px solid ' + BORDER, marginBottom: 12 }}><span>GST</span><span>Included</span></div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 17, fontWeight: 800, color: TEXTD }}><span>New Total</span><span>₹{runningTotal + cartTotal}</span></div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 17, fontWeight: 800, color: TEXTD }}><span>New Total</span><span>₹{(runningTotal + cartTotal).toFixed(0)}</span></div>
           </div>
           <div style={{ background: TEAL + '10', borderRadius: 12, padding: '12px 16px', marginBottom: 20, fontSize: 13, color: TEAL, fontWeight: 600 }}>
             📋 Order for <strong>{name}</strong> · {table.name || `Table ${table.number}`}
@@ -446,7 +603,7 @@ export default function CustomerMenuPage() {
             <div style={{ fontSize: 48, marginBottom: 10 }}>✅</div>
             <div style={{ fontWeight: 800, fontSize: 20, color: '#15803D', marginBottom: 6 }}>{roundCount === 1 ? 'Order Placed!' : `Round ${roundCount} Added!`}</div>
             <div style={{ fontSize: 14, color: '#166534' }}>{roundCount === 1 ? 'Your order is being prepared!' : 'New items sent to kitchen!'}</div>
-            {runningTotal > 0 && <div style={{ marginTop: 10, fontWeight: 800, fontSize: 18, color: '#15803D' }}>Total so far: ₹{runningTotal}</div>}
+            {runningTotal > 0 && <div style={{ marginTop: 10, fontWeight: 800, fontSize: 18, color: '#15803D' }}>Total so far: ₹{runningTotal.toFixed(0)}</div>}
           </div>
           <div style={{ fontWeight: 800, fontSize: 17, color: TEXTD, marginBottom: 16, textAlign: 'center' }}>How would you like to pay?</div>
           <div style={{ display: 'flex', gap: 14, marginBottom: 16 }}>
@@ -480,7 +637,7 @@ export default function CustomerMenuPage() {
               {paymentPref === 'pay_at_table' ? 'Stay seated — a staff member will come to your table to collect payment.' : "Please visit the reception counter when you're ready to pay."}
             </div>
             <div style={{ background: TEAL + '10', borderRadius: 12, padding: '12px 16px', fontSize: 13, color: TEAL, fontWeight: 600, marginBottom: 8 }}>
-              📋 {table.name || `Table ${table.number}`} · {name} · ₹{runningTotal}
+              📋 {table.name || `Table ${table.number}`} · {name} · ₹{runningTotal.toFixed(0)}
             </div>
             <div style={{ fontSize: 12, color: TEXTL, marginTop: 8 }}>✓ Staff has been notified</div>
           </div>
