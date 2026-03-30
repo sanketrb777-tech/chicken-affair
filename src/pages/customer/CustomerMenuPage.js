@@ -325,14 +325,21 @@ export default function CustomerMenuPage() {
                   Variation <span style={{ color: '#B91C1C', fontSize: 11, fontWeight: 600 }}>* Required</span>
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: 10 }}>
-                  {(variations[pickerItem.id] || []).map(v => (
+                  {(variations[pickerItem.id] || []).map(v => {
+                    // Infer food type from variation name
+                    const isVeg = /veg|paneer|mushroom|corn|cheese/i.test(v.name) && !/non.?veg|chicken|mutton|prawn|fish|egg/i.test(v.name)
+                    const dotColor = /chicken|mutton|prawn|fish|egg|non.?veg/i.test(v.name) ? '#B91C1C' : '#15803D'
+                    return (
                     <button key={v.id} onClick={() => setPickerVariation(v)}
                       style={{ background: pickerVariation?.id === v.id ? '#5B21B6' : '#F5F3FF', color: pickerVariation?.id === v.id ? WHITE : '#3B0764', border: '2px solid ' + (pickerVariation?.id === v.id ? '#5B21B6' : '#C4B5FD'), borderRadius: 14, padding: '16px 10px', cursor: 'pointer', textAlign: 'center' }}>
-                      <div style={{ fontWeight: 800, fontSize: 15 }}>{v.name}</div>
-                      <div style={{ fontSize: 14, marginTop: 4 }}>₹{v.price}</div>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginBottom: 4 }}>
+                        <div style={{ width: 9, height: 9, borderRadius: 2, border: '2px solid ' + dotColor, background: dotColor, flexShrink: 0 }} />
+                        <span style={{ fontWeight: 800, fontSize: 15 }}>{v.name}</span>
+                      </div>
+                      <div style={{ fontSize: 14 }}>₹{v.price}</div>
                     </button>
-                  ))}
-                </div>
+                  )})
+}</div>
               </div>
             )}
 
@@ -502,15 +509,19 @@ export default function CustomerMenuPage() {
                 <div key={item.id} style={{ background: WHITE, borderRadius: 12, padding: 14, marginBottom: 10, border: '1px solid ' + (totalQty > 0 ? TEAL2 : BORDER), boxShadow: '0 1px 4px rgba(0,0,0,0.05)', display: 'flex', alignItems: 'center', gap: 12 }}>
                   <div style={{ flex: 1 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-                      <div style={{ width: 10, height: 10, borderRadius: 2, border: '2px solid ' + (item.food_type === 'veg' ? '#15803D' : '#B91C1C'), background: item.food_type === 'veg' ? '#15803D' : '#B91C1C', flexShrink: 0 }} />
+                      {/* If item has variations, show neutral dot — veg/non-veg shown per variation in picker */}
+                      {itemVars.length > 0 ? (
+                        <div style={{ width: 10, height: 10, borderRadius: 2, border: '2px solid #9CA3AF', background: '#9CA3AF', flexShrink: 0 }} />
+                      ) : (
+                        <div style={{ width: 10, height: 10, borderRadius: 2, border: '2px solid ' + (item.food_type === 'veg' ? '#15803D' : '#B91C1C'), background: item.food_type === 'veg' ? '#15803D' : '#B91C1C', flexShrink: 0 }} />
+                      )}
                       <div style={{ fontWeight: 700, fontSize: 15, color: TEXTD }}>{item.name}</div>
                     </div>
                     {hasOptions ? (
                       <div style={{ fontSize: 11, fontWeight: 700, color: '#5B21B6' }}>
-                        {itemVars.length > 0 ? `${itemVars.length} variation${itemVars.length !== 1 ? 's' : ''}` : ''}
-                        {itemVars.length > 0 && (itemAGs.length > 0 || itemPorts.length > 0) ? ' · ' : ''}
-                        {itemAGs.length > 0 ? `${itemAGs.length} add-on${itemAGs.length !== 1 ? 's' : ''}` : ''}
-                        {itemPorts.length > 0 && !itemVars.length ? `${itemPorts.length} sizes` : ''}
+                        {itemVars.length > 0 ? `Veg & Non-Veg options available` : ''}
+                        {itemVars.length === 0 && itemAGs.length > 0 ? `${itemAGs.length} add-on${itemAGs.length !== 1 ? 's' : ''} available` : ''}
+                        {itemPorts.length > 0 && !itemVars.length ? `${itemPorts.length} sizes available` : ''}
                       </div>
                     ) : (
                       <div style={{ fontWeight: 800, fontSize: 15, color: TEAL }}>₹{item.price}</div>
