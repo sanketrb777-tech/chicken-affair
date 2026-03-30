@@ -53,7 +53,8 @@ export default function MenuPage() {
   const [catForm, setCatForm]   = useState({ name: '', sort_order: 0 })
   const [itemForm, setItemForm] = useState({
     name: '', price: '', description: '', food_type: 'veg',
-    is_available: true, sort_order: 0, gst_rate: 5, priority: 2
+    is_available: true, sort_order: 0, gst_rate: 5, priority: 2,
+    available_from: '', available_until: ''
   })
 
   // Portions management inside item modal
@@ -135,12 +136,12 @@ export default function MenuPage() {
 
   // ── Item actions ──
   function openAddItem() {
-    setItemForm({ name: '', price: '', description: '', food_type: 'veg', is_available: true, sort_order: items.filter(i => i.category_id === activeCategory).length, gst_rate: 5, priority: 2 })
+    setItemForm({ name: '', price: '', description: '', food_type: 'veg', is_available: true, sort_order: items.filter(i => i.category_id === activeCategory).length, gst_rate: 5, priority: 2, available_from: '', available_until: '' })
     setPortionList([])
     setEditItem(null); setShowItemForm(true)
   }
   function openEditItem(item) {
-    setItemForm({ name: item.name, price: item.price, description: item.description || '', food_type: item.food_type || 'veg', is_available: item.is_available, sort_order: item.sort_order, gst_rate: item.gst_rate ?? 5, priority: item.priority ?? 2 })
+    setItemForm({ name: item.name, price: item.price, description: item.description || '', food_type: item.food_type || 'veg', is_available: item.is_available, sort_order: item.sort_order, gst_rate: item.gst_rate ?? 5, priority: item.priority ?? 2, available_from: item.available_from || '', available_until: item.available_until || '' })
     setPortionList(portions[item.id] || [])
     setEditItem(item); setShowItemForm(true)
   }
@@ -149,7 +150,7 @@ export default function MenuPage() {
     if (!itemForm.price) return alert('Price is required')
     setSaving(true)
     try {
-      const payload = { name: itemForm.name, price: parseFloat(itemForm.price), description: itemForm.description || null, food_type: itemForm.food_type, is_available: itemForm.is_available, sort_order: parseInt(itemForm.sort_order), gst_rate: parseFloat(itemForm.gst_rate), priority: parseInt(itemForm.priority) }
+      const payload = { name: itemForm.name, price: parseFloat(itemForm.price), description: itemForm.description || null, food_type: itemForm.food_type, is_available: itemForm.is_available, sort_order: parseInt(itemForm.sort_order), gst_rate: parseFloat(itemForm.gst_rate), priority: parseInt(itemForm.priority), available_from: itemForm.available_from || null, available_until: itemForm.available_until || null }
       let itemId = editItem?.id
       if (editItem) await supabase.from('menu_items').update(payload).eq('id', editItem.id)
       else {
@@ -300,6 +301,11 @@ export default function MenuPage() {
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                         <div style={{ fontWeight: 700, fontSize: 14, color: isOn ? theme.textDark : theme.textLight, textDecoration: isOn ? 'none' : 'line-through' }}>{item.name}</div>
                         {!isOn && <span style={{ fontSize: 10, fontWeight: 800, background: '#FEE2E2', color: '#B91C1C', padding: '2px 7px', borderRadius: 10, flexShrink: 0 }}>OUT OF STOCK</span>}
+                        {(item.available_from || item.available_until) && (
+                          <span style={{ fontSize: 10, fontWeight: 700, background: '#EFF6FF', color: '#1D4ED8', border: '1px solid #BFDBFE', padding: '2px 7px', borderRadius: 10, flexShrink: 0 }}>
+                            🕐 {item.available_from ? item.available_from.slice(0,5) : '00:00'} – {item.available_until ? item.available_until.slice(0,5) : '23:59'}
+                          </span>
+                        )}
                       </div>
                       {item.description && <div style={{ fontSize: 12, color: theme.textLight, marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.description}</div>}
                       {/* Portion tags */}
@@ -416,6 +422,36 @@ export default function MenuPage() {
                     </button>
                   ))}
                 </div>
+              </div>
+
+              {/* ── AVAILABILITY TIMING ── */}
+              <div style={{ borderTop: '2px solid ' + theme.bgWarm, paddingTop: 16 }}>
+                <div style={{ marginBottom: 10 }}>
+                  <div style={{ fontWeight: 800, fontSize: 13, color: theme.textDark }}>Available Hours <span style={{ fontWeight: 400, fontSize: 11, color: theme.textLight }}>(optional)</span></div>
+                  <div style={{ fontSize: 11, color: theme.textLight, marginTop: 2 }}>Leave blank to show this item all day. Set times to restrict visibility (e.g. Breakfast 7:00–11:00)</div>
+                </div>
+                <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                  <div style={{ flex: 1 }}>
+                    <label style={{ fontSize: 11, fontWeight: 700, color: theme.textLight, display: 'block', marginBottom: 5, textTransform: 'uppercase', letterSpacing: 0.5 }}>From</label>
+                    <input type="time" value={itemForm.available_from} onChange={e => setItemForm(f => ({ ...f, available_from: e.target.value }))}
+                      style={{ width: '100%', border: '1.5px solid ' + theme.border, borderRadius: 9, padding: '9px 12px', fontSize: 13, outline: 'none', boxSizing: 'border-box', color: theme.textDark, background: itemForm.available_from ? '#EFF6FF' : '#fff' }} />
+                  </div>
+                  <div style={{ paddingTop: 18, color: theme.textLight, fontWeight: 700 }}>–</div>
+                  <div style={{ flex: 1 }}>
+                    <label style={{ fontSize: 11, fontWeight: 700, color: theme.textLight, display: 'block', marginBottom: 5, textTransform: 'uppercase', letterSpacing: 0.5 }}>Until</label>
+                    <input type="time" value={itemForm.available_until} onChange={e => setItemForm(f => ({ ...f, available_until: e.target.value }))}
+                      style={{ width: '100%', border: '1.5px solid ' + theme.border, borderRadius: 9, padding: '9px 12px', fontSize: 13, outline: 'none', boxSizing: 'border-box', color: theme.textDark, background: itemForm.available_until ? '#EFF6FF' : '#fff' }} />
+                  </div>
+                  {(itemForm.available_from || itemForm.available_until) && (
+                    <button onClick={() => setItemForm(f => ({ ...f, available_from: '', available_until: '' }))}
+                      style={{ paddingTop: 18, background: 'none', border: 'none', color: theme.red, cursor: 'pointer', fontSize: 12, fontWeight: 700, flexShrink: 0 }}>✕ Clear</button>
+                  )}
+                </div>
+                {(itemForm.available_from && itemForm.available_until) && (
+                  <div style={{ marginTop: 8, background: '#EFF6FF', border: '1px solid #BFDBFE', borderRadius: 8, padding: '7px 12px', fontSize: 12, color: '#1D4ED8', fontWeight: 600 }}>
+                    🕐 Visible only from {itemForm.available_from} to {itemForm.available_until}
+                  </div>
+                )}
               </div>
 
               {/* ── PORTIONS ── */}

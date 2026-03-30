@@ -53,7 +53,19 @@ export function NewOrderPage() {
     const { data: menuItems } = await supabase.from('menu_items').select('*').eq('is_available', true).order('sort_order')
     const { data: allPortions } = await supabase.from('item_portions').select('*').eq('is_available', true).order('sort_order')
     setCategories(cats || [])
-    setItems(menuItems || [])
+
+    // Filter items by availability time window
+    const now = new Date()
+    const nowMins = now.getHours() * 60 + now.getMinutes()
+    const timeFiltered = (menuItems || []).filter(item => {
+      if (!item.available_from && !item.available_until) return true
+      const toMins = t => { const [h, m] = t.split(':').map(Number); return h * 60 + m }
+      const from = item.available_from ? toMins(item.available_from) : 0
+      const until = item.available_until ? toMins(item.available_until) : 1439
+      return nowMins >= from && nowMins <= until
+    })
+
+    setItems(timeFiltered)
     const portionMap = {}
     ;(allPortions || []).forEach(p => {
       if (!portionMap[p.menu_item_id]) portionMap[p.menu_item_id] = []
