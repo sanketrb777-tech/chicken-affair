@@ -506,125 +506,113 @@ export function NewOrderPage() {
   )
 
   // ── PICKER MODAL ──
-  const ItemPickerModal = () => {
-    if (!pickerItem) return null
-    const item = pickerItem
-    const itemVariations = variations[item.id] || []
-    const itemPortions = portions[item.id] || []
-    const itemAddonGroups = addonGroups[item.id] || []
-    const canConfirm = canConfirmPicker()
-
-    return (
-      <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000, padding: 20 }}
-        onClick={e => e.target === e.currentTarget && closePicker()}>
-        <div style={{ background: '#fff', borderRadius: 20, padding: 28, width: '100%', maxWidth: 440, maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 24px 64px rgba(0,0,0,0.25)' }}>
-          {/* Header */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
-            <div style={{ width: 10, height: 10, borderRadius: 2, background: item.food_type === 'veg' ? '#15803D' : '#B91C1C', flexShrink: 0 }} />
-            <div style={{ fontWeight: 800, fontSize: 18, color: theme.textDark, flex: 1 }}>{item.name}</div>
-            <div style={{ fontWeight: 900, fontSize: 16, color: '#092b33' }}>₹{item.price}</div>
-          </div>
-
-          {/* Variations */}
-          {itemVariations.length > 0 && (
-            <div style={{ marginBottom: 20 }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: theme.textDark, marginBottom: 12 }}>
-                Variation <span style={{ color: '#B91C1C', fontSize: 11 }}>*Required</span>
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: 10 }}>
-                {itemVariations.map(v => {
-                    const dotColor = /chicken|mutton|prawn|fish|egg|non.?veg/i.test(v.name) ? '#B91C1C' : '#15803D'
-                    return (
-                  <button key={v.id} onClick={() => setPickerVariation(v)}
-                    style={{ background: pickerVariation?.id === v.id ? '#5B21B6' : '#F5F3FF', color: pickerVariation?.id === v.id ? '#fff' : '#3B0764', border: '2px solid ' + (pickerVariation?.id === v.id ? '#5B21B6' : '#C4B5FD'), borderRadius: 12, padding: '14px 10px', cursor: 'pointer', textAlign: 'center', transition: 'all 0.15s' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginBottom: 4 }}>
-                      <div style={{ width: 9, height: 9, borderRadius: 2, border: '2px solid ' + dotColor, background: dotColor, flexShrink: 0 }} />
-                      <span style={{ fontWeight: 800, fontSize: 14 }}>{v.name}</span>
-                    </div>
-                    <div style={{ fontSize: 13 }}>₹{v.price}</div>
-                  </button>
-                )})
-  }</div>
-            </div>
-          )}
-
-          {/* Portions (if no variations) */}
-          {itemPortions.length > 0 && itemVariations.length === 0 && (
-            <div style={{ marginBottom: 20 }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: theme.textDark, marginBottom: 12 }}>
-                Portion / Size <span style={{ color: '#B91C1C', fontSize: 11 }}>*Required</span>
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {itemPortions.map(p => (
-                  <button key={p.id} onClick={() => confirmPicker(p)}
-                    style={{ background: '#F0FDF4', border: '2px solid #86EFAC', borderRadius: 12, padding: '12px 16px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
-                    onMouseEnter={e => { e.currentTarget.style.background = '#DCFCE7' }}
-                    onMouseLeave={e => { e.currentTarget.style.background = '#F0FDF4' }}>
-                    <div>
-                      <div style={{ fontWeight: 700, fontSize: 14, color: theme.textDark }}>{p.name}</div>
-                      {p.value > 0 && p.unit && <div style={{ fontSize: 12, color: theme.textLight }}>{p.value}{p.unit}</div>}
-                    </div>
-                    <div style={{ fontWeight: 900, fontSize: 16, color: '#092b33' }}>₹{p.price}</div>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Add-on Groups */}
-          {itemAddonGroups.map(group => (
-            <div key={group.id} style={{ marginBottom: 20 }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: theme.textDark, marginBottom: 4 }}>
-                {group.name}
-                <span style={{ marginLeft: 8, fontSize: 11, fontWeight: 600, color: group.min_select > 0 ? '#B91C1C' : theme.textLight }}>
-                  {group.min_select > 0 ? `*Min ${group.min_select} · ` : ''}Max {group.max_select}
-                </span>
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {group.addons.map(addon => {
-                  const qty = (pickerAddons[group.id] || {})[addon.id] || 0
-                  return (
-                    <div key={addon.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: qty > 0 ? '#FFF7ED' : '#F9FAFB', borderRadius: 10, border: '1px solid ' + (qty > 0 ? '#FED7AA' : theme.border) }}>
-                      <div>
-                        <div style={{ fontWeight: 600, fontSize: 14, color: theme.textDark }}>{addon.name}</div>
-                        {addon.price > 0 && <div style={{ fontSize: 12, color: '#C2410C', fontWeight: 600 }}>+₹{addon.price}</div>}
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        {qty > 0 && (
-                          <>
-                            <button onClick={() => adjustAddon(group, addon, -1)} style={{ background: '#FEE2E2', border: 'none', borderRadius: 6, width: 28, height: 28, fontSize: 16, cursor: 'pointer', fontWeight: 700, color: '#B91C1C', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>-</button>
-                            <span style={{ fontWeight: 800, fontSize: 14, minWidth: 20, textAlign: 'center' }}>{qty}</span>
-                          </>
-                        )}
-                        <button onClick={() => adjustAddon(group, addon, 1)}
-                          disabled={pickerAddonCount(group.id) >= group.max_select && qty === 0}
-                          style={{ background: '#092b33', border: 'none', borderRadius: 6, width: 28, height: 28, fontSize: 16, cursor: 'pointer', fontWeight: 700, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: (pickerAddonCount(group.id) >= group.max_select && qty === 0) ? 0.3 : 1 }}>+</button>
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-          ))}
-
-          {/* Actions — only show if not portion-only (portions confirm directly) */}
-          {(itemVariations.length > 0 || itemAddonGroups.length > 0) && (
-            <div style={{ display: 'flex', gap: 10 }}>
-              <button onClick={closePicker} style={{ flex: 1, background: theme.bgWarm, border: '1px solid ' + theme.border, borderRadius: 10, padding: '12px', fontSize: 13, fontWeight: 700, cursor: 'pointer', color: theme.textMid }}>Cancel</button>
-              <button onClick={() => confirmPicker()} disabled={!canConfirm}
-                style={{ flex: 2, background: canConfirm ? '#092b33' : theme.bgWarm, color: canConfirm ? '#fff' : theme.textMuted, border: 'none', borderRadius: 10, padding: '12px', fontSize: 13, fontWeight: 700, cursor: canConfirm ? 'pointer' : 'not-allowed' }}>
-                Add to Order →
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
-    )
-  }
-
   return (
     <>
-      <ItemPickerModal />
+      {/* ── ITEM PICKER MODAL (inline) ── */}
+      {pickerItem && (() => {
+        const item = pickerItem
+        const itemVariations = variations[item.id] || []
+        const itemPortions = portions[item.id] || []
+        const itemAddonGroups = addonGroups[item.id] || []
+        const canConfirm = canConfirmPicker()
+        return (
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000, padding: 20 }}
+            onClick={e => e.target === e.currentTarget && closePicker()}>
+            <div style={{ background: '#fff', borderRadius: 20, padding: 28, width: '100%', maxWidth: 440, maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 24px 64px rgba(0,0,0,0.25)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
+                <div style={{ width: 10, height: 10, borderRadius: 2, background: item.food_type === 'veg' ? '#15803D' : '#B91C1C', flexShrink: 0 }} />
+                <div style={{ fontWeight: 800, fontSize: 18, color: theme.textDark, flex: 1 }}>{item.name}</div>
+                <div style={{ fontWeight: 900, fontSize: 16, color: '#092b33' }}>₹{item.price}</div>
+              </div>
+              {itemVariations.length > 0 && (
+                <div style={{ marginBottom: 20 }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: theme.textDark, marginBottom: 12 }}>
+                    Variation <span style={{ color: '#B91C1C', fontSize: 11 }}>*Required</span>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: 10 }}>
+                    {itemVariations.map(v => {
+                      const dotColor = /chicken|mutton|prawn|fish|egg|non.?veg/i.test(v.name) ? '#B91C1C' : '#15803D'
+                      return (
+                        <button key={v.id} onClick={() => setPickerVariation(v)}
+                          style={{ background: pickerVariation?.id === v.id ? '#5B21B6' : '#F5F3FF', color: pickerVariation?.id === v.id ? '#fff' : '#3B0764', border: '2px solid ' + (pickerVariation?.id === v.id ? '#5B21B6' : '#C4B5FD'), borderRadius: 12, padding: '14px 10px', cursor: 'pointer', textAlign: 'center' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginBottom: 4 }}>
+                            <div style={{ width: 9, height: 9, borderRadius: 2, border: '2px solid ' + dotColor, background: dotColor, flexShrink: 0 }} />
+                            <span style={{ fontWeight: 800, fontSize: 14 }}>{v.name}</span>
+                          </div>
+                          <div style={{ fontSize: 13 }}>₹{v.price}</div>
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+              {itemPortions.length > 0 && itemVariations.length === 0 && (
+                <div style={{ marginBottom: 20 }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: theme.textDark, marginBottom: 12 }}>
+                    Portion / Size <span style={{ color: '#B91C1C', fontSize: 11 }}>*Required</span>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {itemPortions.map(p => (
+                      <button key={p.id} onClick={() => confirmPicker(p)}
+                        style={{ background: '#F0FDF4', border: '2px solid #86EFAC', borderRadius: 12, padding: '12px 16px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div>
+                          <div style={{ fontWeight: 700, fontSize: 14, color: theme.textDark }}>{p.name}</div>
+                          {p.value > 0 && p.unit && <div style={{ fontSize: 12, color: theme.textLight }}>{p.value}{p.unit}</div>}
+                        </div>
+                        <div style={{ fontWeight: 900, fontSize: 16, color: '#092b33' }}>₹{p.price}</div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {itemAddonGroups.map(group => (
+                <div key={group.id} style={{ marginBottom: 20 }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: theme.textDark, marginBottom: 4 }}>
+                    {group.name}
+                    <span style={{ marginLeft: 8, fontSize: 11, fontWeight: 600, color: group.min_select > 0 ? '#B91C1C' : theme.textLight }}>
+                      {group.min_select > 0 ? `*Min ${group.min_select} · ` : ''}Max {group.max_select}
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {group.addons.map(addon => {
+                      const qty = (pickerAddons[group.id] || {})[addon.id] || 0
+                      return (
+                        <div key={addon.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: qty > 0 ? '#FFF7ED' : '#F9FAFB', borderRadius: 10, border: '1px solid ' + (qty > 0 ? '#FED7AA' : theme.border) }}>
+                          <div>
+                            <div style={{ fontWeight: 600, fontSize: 14, color: theme.textDark }}>{addon.name}</div>
+                            {addon.price > 0 && <div style={{ fontSize: 12, color: '#C2410C', fontWeight: 600 }}>+₹{addon.price}</div>}
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                            {qty > 0 && (
+                              <>
+                                <button onClick={() => adjustAddon(group, addon, -1)} style={{ background: '#FEE2E2', border: 'none', borderRadius: 6, width: 28, height: 28, fontSize: 16, cursor: 'pointer', fontWeight: 700, color: '#B91C1C', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>-</button>
+                                <span style={{ fontWeight: 800, fontSize: 14, minWidth: 20, textAlign: 'center' }}>{qty}</span>
+                              </>
+                            )}
+                            <button onClick={() => adjustAddon(group, addon, 1)}
+                              disabled={pickerAddonCount(group.id) >= group.max_select && qty === 0}
+                              style={{ background: '#092b33', border: 'none', borderRadius: 6, width: 28, height: 28, fontSize: 16, cursor: 'pointer', fontWeight: 700, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: (pickerAddonCount(group.id) >= group.max_select && qty === 0) ? 0.3 : 1 }}>+</button>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              ))}
+              {(itemVariations.length > 0 || itemAddonGroups.length > 0) && (
+                <div style={{ display: 'flex', gap: 10 }}>
+                  <button onClick={closePicker} style={{ flex: 1, background: theme.bgWarm, border: '1px solid ' + theme.border, borderRadius: 10, padding: '12px', fontSize: 13, fontWeight: 700, cursor: 'pointer', color: theme.textMid }}>Cancel</button>
+                  <button onClick={() => confirmPicker()} disabled={!canConfirm}
+                    style={{ flex: 2, background: canConfirm ? '#092b33' : theme.bgWarm, color: canConfirm ? '#fff' : theme.textMuted, border: 'none', borderRadius: 10, padding: '12px', fontSize: 13, fontWeight: 700, cursor: canConfirm ? 'pointer' : 'not-allowed' }}>
+                    Add to Order →
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        )
+      })()}
+
 
       <div className="orders-desktop" style={{ display: 'flex', gap: 16, height: 'calc(100vh - 112px)' }}>
         {menuPanel}
