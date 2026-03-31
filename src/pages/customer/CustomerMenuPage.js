@@ -82,7 +82,11 @@ export default function CustomerMenuPage() {
       supabase.from('item_addons').select('*').order('sort_order'),
     ])
     setTable(tableData)
-    setCategories(cats || [])
+    // Filter categories by available_days
+    const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat']
+    const todayDay = days[new Date().getDay()]
+    const availableCats = (cats || []).filter(c => !c.available_days || c.available_days.length === 0 || c.available_days.includes(todayDay))
+    setCategories(availableCats)
 
     // Time filter
     const now = new Date(); const nowMins = now.getHours() * 60 + now.getMinutes()
@@ -112,7 +116,7 @@ export default function CustomerMenuPage() {
     })
     setAddonGroups(groupMap)
 
-    if (cats?.length) setActiveCategory(cats[0].id)
+    if (availableCats?.length) setActiveCategory(availableCats[0].id)
     setLoading(false)
   }
 

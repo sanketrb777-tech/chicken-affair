@@ -40,7 +40,7 @@ export default function MenuPage() {
   const [saving, setSaving]       = useState(false)
   const [toggling, setToggling]   = useState(null)
 
-  const [catForm, setCatForm]   = useState({ name: '', sort_order: 0 })
+  const [catForm, setCatForm]   = useState({ name: '', sort_order: 0, available_days: null })
   const [itemForm, setItemForm] = useState({
     name: '', price: '', description: '', food_type: 'veg',
     is_available: true, sort_order: 0, gst_rate: 5, priority: 2,
@@ -131,13 +131,13 @@ export default function MenuPage() {
   }
 
   // ── Category actions ──
-  function openAddCat() { setCatForm({ name: '', sort_order: categories.length }); setEditCat(null); setShowCatForm(true) }
-  function openEditCat(cat) { setCatForm({ name: cat.name, sort_order: cat.sort_order }); setEditCat(cat); setShowCatForm(true) }
+  function openAddCat() { setCatForm({ name: '', sort_order: categories.length, available_days: null }); setEditCat(null); setShowCatForm(true) }
+  function openEditCat(cat) { setCatForm({ name: cat.name, sort_order: cat.sort_order, available_days: cat.available_days || null }); setEditCat(cat); setShowCatForm(true) }
   async function saveCat() {
     if (!catForm.name.trim()) return alert('Category name is required'); setSaving(true)
     try {
-      if (editCat) await supabase.from('menu_categories').update({ name: catForm.name, sort_order: parseInt(catForm.sort_order) }).eq('id', editCat.id)
-      else await supabase.from('menu_categories').insert({ name: catForm.name, sort_order: parseInt(catForm.sort_order), is_active: true })
+      if (editCat) await supabase.from('menu_categories').update({ name: catForm.name, sort_order: parseInt(catForm.sort_order), available_days: catForm.available_days || null }).eq('id', editCat.id)
+      else await supabase.from('menu_categories').insert({ name: catForm.name, sort_order: parseInt(catForm.sort_order), is_active: true, available_days: catForm.available_days || null })
       setShowCatForm(false); fetchAll()
     } finally { setSaving(false) }
   }
@@ -323,6 +323,7 @@ export default function MenuPage() {
                   <span style={{ color: isActive ? 'rgba(255,255,255,0.4)' : theme.textMuted, fontSize: 14, flexShrink: 0 }}>⠿</span>
                   <span style={{ fontSize: 9, fontWeight: 800, background: isActive ? 'rgba(255,255,255,0.15)' : '#F1F5F9', color: isActive ? '#fff' : theme.textMuted, padding: '1px 5px', borderRadius: 4, flexShrink: 0 }}>#{idx + 1}</span>
                   <div style={{ fontWeight: 700, fontSize: 13, color: isActive ? '#fff' : theme.textDark, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{cat.name}</div>
+                  {cat.available_days?.length > 0 && <span style={{ fontSize: 9, background: isActive ? 'rgba(255,255,255,0.2)' : '#EFF6FF', color: isActive ? '#fff' : '#1D4ED8', padding: '1px 4px', borderRadius: 4, fontWeight: 700, flexShrink: 0 }}>📅</span>}
                   <span style={{ fontSize: 10, background: isActive ? 'rgba(255,255,255,0.15)' : theme.bgWarm, color: isActive ? '#fff' : theme.textLight, padding: '2px 6px', borderRadius: 10, fontWeight: 700 }}>{items.filter(i => i.category_id === cat.id).length}</span>
                   {!isActive && <button onClick={e => { e.stopPropagation(); openEditCat(cat) }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: theme.textMuted, fontSize: 11, padding: '1px 3px' }}>✏️</button>}
                 </div>
@@ -401,11 +402,46 @@ export default function MenuPage() {
       {/* ── Category Modal ── */}
       {showCatForm && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-          <div style={{ background: '#fff', borderRadius: 18, padding: 32, width: 380, boxShadow: '0 24px 64px rgba(0,0,0,0.2)' }}>
+          <div style={{ background: '#fff', borderRadius: 18, padding: 32, width: 420, boxShadow: '0 24px 64px rgba(0,0,0,0.2)' }}>
             <h2 style={{ fontSize: 18, fontWeight: 800, color: theme.textDark, margin: '0 0 20px' }}>{editCat ? 'Edit Category' : 'Add Category'}</h2>
             <input autoFocus value={catForm.name} onChange={e => setCatForm(f => ({ ...f, name: e.target.value }))} placeholder="e.g. Starters, Main Course"
               style={{ width: '100%', border: '1.5px solid ' + theme.border, borderRadius: 9, padding: '10px 12px', fontSize: 13, outline: 'none', boxSizing: 'border-box' }} />
-            <div style={{ display: 'flex', gap: 10, marginTop: 24 }}>
+
+            {/* Available Days */}
+            <div style={{ marginTop: 20 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                <div>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: theme.textDark }}>Available Days <span style={{ fontWeight: 400, color: theme.textLight }}>(optional)</span></div>
+                  <div style={{ fontSize: 11, color: theme.textLight, marginTop: 2 }}>Leave all unselected to show every day</div>
+                </div>
+                {catForm.available_days?.length > 0 && (
+                  <button onClick={() => setCatForm(f => ({ ...f, available_days: null }))}
+                    style={{ background: 'none', border: 'none', color: theme.red, fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>✕ Clear</button>
+                )}
+              </div>
+              <div style={{ display: 'flex', gap: 6 }}>
+                {['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map(day => {
+                  const selected = (catForm.available_days || []).includes(day)
+                  return (
+                    <button key={day} onClick={() => {
+                      const current = catForm.available_days || []
+                      const next = selected ? current.filter(d => d !== day) : [...current, day]
+                      setCatForm(f => ({ ...f, available_days: next.length === 0 ? null : next }))
+                    }}
+                      style={{ flex: 1, background: selected ? '#092b33' : theme.bgWarm, color: selected ? '#fff' : theme.textMid, border: '1.5px solid ' + (selected ? '#092b33' : theme.border), borderRadius: 8, padding: '8px 0', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
+                      {day}
+                    </button>
+                  )
+                })}
+              </div>
+              {catForm.available_days?.length > 0 && (
+                <div style={{ marginTop: 8, background: '#EFF6FF', border: '1px solid #BFDBFE', borderRadius: 8, padding: '7px 12px', fontSize: 11, color: '#1D4ED8', fontWeight: 600 }}>
+                  📅 Visible only on: {catForm.available_days.join(', ')}
+                </div>
+              )}
+            </div>
+
+            <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
               <button onClick={() => setShowCatForm(false)} style={{ flex: 1, background: theme.bgWarm, border: '1px solid ' + theme.border, borderRadius: 9, padding: '12px', fontSize: 13, cursor: 'pointer', fontWeight: 600, color: theme.textMid }}>Cancel</button>
               <button onClick={saveCat} disabled={saving} style={{ flex: 2, background: '#092b33', color: '#fff', border: 'none', borderRadius: 9, padding: '12px', fontSize: 13, fontWeight: 700, cursor: saving ? 'not-allowed' : 'pointer' }}>{saving ? 'Saving...' : editCat ? 'Save Changes' : 'Add Category'}</button>
             </div>
