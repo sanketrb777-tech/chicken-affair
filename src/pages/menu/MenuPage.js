@@ -89,7 +89,7 @@ export default function MenuPage() {
       supabase.from('item_portions').select('*').eq('is_available', true).order('sort_order'),
       supabase.from('item_variations').select('*').eq('is_available', true).order('sort_order'),
       supabase.from('item_addon_groups').select('*').order('sort_order'),
-      supabase.from('item_addons').select('*').eq('is_available', true).order('sort_order'),
+      supabase.from('item_addons').select('*').order('sort_order'),
     ])
     setCategories(cats || [])
     setItems(menuItems || [])

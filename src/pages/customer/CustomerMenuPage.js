@@ -79,7 +79,7 @@ export default function CustomerMenuPage() {
       supabase.from('item_portions').select('*').eq('is_available', true).order('sort_order'),
       supabase.from('item_variations').select('*').eq('is_available', true).order('sort_order'),
       supabase.from('item_addon_groups').select('*').order('sort_order'),
-      supabase.from('item_addons').select('*').eq('is_available', true).order('sort_order'),
+      supabase.from('item_addons').select('*').order('sort_order'),
     ])
     setTable(tableData)
     setCategories(cats || [])
@@ -326,20 +326,19 @@ export default function CustomerMenuPage() {
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: 10 }}>
                   {(variations[pickerItem.id] || []).map(v => {
-                    // Infer food type from variation name
-                    const isVeg = /veg|paneer|mushroom|corn|cheese/i.test(v.name) && !/non.?veg|chicken|mutton|prawn|fish|egg/i.test(v.name)
                     const dotColor = /chicken|mutton|prawn|fish|egg|non.?veg/i.test(v.name) ? '#B91C1C' : '#15803D'
                     return (
-                    <button key={v.id} onClick={() => setPickerVariation(v)}
-                      style={{ background: pickerVariation?.id === v.id ? '#5B21B6' : '#F5F3FF', color: pickerVariation?.id === v.id ? WHITE : '#3B0764', border: '2px solid ' + (pickerVariation?.id === v.id ? '#5B21B6' : '#C4B5FD'), borderRadius: 14, padding: '16px 10px', cursor: 'pointer', textAlign: 'center' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginBottom: 4 }}>
-                        <div style={{ width: 9, height: 9, borderRadius: 2, border: '2px solid ' + dotColor, background: dotColor, flexShrink: 0 }} />
-                        <span style={{ fontWeight: 800, fontSize: 15 }}>{v.name}</span>
-                      </div>
-                      <div style={{ fontSize: 14 }}>₹{v.price}</div>
-                    </button>
-                  )})
-}</div>
+                      <button key={v.id} onClick={() => setPickerVariation(v)}
+                        style={{ background: pickerVariation?.id === v.id ? '#5B21B6' : '#F5F3FF', color: pickerVariation?.id === v.id ? WHITE : '#3B0764', border: '2px solid ' + (pickerVariation?.id === v.id ? '#5B21B6' : '#C4B5FD'), borderRadius: 14, padding: '16px 10px', cursor: 'pointer', textAlign: 'center' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginBottom: 4 }}>
+                          <div style={{ width: 9, height: 9, borderRadius: 2, border: '2px solid ' + dotColor, background: dotColor, flexShrink: 0 }} />
+                          <span style={{ fontWeight: 800, fontSize: 15 }}>{v.name}</span>
+                        </div>
+                        <div style={{ fontSize: 14 }}>₹{v.price}</div>
+                      </button>
+                    )
+                  })}
+                </div>
               </div>
             )}
 
