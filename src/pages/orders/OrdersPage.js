@@ -376,7 +376,12 @@ export function NewOrderPage() {
             return (
               <div key={item.id} style={{ background: '#fff', borderRadius: 10, padding: 12, border: qty > 0 ? '2px solid #0D9488' : '1px solid ' + theme.border, boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
                 <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6, marginBottom: 6 }}>
-                  <div style={{ width: 9, height: 9, borderRadius: 2, border: '2px solid ' + (item.food_type === 'veg' ? '#15803D' : '#B91C1C'), background: item.food_type === 'veg' ? '#15803D' : '#B91C1C', flexShrink: 0, marginTop: 3 }} />
+                  {/* Neutral dot if item has variations — veg/non-veg shown per variation in picker */}
+                  {itemVariations.length > 0 ? (
+                    <div style={{ width: 9, height: 9, borderRadius: 2, border: '2px solid #9CA3AF', background: '#9CA3AF', flexShrink: 0, marginTop: 3 }} />
+                  ) : (
+                    <div style={{ width: 9, height: 9, borderRadius: 2, border: '2px solid ' + (item.food_type === 'veg' ? '#15803D' : '#B91C1C'), background: item.food_type === 'veg' ? '#15803D' : '#B91C1C', flexShrink: 0, marginTop: 3 }} />
+                  )}
                   <div style={{ fontWeight: 700, fontSize: 12, color: theme.textDark, lineHeight: 1.3 }}>{item.name}</div>
                 </div>
                 {hasOptions ? (
@@ -527,14 +532,19 @@ export function NewOrderPage() {
                 Variation <span style={{ color: '#B91C1C', fontSize: 11 }}>*Required</span>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: 10 }}>
-                {itemVariations.map(v => (
+                {itemVariations.map(v => {
+                    const dotColor = /chicken|mutton|prawn|fish|egg|non.?veg/i.test(v.name) ? '#B91C1C' : '#15803D'
+                    return (
                   <button key={v.id} onClick={() => setPickerVariation(v)}
                     style={{ background: pickerVariation?.id === v.id ? '#5B21B6' : '#F5F3FF', color: pickerVariation?.id === v.id ? '#fff' : '#3B0764', border: '2px solid ' + (pickerVariation?.id === v.id ? '#5B21B6' : '#C4B5FD'), borderRadius: 12, padding: '14px 10px', cursor: 'pointer', textAlign: 'center', transition: 'all 0.15s' }}>
-                    <div style={{ fontWeight: 800, fontSize: 14 }}>{v.name}</div>
-                    <div style={{ fontSize: 13, marginTop: 4 }}>₹{v.price}</div>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginBottom: 4 }}>
+                      <div style={{ width: 9, height: 9, borderRadius: 2, border: '2px solid ' + dotColor, background: dotColor, flexShrink: 0 }} />
+                      <span style={{ fontWeight: 800, fontSize: 14 }}>{v.name}</span>
+                    </div>
+                    <div style={{ fontSize: 13 }}>₹{v.price}</div>
                   </button>
-                ))}
-              </div>
+                )})
+  }</div>
             </div>
           )}
 
