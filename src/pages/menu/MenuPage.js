@@ -199,7 +199,7 @@ export default function MenuPage() {
         if (editPortionIdx !== null && portionList[editPortionIdx]?.id) {
           await supabase.from('item_portions').update({ name: portionPayload.name, unit: portionPayload.unit, value: portionPayload.value, price: portionPayload.price }).eq('id', portionList[editPortionIdx].id)
           setPortionList(prev => prev.map((p, i) => i === editPortionIdx ? { ...p, ...portionPayload } : p))
-        } else { const { data } = await supabase.from('item_portions').insert(portionPayload).select().single(); setPortionList(prev => [...prev, data]) }
+        } else { const { data, error: pErr } = await supabase.from('item_portions').insert(portionPayload).select().single(); if (pErr) throw pErr; if (data) setPortionList(prev => [...prev, data]) }
       } else {
         if (editPortionIdx !== null) setPortionList(prev => prev.map((p, i) => i === editPortionIdx ? { ...portionPayload } : p))
         else setPortionList(prev => [...prev, portionPayload])
@@ -228,13 +228,13 @@ export default function MenuPage() {
         if (editVariationIdx !== null && variationList[editVariationIdx]?.id) {
           await supabase.from('item_variations').update({ name: vPayload.name, price: vPayload.price }).eq('id', variationList[editVariationIdx].id)
           setVariationList(prev => prev.map((v, i) => i === editVariationIdx ? { ...v, name: vPayload.name, price: vPayload.price } : v))
-        } else { const { data } = await supabase.from('item_variations').insert(vPayload).select().single(); setVariationList(prev => [...prev, data]) }
+        } else { const { data, error: vErr } = await supabase.from('item_variations').insert(vPayload).select().single(); if (vErr) throw vErr; if (data) setVariationList(prev => [...prev, data]) }
       } else {
         if (editVariationIdx !== null) setVariationList(prev => prev.map((v, i) => i === editVariationIdx ? { ...v, ...vPayload } : v))
         else setVariationList(prev => [...prev, { ...vPayload, id: null }])
       }
       setShowVariationForm(false)
-    } finally { setSavingVariation(false) }
+    } catch (err) { alert('Error saving variation: ' + err.message) } finally { setSavingVariation(false) }
   }
   async function deleteVariation(v, idx) {
     if (!window.confirm('Delete this variation?')) return
@@ -254,13 +254,13 @@ export default function MenuPage() {
         if (editAddonGroupIdx !== null && addonGroupList[editAddonGroupIdx]?.id) {
           await supabase.from('item_addon_groups').update({ name: gPayload.name, min_select: gPayload.min_select, max_select: gPayload.max_select }).eq('id', addonGroupList[editAddonGroupIdx].id)
           setAddonGroupList(prev => prev.map((g, i) => i === editAddonGroupIdx ? { ...g, name: gPayload.name, min_select: gPayload.min_select, max_select: gPayload.max_select } : g))
-        } else { const { data } = await supabase.from('item_addon_groups').insert(gPayload).select().single(); setAddonGroupList(prev => [...prev, { ...data, addons: [] }]) }
+        } else { const { data, error: gErr } = await supabase.from('item_addon_groups').insert(gPayload).select().single(); if (gErr) throw gErr; if (data) setAddonGroupList(prev => [...prev, { ...data, addons: [] }]) }
       } else {
         if (editAddonGroupIdx !== null) setAddonGroupList(prev => prev.map((g, i) => i === editAddonGroupIdx ? { ...g, ...gPayload } : g))
         else setAddonGroupList(prev => [...prev, { ...gPayload, id: null, addons: [] }])
       }
       setShowAddonGroupForm(false)
-    } finally { setSavingAddonGroup(false) }
+    } catch (err) { alert('Error saving add-on group: ' + err.message) } finally { setSavingAddonGroup(false) }
   }
   async function deleteAddonGroup(g, idx) {
     if (!window.confirm('Delete this add-on group and all its items?')) return
@@ -281,12 +281,12 @@ export default function MenuPage() {
         if (editAddonItemIdx !== null && group.addons[editAddonItemIdx]?.id) {
           await supabase.from('item_addons').update({ name: aPayload.name, price: aPayload.price }).eq('id', group.addons[editAddonItemIdx].id)
           setAddonGroupList(prev => prev.map((g, gi) => gi === addonItemGroupIdx ? { ...g, addons: g.addons.map((a, ai) => ai === editAddonItemIdx ? { ...a, name: aPayload.name, price: aPayload.price } : a) } : g))
-        } else { const { data } = await supabase.from('item_addons').insert(aPayload).select().single(); setAddonGroupList(prev => prev.map((g, gi) => gi === addonItemGroupIdx ? { ...g, addons: [...g.addons, data] } : g)) }
+        } else { const { data, error: aErr } = await supabase.from('item_addons').insert(aPayload).select().single(); if (aErr) throw aErr; if (data) setAddonGroupList(prev => prev.map((g, gi) => gi === addonItemGroupIdx ? { ...g, addons: [...g.addons, data] } : g)) }
       } else {
         setAddonGroupList(prev => prev.map((g, gi) => gi === addonItemGroupIdx ? { ...g, addons: editAddonItemIdx !== null ? g.addons.map((a, ai) => ai === editAddonItemIdx ? { ...a, ...aPayload } : a) : [...g.addons, { ...aPayload, id: null }] } : g))
       }
       setShowAddonItemForm(false)
-    } finally { setSavingAddonItem(false) }
+    } catch (err) { alert('Error saving add-on: ' + err.message) } finally { setSavingAddonItem(false) }
   }
   async function deleteAddonItem(item, itemIdx, groupIdx) {
     if (!window.confirm('Delete this add-on?')) return
