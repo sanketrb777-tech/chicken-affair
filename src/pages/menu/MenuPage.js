@@ -25,13 +25,13 @@ export default function MenuPage() {
   const { profile } = useAuth()
   const isManager = profile?.role === 'owner' || profile?.role === 'manager'
 
-  const [categories, setCategories]   = useState([])
-  const [items, setItems]             = useState([])
-  const [portions, setPortions]       = useState({})
-  const [variations, setVariations]   = useState({})   // itemId -> variations[]
-  const [addonGroups, setAddonGroups] = useState({})   // itemId -> groups[] (each with addons[])
+  const [categories, setCategories]         = useState([])
+  const [items, setItems]                   = useState([])
+  const [portions, setPortions]             = useState({})
+  const [variations, setVariations]         = useState({})
+  const [itemAddons, setItemAddons]         = useState({}) // itemId -> flat addons[]
   const [activeCategory, setActiveCategory] = useState(null)
-  const [loading, setLoading]         = useState(true)
+  const [loading, setLoading]               = useState(true)
 
   const [showCatForm, setShowCatForm]   = useState(false)
   const [showItemForm, setShowItemForm] = useState(false)
@@ -48,31 +48,25 @@ export default function MenuPage() {
   })
 
   // Portions
-  const [portionList, setPortionList]     = useState([])
-  const [portionForm, setPortionForm]     = useState(EMPTY_PORTION)
-  const [editPortionIdx, setEditPortionIdx] = useState(null)
+  const [portionList, setPortionList]         = useState([])
+  const [portionForm, setPortionForm]         = useState(EMPTY_PORTION)
+  const [editPortionIdx, setEditPortionIdx]   = useState(null)
   const [showPortionForm, setShowPortionForm] = useState(false)
-  const [savingPortion, setSavingPortion] = useState(false)
+  const [savingPortion, setSavingPortion]     = useState(false)
 
   // Variations
-  const [variationList, setVariationList]     = useState([])
+  const [variationList, setVariationList]         = useState([])
   const [showVariationForm, setShowVariationForm] = useState(false)
   const [editVariationIdx, setEditVariationIdx]   = useState(null)
   const [variationForm, setVariationForm]         = useState({ name: '', price: '' })
   const [savingVariation, setSavingVariation]     = useState(false)
 
-  // Add-on groups
-  const [addonGroupList, setAddonGroupList]     = useState([])   // [{id, name, min_select, max_select, addons:[]}]
-  const [showAddonGroupForm, setShowAddonGroupForm] = useState(false)
-  const [editAddonGroupIdx, setEditAddonGroupIdx]   = useState(null)
-  const [addonGroupForm, setAddonGroupForm]         = useState({ name: '', min_select: 0, max_select: 1 })
-  const [savingAddonGroup, setSavingAddonGroup]     = useState(false)
-  // Add-on items
-  const [showAddonItemForm, setShowAddonItemForm] = useState(false)
-  const [editAddonItemIdx, setEditAddonItemIdx]   = useState(null)
-  const [addonItemGroupIdx, setAddonItemGroupIdx] = useState(null)
-  const [addonItemForm, setAddonItemForm]         = useState({ name: '', price: '' })
-  const [savingAddonItem, setSavingAddonItem]     = useState(false)
+  // Add-ons (flat — auto creates one hidden group per item behind the scenes)
+  const [addonList, setAddonList]         = useState([])
+  const [showAddonForm, setShowAddonForm] = useState(false)
+  const [editAddonIdx, setEditAddonIdx]   = useState(null)
+  const [addonForm, setAddonForm]         = useState({ name: '', price: '' })
+  const [savingAddon, setSavingAddon]     = useState(false)
 
   // Drag
   const dragIndex     = useRef(null)
@@ -102,14 +96,17 @@ export default function MenuPage() {
     ;(allVariations || []).forEach(v => { if (!varMap[v.menu_item_id]) varMap[v.menu_item_id] = []; varMap[v.menu_item_id].push(v) })
     setVariations(varMap)
 
-    const groupMap = {}
-    const addonsByGroup = {}
-    ;(allAddons || []).forEach(a => { if (!addonsByGroup[a.group_id]) addonsByGroup[a.group_id] = []; addonsByGroup[a.group_id].push(a) })
-    ;(allAddonGroups || []).forEach(g => {
-      if (!groupMap[g.menu_item_id]) groupMap[g.menu_item_id] = []
-      groupMap[g.menu_item_id].push({ ...g, addons: addonsByGroup[g.id] || [] })
+    // Flat addon map: itemId -> addons[]
+    const groupByItem = {}
+    ;(allAddonGroups || []).forEach(g => { groupByItem[g.id] = g.menu_item_id })
+    const addonMap = {}
+    ;(allAddons || []).forEach(a => {
+      const itemId = groupByItem[a.group_id]
+      if (!itemId) return
+      if (!addonMap[itemId]) addonMap[itemId] = []
+      addonMap[itemId].push(a)
     })
-    setAddonGroups(groupMap)
+    setItemAddons(addonMap)
 
     if (cats && cats.length > 0 && !activeCategory) setActiveCategory(cats[0].id)
     setLoading(false)
@@ -153,14 +150,14 @@ export default function MenuPage() {
   // ── Item actions ──
   function openAddItem() {
     setItemForm({ name: '', price: '', description: '', food_type: 'veg', is_available: true, sort_order: items.filter(i => i.category_id === activeCategory).length, gst_rate: 5, priority: 2, available_from: '', available_until: '' })
-    setPortionList([]); setVariationList([]); setAddonGroupList([])
+    setPortionList([]); setVariationList([]); setAddonList([])
     setEditItem(null); setShowItemForm(true)
   }
   function openEditItem(item) {
     setItemForm({ name: item.name, price: item.price, description: item.description || '', food_type: item.food_type || 'veg', is_available: item.is_available, sort_order: item.sort_order, gst_rate: item.gst_rate ?? 5, priority: item.priority ?? 2, available_from: item.available_from || '', available_until: item.available_until || '' })
     setPortionList(portions[item.id] || [])
     setVariationList(variations[item.id] || [])
-    setAddonGroupList(addonGroups[item.id] || [])
+    setAddonList(itemAddons[item.id] || [])
     setEditItem(item); setShowItemForm(true)
   }
   async function saveItem() {
@@ -169,9 +166,8 @@ export default function MenuPage() {
     setSaving(true)
     try {
       const payload = { name: itemForm.name, price: parseFloat(itemForm.price), description: itemForm.description || null, food_type: itemForm.food_type, is_available: itemForm.is_available, sort_order: parseInt(itemForm.sort_order), gst_rate: parseFloat(itemForm.gst_rate), priority: parseInt(itemForm.priority), available_from: itemForm.available_from || null, available_until: itemForm.available_until || null }
-      let itemId = editItem?.id
       if (editItem) await supabase.from('menu_items').update(payload).eq('id', editItem.id)
-      else { const { data } = await supabase.from('menu_items').insert({ ...payload, category_id: activeCategory }).select().single(); itemId = data?.id }
+      else await supabase.from('menu_items').insert({ ...payload, category_id: activeCategory }).select().single()
       setShowItemForm(false); fetchAll()
     } finally { setSaving(false) }
   }
@@ -242,60 +238,49 @@ export default function MenuPage() {
     setVariationList(prev => prev.filter((_, i) => i !== idx))
   }
 
-  // ── Add-on Group actions ──
-  function openAddAddonGroup() { setAddonGroupForm({ name: '', min_select: 0, max_select: 1 }); setEditAddonGroupIdx(null); setShowAddonGroupForm(true) }
-  function openEditAddonGroup(g, idx) { setAddonGroupForm({ name: g.name, min_select: g.min_select, max_select: g.max_select }); setEditAddonGroupIdx(idx); setShowAddonGroupForm(true) }
-  async function saveAddonGroup() {
-    if (!addonGroupForm.name.trim()) return alert('Group name is required')
-    setSavingAddonGroup(true)
+  // ── Add-on actions (flat — auto creates one hidden group per item) ──
+  function openAddAddon() { setAddonForm({ name: '', price: '' }); setEditAddonIdx(null); setShowAddonForm(true) }
+  function openEditAddon(a, idx) { setAddonForm({ name: a.name, price: a.price }); setEditAddonIdx(idx); setShowAddonForm(true) }
+
+  async function getOrCreateGroup(itemId) {
+    const { data: existing } = await supabase.from('item_addon_groups').select('id').eq('menu_item_id', itemId).limit(1).single()
+    if (existing?.id) return existing.id
+    const { data: created, error } = await supabase.from('item_addon_groups').insert({ menu_item_id: itemId, name: 'Add-ons', min_select: 0, max_select: 99, sort_order: 0 }).select().single()
+    if (error) throw error
+    return created?.id || null
+  }
+
+  async function saveAddon() {
+    if (!addonForm.name.trim()) return alert('Add-on name is required')
+    setSavingAddon(true)
     try {
-      const gPayload = { menu_item_id: editItem?.id || null, name: addonGroupForm.name.trim(), min_select: parseInt(addonGroupForm.min_select) || 0, max_select: parseInt(addonGroupForm.max_select) || 1, sort_order: editAddonGroupIdx !== null ? addonGroupList[editAddonGroupIdx]?.sort_order ?? addonGroupList.length : addonGroupList.length }
+      const aPayload = { name: addonForm.name.trim(), price: parseFloat(addonForm.price) || 0, sort_order: editAddonIdx !== null ? (addonList[editAddonIdx]?.sort_order ?? addonList.length) : addonList.length, is_available: true }
       if (editItem?.id) {
-        if (editAddonGroupIdx !== null && addonGroupList[editAddonGroupIdx]?.id) {
-          await supabase.from('item_addon_groups').update({ name: gPayload.name, min_select: gPayload.min_select, max_select: gPayload.max_select }).eq('id', addonGroupList[editAddonGroupIdx].id)
-          setAddonGroupList(prev => prev.map((g, i) => i === editAddonGroupIdx ? { ...g, name: gPayload.name, min_select: gPayload.min_select, max_select: gPayload.max_select } : g))
-        } else { const { data, error: gErr } = await supabase.from('item_addon_groups').insert(gPayload).select().single(); if (gErr) throw gErr; if (data) setAddonGroupList(prev => [...prev, { ...data, addons: [] }]) }
+        if (editAddonIdx !== null && addonList[editAddonIdx]?.id) {
+          await supabase.from('item_addons').update({ name: aPayload.name, price: aPayload.price }).eq('id', addonList[editAddonIdx].id)
+          setAddonList(prev => prev.map((a, i) => i === editAddonIdx ? { ...a, name: aPayload.name, price: aPayload.price } : a))
+        } else {
+          const groupId = await getOrCreateGroup(editItem.id)
+          const { data, error: aErr } = await supabase.from('item_addons').insert({ ...aPayload, group_id: groupId }).select().single()
+          if (aErr) throw aErr
+          if (data) setAddonList(prev => [...prev, data])
+        }
       } else {
-        if (editAddonGroupIdx !== null) setAddonGroupList(prev => prev.map((g, i) => i === editAddonGroupIdx ? { ...g, ...gPayload } : g))
-        else setAddonGroupList(prev => [...prev, { ...gPayload, id: null, addons: [] }])
+        if (editAddonIdx !== null) setAddonList(prev => prev.map((a, i) => i === editAddonIdx ? { ...a, ...aPayload } : a))
+        else setAddonList(prev => [...prev, { ...aPayload, id: null, group_id: null }])
       }
-      setShowAddonGroupForm(false)
-    } catch (err) { alert('Error saving add-on group: ' + err.message) } finally { setSavingAddonGroup(false) }
-  }
-  async function deleteAddonGroup(g, idx) {
-    if (!window.confirm('Delete this add-on group and all its items?')) return
-    if (g.id) await supabase.from('item_addon_groups').delete().eq('id', g.id)
-    setAddonGroupList(prev => prev.filter((_, i) => i !== idx))
+      setShowAddonForm(false)
+    } catch (err) { alert('Error saving add-on: ' + err.message) } finally { setSavingAddon(false) }
   }
 
-  // ── Add-on Item actions ──
-  function openAddAddonItem(groupIdx) { setAddonItemForm({ name: '', price: '' }); setAddonItemGroupIdx(groupIdx); setEditAddonItemIdx(null); setShowAddonItemForm(true) }
-  function openEditAddonItem(item, itemIdx, groupIdx) { setAddonItemForm({ name: item.name, price: item.price }); setAddonItemGroupIdx(groupIdx); setEditAddonItemIdx(itemIdx); setShowAddonItemForm(true) }
-  async function saveAddonItem() {
-    if (!addonItemForm.name.trim()) return alert('Add-on name is required')
-    setSavingAddonItem(true)
-    try {
-      const group = addonGroupList[addonItemGroupIdx]
-      const aPayload = { group_id: group?.id || null, name: addonItemForm.name.trim(), price: parseFloat(addonItemForm.price) || 0, sort_order: editAddonItemIdx !== null ? group.addons[editAddonItemIdx]?.sort_order ?? group.addons.length : group.addons.length, is_available: true }
-      if (group?.id) {
-        if (editAddonItemIdx !== null && group.addons[editAddonItemIdx]?.id) {
-          await supabase.from('item_addons').update({ name: aPayload.name, price: aPayload.price }).eq('id', group.addons[editAddonItemIdx].id)
-          setAddonGroupList(prev => prev.map((g, gi) => gi === addonItemGroupIdx ? { ...g, addons: g.addons.map((a, ai) => ai === editAddonItemIdx ? { ...a, name: aPayload.name, price: aPayload.price } : a) } : g))
-        } else { const { data, error: aErr } = await supabase.from('item_addons').insert(aPayload).select().single(); if (aErr) throw aErr; if (data) setAddonGroupList(prev => prev.map((g, gi) => gi === addonItemGroupIdx ? { ...g, addons: [...g.addons, data] } : g)) }
-      } else {
-        setAddonGroupList(prev => prev.map((g, gi) => gi === addonItemGroupIdx ? { ...g, addons: editAddonItemIdx !== null ? g.addons.map((a, ai) => ai === editAddonItemIdx ? { ...a, ...aPayload } : a) : [...g.addons, { ...aPayload, id: null }] } : g))
-      }
-      setShowAddonItemForm(false)
-    } catch (err) { alert('Error saving add-on: ' + err.message) } finally { setSavingAddonItem(false) }
-  }
-  async function deleteAddonItem(item, itemIdx, groupIdx) {
+  async function deleteAddon(a, idx) {
     if (!window.confirm('Delete this add-on?')) return
-    if (item.id) await supabase.from('item_addons').delete().eq('id', item.id)
-    setAddonGroupList(prev => prev.map((g, gi) => gi === groupIdx ? { ...g, addons: g.addons.filter((_, i) => i !== itemIdx) } : g))
+    if (a.id) await supabase.from('item_addons').delete().eq('id', a.id)
+    setAddonList(prev => prev.filter((_, i) => i !== idx))
   }
 
-  const activeItems = items.filter(i => i.category_id === activeCategory)
-  const activeCat   = categories.find(c => c.id === activeCategory)
+  const activeItems   = items.filter(i => i.category_id === activeCategory)
+  const activeCat     = categories.find(c => c.id === activeCategory)
   const disabledCount = activeItems.filter(i => !i.is_available).length
 
   if (loading) return <div style={{ padding: 40, color: theme.textLight }}>Loading menu...</div>
@@ -359,9 +344,9 @@ export default function MenuPage() {
                 const ft = FOOD_TYPE[item.food_type] || FOOD_TYPE.veg
                 const pri = PRIORITY_CONFIG[item.priority ?? 2]
                 const isOn = item.is_available
-                const itemPortions = portions[item.id] || []
+                const itemPortions   = portions[item.id] || []
                 const itemVariations = variations[item.id] || []
-                const itemAddonGroups = addonGroups[item.id] || []
+                const itemAddonList  = itemAddons[item.id] || []
                 return (
                   <div key={item.id} style={{ background: isOn ? '#fff' : '#FAFAFA', borderRadius: 12, padding: '12px 16px', border: '1px solid ' + (isOn ? theme.border : '#FECACA'), display: 'flex', alignItems: 'center', gap: 12, opacity: isOn ? 1 : 0.75 }}>
                     <div style={{ width: 12, height: 12, borderRadius: 3, border: '2px solid ' + ft.color, background: ft.color, flexShrink: 0 }} />
@@ -371,7 +356,7 @@ export default function MenuPage() {
                         {!isOn && <span style={{ fontSize: 10, fontWeight: 800, background: '#FEE2E2', color: '#B91C1C', padding: '2px 7px', borderRadius: 10 }}>OUT OF STOCK</span>}
                         {(item.available_from || item.available_until) && <span style={{ fontSize: 10, fontWeight: 700, background: '#EFF6FF', color: '#1D4ED8', border: '1px solid #BFDBFE', padding: '2px 7px', borderRadius: 10 }}>🕐 {item.available_from?.slice(0,5)||'00:00'} – {item.available_until?.slice(0,5)||'23:59'}</span>}
                         {itemVariations.length > 0 && <span style={{ fontSize: 10, fontWeight: 700, background: '#F5F3FF', color: '#5B21B6', border: '1px solid #C4B5FD', padding: '2px 7px', borderRadius: 10 }}>⚙ {itemVariations.length} variation{itemVariations.length!==1?'s':''}</span>}
-                        {itemAddonGroups.length > 0 && <span style={{ fontSize: 10, fontWeight: 700, background: '#FFF7ED', color: '#C2410C', border: '1px solid #FED7AA', padding: '2px 7px', borderRadius: 10 }}>+ {itemAddonGroups.length} add-on group{itemAddonGroups.length!==1?'s':''}</span>}
+                        {itemAddonList.length > 0 && <span style={{ fontSize: 10, fontWeight: 700, background: '#FFF7ED', color: '#C2410C', border: '1px solid #FED7AA', padding: '2px 7px', borderRadius: 10 }}>+ {itemAddonList.length} add-on{itemAddonList.length!==1?'s':''}</span>}
                       </div>
                       {item.description && <div style={{ fontSize: 12, color: theme.textLight, marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.description}</div>}
                       {itemPortions.length > 0 && (
@@ -406,8 +391,6 @@ export default function MenuPage() {
             <h2 style={{ fontSize: 18, fontWeight: 800, color: theme.textDark, margin: '0 0 20px' }}>{editCat ? 'Edit Category' : 'Add Category'}</h2>
             <input autoFocus value={catForm.name} onChange={e => setCatForm(f => ({ ...f, name: e.target.value }))} placeholder="e.g. Starters, Main Course"
               style={{ width: '100%', border: '1.5px solid ' + theme.border, borderRadius: 9, padding: '10px 12px', fontSize: 13, outline: 'none', boxSizing: 'border-box' }} />
-
-            {/* Available Days */}
             <div style={{ marginTop: 20 }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
                 <div>
@@ -415,8 +398,7 @@ export default function MenuPage() {
                   <div style={{ fontSize: 11, color: theme.textLight, marginTop: 2 }}>Leave all unselected to show every day</div>
                 </div>
                 {catForm.available_days?.length > 0 && (
-                  <button onClick={() => setCatForm(f => ({ ...f, available_days: null }))}
-                    style={{ background: 'none', border: 'none', color: theme.red, fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>✕ Clear</button>
+                  <button onClick={() => setCatForm(f => ({ ...f, available_days: null }))} style={{ background: 'none', border: 'none', color: theme.red, fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>✕ Clear</button>
                 )}
               </div>
               <div style={{ display: 'flex', gap: 6 }}>
@@ -427,8 +409,7 @@ export default function MenuPage() {
                       const current = catForm.available_days || []
                       const next = selected ? current.filter(d => d !== day) : [...current, day]
                       setCatForm(f => ({ ...f, available_days: next.length === 0 ? null : next }))
-                    }}
-                      style={{ flex: 1, background: selected ? '#092b33' : theme.bgWarm, color: selected ? '#fff' : theme.textMid, border: '1.5px solid ' + (selected ? '#092b33' : theme.border), borderRadius: 8, padding: '8px 0', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
+                    }} style={{ flex: 1, background: selected ? '#092b33' : theme.bgWarm, color: selected ? '#fff' : theme.textMid, border: '1.5px solid ' + (selected ? '#092b33' : theme.border), borderRadius: 8, padding: '8px 0', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
                       {day}
                     </button>
                   )
@@ -440,7 +421,6 @@ export default function MenuPage() {
                 </div>
               )}
             </div>
-
             <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
               <button onClick={() => setShowCatForm(false)} style={{ flex: 1, background: theme.bgWarm, border: '1px solid ' + theme.border, borderRadius: 9, padding: '12px', fontSize: 13, cursor: 'pointer', fontWeight: 600, color: theme.textMid }}>Cancel</button>
               <button onClick={saveCat} disabled={saving} style={{ flex: 2, background: '#092b33', color: '#fff', border: 'none', borderRadius: 9, padding: '12px', fontSize: 13, fontWeight: 700, cursor: saving ? 'not-allowed' : 'pointer' }}>{saving ? 'Saving...' : editCat ? 'Save Changes' : 'Add Category'}</button>
@@ -455,8 +435,6 @@ export default function MenuPage() {
           <div style={{ background: '#fff', borderRadius: 18, padding: 32, width: 560, maxHeight: '94vh', overflowY: 'auto', boxShadow: '0 24px 64px rgba(0,0,0,0.2)' }}>
             <h2 style={{ fontSize: 18, fontWeight: 800, color: theme.textDark, margin: '0 0 20px' }}>{editItem ? 'Edit Item' : 'Add Item'}</h2>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-
-              {/* Basic fields */}
               <div>
                 <label style={{ fontSize: 11, fontWeight: 700, color: theme.textLight, display: 'block', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5 }}>Item Name *</label>
                 <input autoFocus value={itemForm.name} onChange={e => setItemForm(f => ({ ...f, name: e.target.value }))} placeholder="e.g. Paneer Tikka"
@@ -517,7 +495,7 @@ export default function MenuPage() {
                 </div>
               </div>
 
-              {/* Availability Timing */}
+              {/* Available Hours */}
               <div style={{ borderTop: '2px solid ' + theme.bgWarm, paddingTop: 16 }}>
                 <div style={{ fontWeight: 800, fontSize: 13, color: theme.textDark, marginBottom: 4 }}>Available Hours <span style={{ fontWeight: 400, fontSize: 11, color: theme.textLight }}>(optional)</span></div>
                 <div style={{ fontSize: 11, color: theme.textLight, marginBottom: 10 }}>Leave blank to show all day</div>
@@ -540,7 +518,7 @@ export default function MenuPage() {
                 </div>
               </div>
 
-              {/* ── VARIATIONS ── */}
+              {/* Variations */}
               <div style={{ borderTop: '2px solid ' + theme.bgWarm, paddingTop: 16 }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
                   <div>
@@ -567,53 +545,34 @@ export default function MenuPage() {
                 )}
               </div>
 
-              {/* ── ADD-ON GROUPS ── */}
+              {/* Add-ons (flat) */}
               <div style={{ borderTop: '2px solid ' + theme.bgWarm, paddingTop: 16 }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
                   <div>
-                    <div style={{ fontWeight: 800, fontSize: 13, color: theme.textDark }}>Add-on Groups</div>
-                    <div style={{ fontSize: 11, color: theme.textLight, marginTop: 2 }}>e.g. "Add Cheese" (max 1) — optional extras per item</div>
+                    <div style={{ fontWeight: 800, fontSize: 13, color: theme.textDark }}>Add-ons</div>
+                    <div style={{ fontSize: 11, color: theme.textLight, marginTop: 2 }}>e.g. Extra Cheese +₹40, Sauce — optional extras customers can choose</div>
                   </div>
-                  <button onClick={openAddAddonGroup} style={{ background: '#C2410C', color: '#fff', border: 'none', borderRadius: 7, padding: '7px 14px', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>+ Add Group</button>
+                  <button onClick={openAddAddon} style={{ background: '#C2410C', color: '#fff', border: 'none', borderRadius: 7, padding: '7px 14px', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>+ Add Add-on</button>
                 </div>
-                {addonGroupList.length === 0 ? (
-                  <div style={{ background: theme.bgWarm, borderRadius: 10, padding: '10px 14px', fontSize: 12, color: theme.textLight, textAlign: 'center' }}>No add-ons configured</div>
+                {addonList.length === 0 ? (
+                  <div style={{ background: theme.bgWarm, borderRadius: 10, padding: '10px 14px', fontSize: 12, color: theme.textLight, textAlign: 'center' }}>No add-ons — click "+ Add Add-on" to add optional extras</div>
                 ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                    {addonGroupList.map((g, gi) => (
-                      <div key={gi} style={{ background: '#FFF7ED', border: '1px solid #FED7AA', borderRadius: 10, padding: '12px 14px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                          <div>
-                            <span style={{ fontWeight: 700, fontSize: 13, color: '#7C2D12' }}>{g.name}</span>
-                            <span style={{ fontSize: 11, color: '#C2410C', marginLeft: 8 }}>Min: {g.min_select} · Max: {g.max_select}</span>
-                          </div>
-                          <div style={{ display: 'flex', gap: 6 }}>
-                            <button onClick={() => openAddAddonItem(gi)} style={{ background: '#C2410C', color: '#fff', border: 'none', borderRadius: 6, padding: '4px 10px', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>+ Item</button>
-                            <button onClick={() => openEditAddonGroup(g, gi)} style={{ background: theme.bgWarm, border: '1px solid ' + theme.border, borderRadius: 6, padding: '4px 8px', fontSize: 11, cursor: 'pointer', color: theme.textMid }}>✏️</button>
-                            <button onClick={() => deleteAddonGroup(g, gi)} style={{ background: '#FEE2E2', border: '1px solid #FECACA', borderRadius: 6, padding: '4px 8px', fontSize: 11, cursor: 'pointer', color: theme.red }}>🗑</button>
-                          </div>
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    {addonList.map((a, idx) => (
+                      <div key={idx} style={{ background: '#FFF7ED', border: '1px solid #FED7AA', borderRadius: 10, padding: '8px 12px', display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <div>
+                          <div style={{ fontWeight: 700, fontSize: 13, color: '#7C2D12' }}>{a.name}</div>
+                          <div style={{ fontSize: 11, color: '#C2410C' }}>{a.price > 0 ? '+₹' + a.price : 'Free'}</div>
                         </div>
-                        {g.addons.length === 0 ? (
-                          <div style={{ fontSize: 11, color: theme.textLight }}>No add-on items yet — click "+ Item" to add</div>
-                        ) : (
-                          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                            {g.addons.map((a, ai) => (
-                              <div key={ai} style={{ background: '#fff', border: '1px solid #FED7AA', borderRadius: 8, padding: '5px 10px', display: 'flex', alignItems: 'center', gap: 6 }}>
-                                <span style={{ fontSize: 12, fontWeight: 600, color: '#7C2D12' }}>{a.name}</span>
-                                {a.price > 0 && <span style={{ fontSize: 11, color: '#C2410C' }}>+₹{a.price}</span>}
-                                <button onClick={() => openEditAddonItem(a, ai, gi)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 11, color: theme.textMid, padding: 0 }}>✏️</button>
-                                <button onClick={() => deleteAddonItem(a, ai, gi)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 11, color: theme.red, padding: 0 }}>✕</button>
-                              </div>
-                            ))}
-                          </div>
-                        )}
+                        <button onClick={() => openEditAddon(a, idx)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, padding: 0 }}>✏️</button>
+                        <button onClick={() => deleteAddon(a, idx)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, color: theme.red, padding: 0 }}>🗑</button>
                       </div>
                     ))}
                   </div>
                 )}
               </div>
 
-              {/* ── PORTIONS ── */}
+              {/* Portions */}
               <div style={{ borderTop: '2px solid ' + theme.bgWarm, paddingTop: 16 }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
                   <div>
@@ -677,64 +636,30 @@ export default function MenuPage() {
         </div>
       )}
 
-      {/* ── Add-on Group Form Modal ── */}
-      {showAddonGroupForm && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100 }}>
-          <div style={{ background: '#fff', borderRadius: 16, padding: 28, width: 380, boxShadow: '0 24px 64px rgba(0,0,0,0.25)' }}>
-            <h3 style={{ fontSize: 16, fontWeight: 800, color: theme.textDark, margin: '0 0 18px' }}>{editAddonGroupIdx !== null ? 'Edit Add-on Group' : 'Add Add-on Group'}</h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              <div>
-                <label style={{ fontSize: 11, fontWeight: 700, color: theme.textLight, display: 'block', marginBottom: 5, textTransform: 'uppercase', letterSpacing: 0.5 }}>Group Name *</label>
-                <input autoFocus value={addonGroupForm.name} onChange={e => setAddonGroupForm(f => ({ ...f, name: e.target.value }))} placeholder="e.g. Add Cheese, Extra Toppings, Sauce"
-                  style={{ width: '100%', border: '1.5px solid ' + theme.border, borderRadius: 8, padding: '9px 12px', fontSize: 13, outline: 'none', boxSizing: 'border-box' }} />
-              </div>
-              <div style={{ display: 'flex', gap: 12 }}>
-                <div style={{ flex: 1 }}>
-                  <label style={{ fontSize: 11, fontWeight: 700, color: theme.textLight, display: 'block', marginBottom: 5, textTransform: 'uppercase', letterSpacing: 0.5 }}>Min Select</label>
-                  <input type="number" min="0" value={addonGroupForm.min_select} onChange={e => setAddonGroupForm(f => ({ ...f, min_select: e.target.value }))} placeholder="0"
-                    style={{ width: '100%', border: '1.5px solid ' + theme.border, borderRadius: 8, padding: '9px 12px', fontSize: 13, outline: 'none', boxSizing: 'border-box' }} />
-                  <div style={{ fontSize: 10, color: theme.textLight, marginTop: 3 }}>0 = optional</div>
-                </div>
-                <div style={{ flex: 1 }}>
-                  <label style={{ fontSize: 11, fontWeight: 700, color: theme.textLight, display: 'block', marginBottom: 5, textTransform: 'uppercase', letterSpacing: 0.5 }}>Max Select</label>
-                  <input type="number" min="1" value={addonGroupForm.max_select} onChange={e => setAddonGroupForm(f => ({ ...f, max_select: e.target.value }))} placeholder="1"
-                    style={{ width: '100%', border: '1.5px solid ' + theme.border, borderRadius: 8, padding: '9px 12px', fontSize: 13, outline: 'none', boxSizing: 'border-box' }} />
-                </div>
-              </div>
-            </div>
-            <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
-              <button onClick={() => setShowAddonGroupForm(false)} style={{ flex: 1, background: theme.bgWarm, border: '1px solid ' + theme.border, borderRadius: 8, padding: '11px', fontSize: 13, cursor: 'pointer', fontWeight: 600, color: theme.textMid }}>Cancel</button>
-              <button onClick={saveAddonGroup} disabled={savingAddonGroup} style={{ flex: 2, background: '#C2410C', color: '#fff', border: 'none', borderRadius: 8, padding: '11px', fontSize: 13, fontWeight: 700, cursor: savingAddonGroup ? 'not-allowed' : 'pointer' }}>{savingAddonGroup ? 'Saving...' : editAddonGroupIdx !== null ? 'Save Group' : 'Add Group'}</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ── Add-on Item Form Modal ── */}
-      {showAddonItemForm && (
+      {/* ── Add-on Form Modal (single flat form) ── */}
+      {showAddonForm && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100 }}>
           <div style={{ background: '#fff', borderRadius: 16, padding: 28, width: 360, boxShadow: '0 24px 64px rgba(0,0,0,0.25)' }}>
-            <h3 style={{ fontSize: 16, fontWeight: 800, color: theme.textDark, margin: '0 0 4px' }}>{editAddonItemIdx !== null ? 'Edit Add-on Item' : 'Add Add-on Item'}</h3>
-            <div style={{ fontSize: 12, color: theme.textLight, marginBottom: 18 }}>Group: {addonGroupList[addonItemGroupIdx]?.name}</div>
+            <h3 style={{ fontSize: 16, fontWeight: 800, color: theme.textDark, margin: '0 0 18px' }}>{editAddonIdx !== null ? 'Edit Add-on' : 'Add Add-on'}</h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               <div>
                 <label style={{ fontSize: 11, fontWeight: 700, color: theme.textLight, display: 'block', marginBottom: 5, textTransform: 'uppercase', letterSpacing: 0.5 }}>Add-on Name *</label>
-                <input autoFocus value={addonItemForm.name} onChange={e => setAddonItemForm(f => ({ ...f, name: e.target.value }))} placeholder="e.g. Cheese, Extra Sauce, Mushroom"
+                <input autoFocus value={addonForm.name} onChange={e => setAddonForm(f => ({ ...f, name: e.target.value }))} placeholder="e.g. Extra Cheese, Sauce, Mushroom"
                   style={{ width: '100%', border: '1.5px solid ' + theme.border, borderRadius: 8, padding: '9px 12px', fontSize: 13, outline: 'none', boxSizing: 'border-box' }} />
               </div>
               <div>
                 <label style={{ fontSize: 11, fontWeight: 700, color: theme.textLight, display: 'block', marginBottom: 5, textTransform: 'uppercase', letterSpacing: 0.5 }}>Extra Price (₹)</label>
                 <div style={{ position: 'relative' }}>
                   <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', fontSize: 13, color: theme.textLight, fontWeight: 700 }}>+₹</span>
-                  <input type="number" value={addonItemForm.price} onChange={e => setAddonItemForm(f => ({ ...f, price: e.target.value }))} placeholder="0"
+                  <input type="number" value={addonForm.price} onChange={e => setAddonForm(f => ({ ...f, price: e.target.value }))} placeholder="0"
                     style={{ width: '100%', border: '1.5px solid ' + theme.border, borderRadius: 8, padding: '9px 12px 9px 32px', fontSize: 14, fontWeight: 700, outline: 'none', boxSizing: 'border-box' }} />
                 </div>
                 <div style={{ fontSize: 10, color: theme.textLight, marginTop: 3 }}>Set 0 for no extra charge</div>
               </div>
             </div>
             <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
-              <button onClick={() => setShowAddonItemForm(false)} style={{ flex: 1, background: theme.bgWarm, border: '1px solid ' + theme.border, borderRadius: 8, padding: '11px', fontSize: 13, cursor: 'pointer', fontWeight: 600, color: theme.textMid }}>Cancel</button>
-              <button onClick={saveAddonItem} disabled={savingAddonItem} style={{ flex: 2, background: '#C2410C', color: '#fff', border: 'none', borderRadius: 8, padding: '11px', fontSize: 13, fontWeight: 700, cursor: savingAddonItem ? 'not-allowed' : 'pointer' }}>{savingAddonItem ? 'Saving...' : editAddonItemIdx !== null ? 'Save Add-on' : 'Add to Group'}</button>
+              <button onClick={() => setShowAddonForm(false)} style={{ flex: 1, background: theme.bgWarm, border: '1px solid ' + theme.border, borderRadius: 8, padding: '11px', fontSize: 13, cursor: 'pointer', fontWeight: 600, color: theme.textMid }}>Cancel</button>
+              <button onClick={saveAddon} disabled={savingAddon} style={{ flex: 2, background: '#C2410C', color: '#fff', border: 'none', borderRadius: 8, padding: '11px', fontSize: 13, fontWeight: 700, cursor: savingAddon ? 'not-allowed' : 'pointer' }}>{savingAddon ? 'Saving...' : editAddonIdx !== null ? 'Save Add-on' : 'Add Add-on'}</button>
             </div>
           </div>
         </div>

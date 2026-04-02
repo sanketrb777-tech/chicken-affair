@@ -6,9 +6,9 @@ import { theme } from '../../lib/theme'
 import { Trash2 } from 'lucide-react'
 
 const ORDER_TYPES = {
-  dine_in:  { label: 'Dine In',  icon: '🪑', color: '#0D9488' },
-  takeaway: { label: 'Takeaway', icon: '🛍️', color: '#D4A853' },
-  delivery: { label: 'Delivery', icon: '🚚', color: '#7C3AED' },
+  dine_in:  { label: 'Dine In',  icon: '\U0001F6CB\uFE0F', color: '#0D9488' },
+  takeaway: { label: 'Takeaway', icon: '\U0001F6CD\uFE0F', color: '#D4A853' },
+  delivery: { label: 'Delivery', icon: '\U0001F69A', color: '#7C3AED' },
 }
 
 export function NewOrderPage() {
@@ -39,7 +39,6 @@ export function NewOrderPage() {
   const [customerPhone, setCustomerPhone]   = useState('')
   const [roomNumber, setRoomNumber]         = useState('')
 
-  // Picker state — kept flat in parent, rendered inline (NOT as sub-component)
   const [pickerItem, setPickerItem]           = useState(null)
   const [pickerVariation, setPickerVariation] = useState(null)
   const [pickerAddons, setPickerAddons]       = useState({})
@@ -67,7 +66,6 @@ export function NewOrderPage() {
       supabase.from('item_addon_groups').select('*').order('sort_order'),
       supabase.from('item_addons').select('*').order('sort_order'),
     ])
-    // Filter categories by available_days
     const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat']
     const todayDay = days[new Date().getDay()]
     const availableCats = (cats || []).filter(c => !c.available_days || c.available_days.length === 0 || c.available_days.includes(todayDay))
@@ -98,15 +96,15 @@ export function NewOrderPage() {
     })
     setVariations(varMap)
 
-    const addonsByGroup = {}
-    ;(allAddons || []).forEach(a => {
-      if (!addonsByGroup[a.group_id]) addonsByGroup[a.group_id] = []
-      addonsByGroup[a.group_id].push(a)
-    })
+    // Flat addon map: itemId -> addons[]
+    const groupByItem = {}
+    ;(allAddonGroups || []).forEach(g => { groupByItem[g.id] = g.menu_item_id })
     const groupMap = {}
-    ;(allAddonGroups || []).forEach(g => {
-      if (!groupMap[g.menu_item_id]) groupMap[g.menu_item_id] = []
-      groupMap[g.menu_item_id].push({ ...g, addons: addonsByGroup[g.id] || [] })
+    ;(allAddons || []).forEach(a => {
+      const itemId = groupByItem[a.group_id]
+      if (!itemId) return
+      if (!groupMap[itemId]) groupMap[itemId] = []
+      groupMap[itemId].push(a)
     })
     setAddonGroups(groupMap)
 
@@ -129,7 +127,6 @@ export function NewOrderPage() {
     setRunningTotal(total)
   }
 
-  // ── Picker helpers ──
   function itemNeedsPicker(item) {
     return (variations[item.id]?.length > 0) || (addonGroups[item.id]?.length > 0) || (portions[item.id]?.length > 0)
   }
@@ -146,31 +143,23 @@ export function NewOrderPage() {
     setPickerAddons({})
   }
 
-  function pickerAddonCount(groupId) {
-    return Object.values(pickerAddons[groupId] || {}).reduce((s, q) => s + q, 0)
+  function pickerAddonCount() {
+    return Object.values(pickerAddons).reduce((s, q) => s + q, 0)
   }
 
-  function adjustAddon(group, addon, delta) {
+  function adjustAddon(addon, delta) {
     setPickerAddons(prev => {
-      const groupState = { ...(prev[group.id] || {}) }
-      const current = groupState[addon.id] || 0
+      const current = prev[addon.id] || 0
       const newQty = Math.max(0, current + delta)
-      const total = Object.values(groupState).reduce((s, q) => s + q, 0) - current + newQty
-      if (delta > 0 && total > group.max_select) return prev
-      if (newQty === 0) delete groupState[addon.id]
-      else groupState[addon.id] = newQty
-      return { ...prev, [group.id]: groupState }
+      if (newQty === 0) { const next = { ...prev }; delete next[addon.id]; return next }
+      return { ...prev, [addon.id]: newQty }
     })
   }
 
   function canConfirmPicker() {
     if (!pickerItem) return false
-    const itemVariations  = variations[pickerItem.id] || []
-    const itemAddonGroups = addonGroups[pickerItem.id] || []
+    const itemVariations = variations[pickerItem.id] || []
     if (itemVariations.length > 0 && !pickerVariation) return false
-    for (const g of itemAddonGroups) {
-      if (g.min_select > 0 && pickerAddonCount(g.id) < g.min_select) return false
-    }
     return true
   }
 
@@ -180,16 +169,13 @@ export function NewOrderPage() {
 
     let addonsTotal = 0
     const addonsArr = []
-    const itemAddonGroups = addonGroups[item.id] || []
-    itemAddonGroups.forEach(g => {
-      const groupState = pickerAddons[g.id] || {}
-      g.addons.forEach(a => {
-        const qty = groupState[a.id] || 0
-        if (qty > 0) {
-          addonsTotal += a.price * qty
-          addonsArr.push({ id: a.id, name: a.name, price: a.price, qty, group: g.name })
-        }
-      })
+    const itemAddonList = addonGroups[item.id] || []
+    itemAddonList.forEach(a => {
+      const qty = pickerAddons[a.id] || 0
+      if (qty > 0) {
+        addonsTotal += a.price * qty
+        addonsArr.push({ id: a.id, name: a.name, price: a.price, qty })
+      }
     })
 
     const unitPrice = portion
@@ -198,9 +184,9 @@ export function NewOrderPage() {
         ? parseFloat(pickerVariation.price)
         : parseFloat(item.price)
 
-    const portionLabel    = portion ? `${portion.name}${portion.value ? ' · ' + portion.value + (portion.unit || '') : ''}` : null
+    const portionLabel    = portion ? `${portion.name}${portion.value ? ' \u00b7 ' + portion.value + (portion.unit || '') : ''}` : null
     const variationLabel  = pickerVariation ? pickerVariation.name : null
-    const addonKey        = Object.entries(pickerAddons).sort().map(([g, a]) => g + ':' + Object.entries(a).sort().map(e => e.join('x')).join(',')).join('|')
+    const addonKey        = Object.entries(pickerAddons).sort().map(([id, qty]) => id + 'x' + qty).join('|')
     const key             = `${item.id}_${pickerVariation?.id || 'base'}_${portion?.id || 'noport'}_${addonKey}`
 
     setCart(prev => {
@@ -284,7 +270,6 @@ export function NewOrderPage() {
     ? items.filter(i => i.name.toLowerCase().includes(search.toLowerCase()))
     : items.filter(i => i.category_id === activeCategory)
 
-  // ── Customer info panel (off-table orders) ──
   const customerPanel = isOffTable && !existingOrder && (
     <div style={{ background: '#fff', borderRadius: 12, border: '1px solid ' + theme.border, padding: '14px 16px', marginBottom: 12 }}>
       <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
@@ -323,14 +308,13 @@ export function NewOrderPage() {
     <div style={{ background: ORDER_TYPES[orderType]?.color + '18', border: '1px solid ' + ORDER_TYPES[orderType]?.color + '33', borderRadius: 10, padding: '10px 14px', marginBottom: 12, display: 'flex', gap: 12, alignItems: 'center' }}>
       <span style={{ fontSize: 20 }}>{ORDER_TYPES[orderType]?.icon}</span>
       <div>
-        <div style={{ fontWeight: 700, fontSize: 14, color: theme.textDark }}>{existingOrder.customer_name || '—'}</div>
+        <div style={{ fontWeight: 700, fontSize: 14, color: theme.textDark }}>{existingOrder.customer_name || '\u2014'}</div>
         {existingOrder.customer_phone && <div style={{ fontSize: 12, color: theme.textLight, marginTop: 2 }}>📞 {existingOrder.customer_phone}</div>}
       </div>
-      <span style={{ marginLeft: 'auto', background: '#D4FAD4', color: '#15803D', fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 20 }}>● Active</span>
+      <span style={{ marginLeft: 'auto', background: '#D4FAD4', color: '#15803D', fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 20 }}>\u25CF Active</span>
     </div>
   )
 
-  // ── Menu panel ──
   const menuPanel = (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
       {customerPanel}
@@ -341,7 +325,7 @@ export function NewOrderPage() {
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
             <div style={{ color: '#fff', fontWeight: 800, fontSize: 15 }}>
               {tableId ? 'Table ' + tableNumber : 'New Order'}
-              {existingOrder && <span style={{ fontSize: 11, color: '#D4A853', marginLeft: 8, fontWeight: 600 }}>● Active</span>}
+              {existingOrder && <span style={{ fontSize: 11, color: '#D4A853', marginLeft: 8, fontWeight: 600 }}>\u25CF Active</span>}
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 12 }}>Covers:</span>
@@ -364,7 +348,7 @@ export function NewOrderPage() {
       {isOffTable && (
         <div style={{ background: '#092b33', borderRadius: 12, padding: '10px 16px', marginBottom: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div style={{ color: '#fff', fontWeight: 800, fontSize: 15 }}>{ORDER_TYPES[orderType]?.icon} {ORDER_TYPES[orderType]?.label} Order</div>
-          <button onClick={() => navigate('/orders')} style={{ background: 'rgba(255,255,255,0.1)', border: 'none', color: 'rgba(255,255,255,0.7)', borderRadius: 7, padding: '5px 12px', fontSize: 12, cursor: 'pointer', fontWeight: 600 }}>← Back</button>
+          <button onClick={() => navigate('/orders')} style={{ background: 'rgba(255,255,255,0.1)', border: 'none', color: 'rgba(255,255,255,0.7)', borderRadius: 7, padding: '5px 12px', fontSize: 12, cursor: 'pointer', fontWeight: 600 }}>\u2190 Back</button>
         </div>
       )}
 
@@ -405,15 +389,15 @@ export function NewOrderPage() {
                 {hasOptions ? (
                   <div style={{ fontSize: 10, color: '#5B21B6', fontWeight: 700, marginBottom: 6 }}>
                     {itemVars.length > 0 ? 'Veg & Non-Veg options' : ''}
-                    {itemVars.length > 0 && itemAGs.length > 0 ? ' · ' : ''}
+                    {itemVars.length > 0 && itemAGs.length > 0 ? ' \u00b7 ' : ''}
                     {itemAGs.length > 0 ? itemAGs.length + ' add-on' + (itemAGs.length !== 1 ? 's' : '') : ''}
                   </div>
                 ) : (
-                  <div style={{ fontWeight: 800, fontSize: 13, color: theme.textDark, marginBottom: 8 }}>₹{item.price}</div>
+                  <div style={{ fontWeight: 800, fontSize: 13, color: theme.textDark, marginBottom: 8 }}>\u20b9{item.price}</div>
                 )}
                 <button onClick={() => addToCart(item)}
                   style={{ width: '100%', background: hasOptions ? '#5B21B6' : '#092b33', color: '#fff', border: 'none', borderRadius: 6, padding: '6px 0', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
-                  {hasOptions ? 'Choose →' : qty === 0 ? '+ Add' : '+ Add (' + qty + ')'}
+                  {hasOptions ? 'Choose \u2192' : qty === 0 ? '+ Add' : '+ Add (' + qty + ')'}
                 </button>
               </div>
             )
@@ -423,12 +407,11 @@ export function NewOrderPage() {
     </div>
   )
 
-  // ── Order panel ──
   const orderPanel = (
     <div style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', flex: 1 }}>
       <div style={{ background: '#092b33', padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderRadius: '12px 12px 0 0' }}>
         <div style={{ color: '#fff', fontWeight: 800, fontSize: 14 }}>Order Summary</div>
-        {runningTotal > 0 && <div style={{ color: '#D4A853', fontWeight: 800, fontSize: 13 }}>₹{runningTotal.toFixed(0)} total</div>}
+        {runningTotal > 0 && <div style={{ color: '#D4A853', fontWeight: 800, fontSize: 13 }}>\u20b9{runningTotal.toFixed(0)} total</div>}
       </div>
 
       {existingKOTs.length > 0 && (
@@ -436,7 +419,7 @@ export function NewOrderPage() {
           {existingKOTs.map((kot, idx) => (
             <div key={kot.id} style={{ padding: '10px 14px', borderBottom: '1px solid ' + theme.bgWarm }}>
               <div style={{ fontSize: 10, fontWeight: 700, color: theme.textLight, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 }}>
-                KOT {idx + 1} · {new Date(kot.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+                KOT {idx + 1} \u00b7 {new Date(kot.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
                 <span style={{ marginLeft: 8, background: kot.status === 'ready' ? '#DCFCE7' : '#FEF3C7', color: kot.status === 'ready' ? '#15803D' : '#B45309', padding: '1px 6px', borderRadius: 10, fontSize: 9 }}>{kot.status}</span>
               </div>
               {kot.kot_items.map((ki, i) => (
@@ -446,13 +429,13 @@ export function NewOrderPage() {
                     {ki.order_items?.variation_name && <span style={{ color: '#5B21B6', fontWeight: 600 }}> ({ki.order_items.variation_name})</span>}
                     {ki.order_items?.portion_name && <span style={{ color: '#0D9488', fontWeight: 600 }}> [{ki.order_items.portion_name}]</span>}
                   </span>
-                  <span style={{ color: theme.textLight }}>×{ki.order_items?.quantity}</span>
+                  <span style={{ color: theme.textLight }}>\u00d7{ki.order_items?.quantity}</span>
                 </div>
               ))}
               {kot.status !== 'ready' ? (
-                <button onClick={() => markKOTReady(kot.id)} style={{ width: '100%', marginTop: 8, background: '#DCFCE7', color: '#15803D', border: '1px solid #86EFAC', borderRadius: 7, padding: '7px 0', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>✓ Mark as Ready</button>
+                <button onClick={() => markKOTReady(kot.id)} style={{ width: '100%', marginTop: 8, background: '#DCFCE7', color: '#15803D', border: '1px solid #86EFAC', borderRadius: 7, padding: '7px 0', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>\u2713 Mark as Ready</button>
               ) : (
-                <div style={{ width: '100%', marginTop: 8, background: '#DCFCE7', color: '#15803D', border: '1px solid #86EFAC', borderRadius: 7, padding: '7px 0', fontSize: 11, fontWeight: 700, textAlign: 'center' }}>✓ Ready</div>
+                <div style={{ width: '100%', marginTop: 8, background: '#DCFCE7', color: '#15803D', border: '1px solid #86EFAC', borderRadius: 7, padding: '7px 0', fontSize: 11, fontWeight: 700, textAlign: 'center' }}>\u2713 Ready</div>
               )}
             </div>
           ))}
@@ -475,14 +458,14 @@ export function NewOrderPage() {
                     {c.variationName && <div style={{ fontSize: 11, color: '#5B21B6', fontWeight: 600 }}>{c.variationName}</div>}
                     {c.portionName && <div style={{ fontSize: 11, color: '#0D9488', fontWeight: 600 }}>{c.portionName}</div>}
                     {c.addons && c.addons.length > 0 && <div style={{ fontSize: 11, color: '#C2410C' }}>+ {c.addons.map(a => a.name).join(', ')}</div>}
-                    <div style={{ fontSize: 11, color: theme.textLight }}>₹{(c.unitPrice + c.addonsTotal).toFixed(0)} × {c.quantity}</div>
+                    <div style={{ fontSize: 11, color: theme.textLight }}>\u20b9{(c.unitPrice + c.addonsTotal).toFixed(0)} \u00d7 {c.quantity}</div>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                     <button onClick={() => removeFromCart(c.key)} style={{ background: theme.bgWarm, border: '1px solid ' + theme.border, borderRadius: 5, width: 22, height: 22, fontSize: 14, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, color: theme.textMid }}>-</button>
                     <span style={{ fontWeight: 700, fontSize: 13, color: theme.textDark, minWidth: 20, textAlign: 'center' }}>{c.quantity}</span>
                     <button onClick={() => addToCart(c.item)} style={{ background: '#0D9488', border: 'none', borderRadius: 5, width: 22, height: 22, fontSize: 14, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, color: '#fff' }}>+</button>
                   </div>
-                  <div style={{ fontWeight: 700, fontSize: 13, color: theme.textDark }}>₹{((c.unitPrice + c.addonsTotal) * c.quantity).toFixed(0)}</div>
+                  <div style={{ fontWeight: 700, fontSize: 13, color: theme.textDark }}>\u20b9{((c.unitPrice + c.addonsTotal) * c.quantity).toFixed(0)}</div>
                 </div>
                 <input value={c.notes} onChange={e => setCart(prev => prev.map(ci => ci.key === c.key ? { ...ci, notes: e.target.value } : ci))}
                   placeholder="Add note (e.g. no onion...)"
@@ -497,27 +480,27 @@ export function NewOrderPage() {
         {cart.length > 0 && (
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
             <span style={{ fontWeight: 700, fontSize: 13, color: theme.textMid }}>New items</span>
-            <span style={{ fontWeight: 800, fontSize: 15, color: theme.textDark }}>₹{cartTotal.toFixed(0)}</span>
+            <span style={{ fontWeight: 800, fontSize: 15, color: theme.textDark }}>\u20b9{cartTotal.toFixed(0)}</span>
           </div>
         )}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
           <button onClick={() => fireKOT(true)} disabled={cart.length === 0 || submitting}
             style={{ background: cart.length === 0 ? theme.bgWarm : '#FEF3C7', color: cart.length === 0 ? theme.textMuted : '#B45309', border: '1px solid ' + (cart.length === 0 ? theme.border : '#FCD34D'), borderRadius: 8, padding: '10px 0', fontSize: 12, fontWeight: 700, cursor: cart.length === 0 ? 'not-allowed' : 'pointer' }}>
-            ⏸ Hold
+            \u23f8 Hold
           </button>
           <button onClick={() => fireKOT(false)} disabled={cart.length === 0 || submitting}
             style={{ background: cart.length === 0 ? theme.bgWarm : '#0D9488', color: cart.length === 0 ? theme.textMuted : '#fff', border: 'none', borderRadius: 8, padding: '10px 0', fontSize: 12, fontWeight: 700, cursor: cart.length === 0 ? 'not-allowed' : 'pointer' }}>
-            {submitting ? 'Sending...' : '🔥 KOT'}
+            {submitting ? 'Sending...' : '\U0001F525 KOT'}
           </button>
         </div>
         <button onClick={() => fireKOT(false)} disabled={cart.length === 0 || submitting}
           style={{ background: cart.length === 0 ? theme.bgWarm : '#092b33', color: cart.length === 0 ? theme.textMuted : '#fff', border: 'none', borderRadius: 8, padding: '10px 0', fontSize: 13, fontWeight: 700, cursor: cart.length === 0 ? 'not-allowed' : 'pointer' }}>
-          🔥 KOT & Print
+          \U0001F525 KOT & Print
         </button>
         {existingOrder && (
           <button onClick={() => navigate('/billing/order/' + existingOrder.id)}
             style={{ background: '#D4A853', color: '#fff', border: 'none', borderRadius: 8, padding: '10px 0', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
-            ₹ Generate Bill
+            \u20b9 Generate Bill
           </button>
         )}
       </div>
@@ -526,7 +509,7 @@ export function NewOrderPage() {
 
   return (
     <>
-      {/* ── ITEM PICKER MODAL — rendered inline, never as a sub-component ── */}
+      {/* ITEM PICKER MODAL */}
       {pickerItem && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000, padding: 20 }}
           onClick={e => { if (e.target === e.currentTarget) closePicker() }}>
@@ -536,7 +519,7 @@ export function NewOrderPage() {
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
               <div style={{ width: 10, height: 10, borderRadius: 2, background: pickerItem.food_type === 'veg' ? '#15803D' : '#B91C1C', flexShrink: 0 }} />
               <div style={{ fontWeight: 800, fontSize: 18, color: theme.textDark, flex: 1 }}>{pickerItem.name}</div>
-              <div style={{ fontWeight: 900, fontSize: 16, color: '#092b33' }}>₹{pickerItem.price}</div>
+              <div style={{ fontWeight: 900, fontSize: 16, color: '#092b33' }}>\u20b9{pickerItem.price}</div>
             </div>
 
             {/* Variations */}
@@ -556,7 +539,7 @@ export function NewOrderPage() {
                           <div style={{ width: 9, height: 9, borderRadius: 2, border: '2px solid ' + dotColor, background: dotColor, flexShrink: 0 }} />
                           <span style={{ fontWeight: 800, fontSize: 14 }}>{v.name}</span>
                         </div>
-                        <div style={{ fontSize: 13 }}>₹{v.price}</div>
+                        <div style={{ fontSize: 13 }}>\u20b9{v.price}</div>
                       </button>
                     )
                   })}
@@ -564,7 +547,7 @@ export function NewOrderPage() {
               </div>
             )}
 
-            {/* Portions — only if no variations */}
+            {/* Portions */}
             {(portions[pickerItem.id] || []).length > 0 && (variations[pickerItem.id] || []).length === 0 && (
               <div style={{ marginBottom: 20 }}>
                 <div style={{ fontSize: 13, fontWeight: 700, color: theme.textDark, marginBottom: 12 }}>
@@ -578,56 +561,52 @@ export function NewOrderPage() {
                         <div style={{ fontWeight: 700, fontSize: 14, color: theme.textDark }}>{p.name}</div>
                         {p.value > 0 && p.unit && <div style={{ fontSize: 12, color: theme.textLight }}>{p.value}{p.unit}</div>}
                       </div>
-                      <div style={{ fontWeight: 900, fontSize: 16, color: '#092b33' }}>₹{p.price}</div>
+                      <div style={{ fontWeight: 900, fontSize: 16, color: '#092b33' }}>\u20b9{p.price}</div>
                     </button>
                   ))}
                 </div>
               </div>
             )}
 
-            {/* Add-on Groups */}
-            {(addonGroups[pickerItem.id] || []).map(group => (
-              <div key={group.id} style={{ marginBottom: 20 }}>
-                <div style={{ fontSize: 13, fontWeight: 700, color: theme.textDark, marginBottom: 4 }}>
-                  {group.name}
-                  <span style={{ marginLeft: 8, fontSize: 11, fontWeight: 600, color: group.min_select > 0 ? '#B91C1C' : theme.textLight }}>
-                    {group.min_select > 0 ? '* Min ' + group.min_select + ' · ' : ''}Max {group.max_select}
-                  </span>
+            {/* Add-ons (flat) */}
+            {(addonGroups[pickerItem.id] || []).length > 0 && (
+              <div style={{ marginBottom: 20 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: theme.textDark, marginBottom: 10 }}>
+                  Add-ons <span style={{ fontSize: 11, fontWeight: 400, color: theme.textLight }}>optional</span>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  {group.addons.map(addon => {
-                    const qty = (pickerAddons[group.id] || {})[addon.id] || 0
+                  {(addonGroups[pickerItem.id] || []).map(addon => {
+                    const qty = pickerAddons[addon.id] || 0
                     return (
                       <div key={addon.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: qty > 0 ? '#FFF7ED' : '#F9FAFB', borderRadius: 10, border: '1px solid ' + (qty > 0 ? '#FED7AA' : theme.border) }}>
                         <div>
                           <div style={{ fontWeight: 600, fontSize: 14, color: theme.textDark }}>{addon.name}</div>
-                          {addon.price > 0 && <div style={{ fontSize: 12, color: '#C2410C', fontWeight: 600 }}>+₹{addon.price}</div>}
+                          {addon.price > 0 && <div style={{ fontSize: 12, color: '#C2410C', fontWeight: 600 }}>+\u20b9{addon.price}</div>}
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                           {qty > 0 && (
                             <>
-                              <button onClick={() => adjustAddon(group, addon, -1)} style={{ background: '#FEE2E2', border: 'none', borderRadius: 6, width: 28, height: 28, fontSize: 16, cursor: 'pointer', fontWeight: 700, color: '#B91C1C', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>-</button>
+                              <button onClick={() => adjustAddon(addon, -1)} style={{ background: '#FEE2E2', border: 'none', borderRadius: 6, width: 28, height: 28, fontSize: 16, cursor: 'pointer', fontWeight: 700, color: '#B91C1C', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>-</button>
                               <span style={{ fontWeight: 800, fontSize: 14, minWidth: 20, textAlign: 'center' }}>{qty}</span>
                             </>
                           )}
-                          <button onClick={() => adjustAddon(group, addon, 1)}
-                            disabled={pickerAddonCount(group.id) >= group.max_select && qty === 0}
-                            style={{ background: '#092b33', border: 'none', borderRadius: 6, width: 28, height: 28, fontSize: 16, cursor: 'pointer', fontWeight: 700, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: (pickerAddonCount(group.id) >= group.max_select && qty === 0) ? 0.3 : 1 }}>+</button>
+                          <button onClick={() => adjustAddon(addon, 1)}
+                            style={{ background: '#092b33', border: 'none', borderRadius: 6, width: 28, height: 28, fontSize: 16, cursor: 'pointer', fontWeight: 700, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>+</button>
                         </div>
                       </div>
                     )
                   })}
                 </div>
               </div>
-            ))}
+            )}
 
-            {/* Confirm / Cancel — shown when there are variations or addons (portions confirm directly) */}
+            {/* Confirm / Cancel */}
             {((variations[pickerItem.id] || []).length > 0 || (addonGroups[pickerItem.id] || []).length > 0) && (
               <div style={{ display: 'flex', gap: 10 }}>
                 <button onClick={closePicker} style={{ flex: 1, background: theme.bgWarm, border: '1px solid ' + theme.border, borderRadius: 10, padding: '12px', fontSize: 13, fontWeight: 700, cursor: 'pointer', color: theme.textMid }}>Cancel</button>
                 <button onClick={() => confirmPicker(null)} disabled={!canConfirmPicker()}
                   style={{ flex: 2, background: canConfirmPicker() ? '#092b33' : theme.bgWarm, color: canConfirmPicker() ? '#fff' : theme.textMuted, border: 'none', borderRadius: 10, padding: '12px', fontSize: 13, fontWeight: 700, cursor: canConfirmPicker() ? 'pointer' : 'not-allowed' }}>
-                  Add to Order →
+                  Add to Order \u2192
                 </button>
               </div>
             )}
@@ -635,7 +614,7 @@ export function NewOrderPage() {
         </div>
       )}
 
-      {/* ── DESKTOP LAYOUT ── */}
+      {/* DESKTOP LAYOUT */}
       <div className="orders-desktop" style={{ display: 'flex', gap: 16, height: 'calc(100vh - 112px)' }}>
         {menuPanel}
         <div style={{ width: 290, background: '#fff', borderRadius: 12, border: '1px solid ' + theme.border, display: 'flex', flexDirection: 'column', overflow: 'hidden', flexShrink: 0 }}>
@@ -643,12 +622,12 @@ export function NewOrderPage() {
         </div>
       </div>
 
-      {/* ── MOBILE LAYOUT ── */}
+      {/* MOBILE LAYOUT */}
       <div className="orders-mobile" style={{ display: 'none', flexDirection: 'column', height: 'calc(100vh - 120px)' }}>
         <div style={{ display: 'flex', background: '#092b33', borderRadius: 10, padding: 4, marginBottom: 12, flexShrink: 0 }}>
-          <button onClick={() => setMobileTab('menu')} style={{ flex: 1, padding: '8px 0', borderRadius: 7, border: 'none', fontWeight: 700, fontSize: 13, cursor: 'pointer', background: mobileTab === 'menu' ? '#fff' : 'transparent', color: mobileTab === 'menu' ? '#092b33' : 'rgba(255,255,255,0.6)' }}>🍽 Menu</button>
+          <button onClick={() => setMobileTab('menu')} style={{ flex: 1, padding: '8px 0', borderRadius: 7, border: 'none', fontWeight: 700, fontSize: 13, cursor: 'pointer', background: mobileTab === 'menu' ? '#fff' : 'transparent', color: mobileTab === 'menu' ? '#092b33' : 'rgba(255,255,255,0.6)' }}>\U0001F37D Menu</button>
           <button onClick={() => setMobileTab('order')} style={{ flex: 1, padding: '8px 0', borderRadius: 7, border: 'none', fontWeight: 700, fontSize: 13, cursor: 'pointer', background: mobileTab === 'order' ? '#fff' : 'transparent', color: mobileTab === 'order' ? '#092b33' : 'rgba(255,255,255,0.6)' }}>
-            🧾 Order {cartCount > 0 && <span style={{ background: '#0D9488', color: '#fff', borderRadius: 10, fontSize: 10, padding: '1px 6px', marginLeft: 4 }}>{cartCount}</span>}
+            \U0001F9FE Order {cartCount > 0 && <span style={{ background: '#0D9488', color: '#fff', borderRadius: 10, fontSize: 10, padding: '1px 6px', marginLeft: 4 }}>{cartCount}</span>}
           </button>
         </div>
         <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
@@ -658,12 +637,12 @@ export function NewOrderPage() {
         </div>
       </div>
 
-      <style>{`@media (max-width: 768px) { .orders-desktop { display: none !important; } .orders-mobile { display: flex !important; } }`}</style>
+      <style>{"@media (max-width: 768px) { .orders-desktop { display: none !important; } .orders-mobile { display: flex !important; } }"}</style>
     </>
   )
 }
 
-// ─── ORDERS LIST PAGE ──────────────────────────────────────────────────────────
+// ORDERS LIST PAGE
 export default function OrdersPage() {
   const [orders, setOrders]               = useState([])
   const [loading, setLoading]             = useState(true)
@@ -738,13 +717,13 @@ export default function OrdersPage() {
         <div>
           <h1 style={{ fontSize: 22, fontWeight: 800, color: theme.textDark, margin: 0 }}>Today's Orders</h1>
           <p style={{ color: theme.textLight, fontSize: 14, marginTop: 4 }}>
-            {orders.filter(o => o.status === 'active').length} active · {orders.filter(o => o.status !== 'active').length} completed
+            {orders.filter(o => o.status === 'active').length} active \u00b7 {orders.filter(o => o.status !== 'active').length} completed
           </p>
         </div>
         <div ref={dropdownRef} style={{ position: 'relative' }}>
           <button onClick={() => setShowTypeMenu(d => !d)}
             style={{ background: '#092b33', color: '#fff', border: 'none', borderRadius: 9, padding: '10px 20px', fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}>
-            + New Order <span style={{ fontSize: 10, opacity: 0.6 }}>▼</span>
+            + New Order <span style={{ fontSize: 10, opacity: 0.6 }}>\u25bc</span>
           </button>
           {showTypeMenu && (
             <div style={{ position: 'absolute', right: 0, top: 'calc(100% + 6px)', background: '#fff', border: '1px solid ' + theme.border, borderRadius: 12, boxShadow: '0 8px 24px rgba(0,0,0,0.14)', zIndex: 100, minWidth: 200, overflow: 'hidden' }}>
@@ -789,12 +768,12 @@ export default function OrdersPage() {
                       <div style={{ fontWeight: 700, fontSize: 14, color: theme.textDark }}>
                         {order.cafe_tables ? 'Table ' + order.cafe_tables.number : order.customer_name || typeConfig.label}
                       </div>
-                      {!isActive && <span style={{ fontSize: 10, fontWeight: 700, background: '#DCFCE7', color: '#15803D', padding: '2px 8px', borderRadius: 20 }}>✓ Done</span>}
+                      {!isActive && <span style={{ fontSize: 10, fontWeight: 700, background: '#DCFCE7', color: '#15803D', padding: '2px 8px', borderRadius: 20 }}>\u2713 Done</span>}
                     </div>
                     <div style={{ fontSize: 12, color: theme.textLight, marginTop: 2 }}>
                       {typeConfig.label}
-                      {order.customer_phone && ' · 📞 ' + order.customer_phone}
-                      {!isOffTable && ' · ' + order.covers + ' cover' + (order.covers !== 1 ? 's' : '')}
+                      {order.customer_phone && ' \u00b7 \U0001F4DE ' + order.customer_phone}
+                      {!isOffTable && ' \u00b7 ' + order.covers + ' cover' + (order.covers !== 1 ? 's' : '')}
                     </div>
                   </div>
                   <div style={{ fontSize: 12, color: theme.textLight }}>
