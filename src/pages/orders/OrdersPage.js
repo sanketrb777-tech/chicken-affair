@@ -43,6 +43,11 @@ export function NewOrderPage() {
   const [pickerVariation, setPickerVariation] = useState(null)
   const [pickerAddons, setPickerAddons]       = useState({})
 
+  // KOT item edit/delete (manager/owner only)
+  const [editingKOTItem, setEditingKOTItem]   = useState(null) // { ki, kotIdx, itemIdx }
+  const [editQty, setEditQty]                 = useState(1)
+  const isManager = profile?.role === 'owner' || profile?.role === 'manager'
+
   const isOffTable = !tableId
 
   useEffect(() => {
@@ -119,7 +124,7 @@ export function NewOrderPage() {
     setCovers(order.covers)
     const { data: kots } = await supabase
       .from('kots')
-      .select('id, status, created_at, kot_items(id, is_done, order_items(quantity, unit_price, notes, portion_name, variation_name, addons, menu_items(name)))')
+      .select('id, status, created_at, kot_items(id, is_done, order_item_id, order_items(id, quantity, unit_price, notes, portion_name, variation_name, addons, menu_items(name)))')
       .eq('order_id', order.id).order('created_at')
     setExistingKOTs(kots || [])
     const { data: orderItems } = await supabase.from('order_items').select('quantity, unit_price, addons_total').eq('order_id', order.id)
@@ -224,6 +229,36 @@ export function NewOrderPage() {
 
   async function markKOTReady(kotId) {
     await supabase.from('kots').update({ status: 'ready' }).eq('id', kotId)
+    await fetchExistingOrder()
+  }
+
+  async function deleteKOTItem(ki) {
+    if (!window.confirm(`Remove "${ki.order_items?.menu_items?.name}" from this KOT?`)) return
+    await supabase.from('kot_items').delete().eq('id', ki.id)
+    await supabase.from('order_items').delete().eq('id', ki.order_item_id)
+    await fetchExistingOrder()
+  }
+
+  async function saveKOTItemQty() {
+    const ki = editingKOTItem?.ki
+    if (!ki) return
+    const qty = parseInt(editQty)
+    if (qty <= 0) { await deleteKOTItem(ki); setEditingKOTItem(null); return }
+    await supabase.from('order_items').update({ quantity: qty }).eq('id', ki.order_item_id)
+    setEditingKOTItem(null)
+    await fetchExistingOrder()
+  }
+
+  async function deleteKOTItem(kotItemId, orderItemId) {
+    if (!window.confirm('Remove this item from the KOT?')) return
+    await supabase.from('kot_items').delete().eq('id', kotItemId)
+    await supabase.from('order_items').delete().eq('id', orderItemId)
+    await fetchExistingOrder()
+  }
+
+  async function updateKOTItemQty(orderItemId, newQty) {
+    if (newQty < 1) return
+    await supabase.from('order_items').update({ quantity: newQty }).eq('id', orderItemId)
     await fetchExistingOrder()
   }
 
@@ -423,13 +458,32 @@ export function NewOrderPage() {
                 <span style={{ marginLeft: 8, background: kot.status === 'ready' ? '#DCFCE7' : '#FEF3C7', color: kot.status === 'ready' ? '#15803D' : '#B45309', padding: '1px 6px', borderRadius: 10, fontSize: 9 }}>{kot.status}</span>
               </div>
               {kot.kot_items.map((ki, i) => (
-                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: theme.textMid, padding: '2px 0' }}>
-                  <span>
-                    {ki.order_items?.menu_items?.name}
+                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: theme.textMid, padding: '3px 0' }}>
+                  <div style={{ flex: 1 }}>
+                    <span>{ki.order_items?.menu_items?.name}</span>
                     {ki.order_items?.variation_name && <span style={{ color: '#5B21B6', fontWeight: 600 }}> ({ki.order_items.variation_name})</span>}
                     {ki.order_items?.portion_name && <span style={{ color: '#0D9488', fontWeight: 600 }}> [{ki.order_items.portion_name}]</span>}
-                  </span>
-                  <span style={{ color: theme.textLight }}>\u00d7{ki.order_items?.quantity}</span>
+                  </div>
+                  {editingKOTItem?.ki?.id === ki.id ? (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <input type="number" min="0" value={editQty} onChange={e => setEditQty(e.target.value)} autoFocus
+                        style={{ width: 40, border: '1.5px solid #0D9488', borderRadius: 5, padding: '2px 5px', fontSize: 12, fontWeight: 700, textAlign: 'center', outline: 'none' }} />
+                      <button onClick={saveKOTItemQty} style={{ background: '#0D9488', border: 'none', color: '#fff', borderRadius: 5, padding: '2px 7px', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>✓</button>
+                      <button onClick={() => setEditingKOTItem(null)} style={{ background: theme.bgWarm, border: '1px solid ' + theme.border, borderRadius: 5, padding: '2px 6px', fontSize: 11, cursor: 'pointer', color: theme.textMid }}>✕</button>
+                    </div>
+                  ) : (
+                    <>
+                      <span style={{ color: theme.textLight, fontWeight: 700 }}>×{ki.order_items?.quantity}</span>
+                      {isManager && (
+                        <>
+                          <button onClick={() => { setEditingKOTItem({ ki }); setEditQty(ki.order_items?.quantity || 1) }}
+                            style={{ background: '#EFF6FF', border: 'none', borderRadius: 5, padding: '2px 6px', fontSize: 10, cursor: 'pointer', color: '#1D4ED8', fontWeight: 700 }}>✏️</button>
+                          <button onClick={() => deleteKOTItem(ki)}
+                            style={{ background: '#FEE2E2', border: 'none', borderRadius: 5, padding: '2px 6px', fontSize: 10, cursor: 'pointer', color: '#B91C1C', fontWeight: 700 }}>✕</button>
+                        </>
+                      )}
+                    </>
+                  )}
                 </div>
               ))}
               {kot.status !== 'ready' ? (
