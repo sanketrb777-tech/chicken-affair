@@ -6,9 +6,9 @@ import { theme } from '../../lib/theme'
 import { Trash2 } from 'lucide-react'
 
 const ORDER_TYPES = {
-  dine_in:  { label: 'Dine In',  icon: '\U0001F6CB\uFE0F', color: '#0D9488' },
-  takeaway: { label: 'Takeaway', icon: '\U0001F6CD\uFE0F', color: '#D4A853' },
-  delivery: { label: 'Delivery', icon: '\U0001F69A', color: '#7C3AED' },
+  dine_in:  { label: 'Dine In',  icon: '🛋️', color: '#0D9488' },
+  takeaway: { label: 'Takeaway', icon: '🛍️', color: '#D4A853' },
+  delivery: { label: 'Delivery', icon: '🚚', color: '#7C3AED' },
 }
 
 export function NewOrderPage() {
@@ -189,7 +189,7 @@ export function NewOrderPage() {
         ? parseFloat(pickerVariation.price)
         : parseFloat(item.price)
 
-    const portionLabel    = portion ? `${portion.name}${portion.value ? ' \u00b7 ' + portion.value + (portion.unit || '') : ''}` : null
+    const portionLabel    = portion ? `${portion.name}${portion.value ? ' · ' + portion.value + (portion.unit || '') : ''}` : null
     const variationLabel  = pickerVariation ? pickerVariation.name : null
     const addonKey        = Object.entries(pickerAddons).sort().map(([id, qty]) => id + 'x' + qty).join('|')
     const key             = `${item.id}_${pickerVariation?.id || 'base'}_${portion?.id || 'noport'}_${addonKey}`
@@ -343,10 +343,10 @@ export function NewOrderPage() {
     <div style={{ background: ORDER_TYPES[orderType]?.color + '18', border: '1px solid ' + ORDER_TYPES[orderType]?.color + '33', borderRadius: 10, padding: '10px 14px', marginBottom: 12, display: 'flex', gap: 12, alignItems: 'center' }}>
       <span style={{ fontSize: 20 }}>{ORDER_TYPES[orderType]?.icon}</span>
       <div>
-        <div style={{ fontWeight: 700, fontSize: 14, color: theme.textDark }}>{existingOrder.customer_name || '\u2014'}</div>
+        <div style={{ fontWeight: 700, fontSize: 14, color: theme.textDark }}>{existingOrder.customer_name || '—'}</div>
         {existingOrder.customer_phone && <div style={{ fontSize: 12, color: theme.textLight, marginTop: 2 }}>📞 {existingOrder.customer_phone}</div>}
       </div>
-      <span style={{ marginLeft: 'auto', background: '#D4FAD4', color: '#15803D', fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 20 }}>\u25CF Active</span>
+      <span style={{ marginLeft: 'auto', background: '#D4FAD4', color: '#15803D', fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 20 }}>● Active</span>
     </div>
   )
 
@@ -360,7 +360,7 @@ export function NewOrderPage() {
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
             <div style={{ color: '#fff', fontWeight: 800, fontSize: 15 }}>
               {tableId ? 'Table ' + tableNumber : 'New Order'}
-              {existingOrder && <span style={{ fontSize: 11, color: '#D4A853', marginLeft: 8, fontWeight: 600 }}>\u25CF Active</span>}
+              {existingOrder && <span style={{ fontSize: 11, color: '#D4A853', marginLeft: 8, fontWeight: 600 }}>● Active</span>}
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 12 }}>Covers:</span>
@@ -383,7 +383,7 @@ export function NewOrderPage() {
       {isOffTable && (
         <div style={{ background: '#092b33', borderRadius: 12, padding: '10px 16px', marginBottom: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div style={{ color: '#fff', fontWeight: 800, fontSize: 15 }}>{ORDER_TYPES[orderType]?.icon} {ORDER_TYPES[orderType]?.label} Order</div>
-          <button onClick={() => navigate('/orders')} style={{ background: 'rgba(255,255,255,0.1)', border: 'none', color: 'rgba(255,255,255,0.7)', borderRadius: 7, padding: '5px 12px', fontSize: 12, cursor: 'pointer', fontWeight: 600 }}>\u2190 Back</button>
+          <button onClick={() => navigate('/orders')} style={{ background: 'rgba(255,255,255,0.1)', border: 'none', color: 'rgba(255,255,255,0.7)', borderRadius: 7, padding: '5px 12px', fontSize: 12, cursor: 'pointer', fontWeight: 600 }}>← Back</button>
         </div>
       )}
 
@@ -424,15 +424,15 @@ export function NewOrderPage() {
                 {hasOptions ? (
                   <div style={{ fontSize: 10, color: '#5B21B6', fontWeight: 700, marginBottom: 6 }}>
                     {itemVars.length > 0 ? 'Veg & Non-Veg options' : ''}
-                    {itemVars.length > 0 && itemAGs.length > 0 ? ' \u00b7 ' : ''}
+                    {itemVars.length > 0 && itemAGs.length > 0 ? ' · ' : ''}
                     {itemAGs.length > 0 ? itemAGs.length + ' add-on' + (itemAGs.length !== 1 ? 's' : '') : ''}
                   </div>
                 ) : (
-                  <div style={{ fontWeight: 800, fontSize: 13, color: theme.textDark, marginBottom: 8 }}>\u20b9{item.price}</div>
+                  <div style={{ fontWeight: 800, fontSize: 13, color: theme.textDark, marginBottom: 8 }}>₹{item.price}</div>
                 )}
                 <button onClick={() => addToCart(item)}
                   style={{ width: '100%', background: hasOptions ? '#5B21B6' : '#092b33', color: '#fff', border: 'none', borderRadius: 6, padding: '6px 0', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
-                  {hasOptions ? 'Choose \u2192' : qty === 0 ? '+ Add' : '+ Add (' + qty + ')'}
+                  {hasOptions ? 'Choose →' : qty === 0 ? '+ Add' : '+ Add (' + qty + ')'}
                 </button>
               </div>
             )
@@ -446,7 +446,7 @@ export function NewOrderPage() {
     <div style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', flex: 1 }}>
       <div style={{ background: '#092b33', padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderRadius: '12px 12px 0 0' }}>
         <div style={{ color: '#fff', fontWeight: 800, fontSize: 14 }}>Order Summary</div>
-        {runningTotal > 0 && <div style={{ color: '#D4A853', fontWeight: 800, fontSize: 13 }}>\u20b9{runningTotal.toFixed(0)} total</div>}
+        {runningTotal > 0 && <div style={{ color: '#D4A853', fontWeight: 800, fontSize: 13 }}>₹{runningTotal.toFixed(0)} total</div>}
       </div>
 
       {existingKOTs.length > 0 && (
@@ -454,7 +454,7 @@ export function NewOrderPage() {
           {existingKOTs.map((kot, idx) => (
             <div key={kot.id} style={{ padding: '10px 14px', borderBottom: '1px solid ' + theme.bgWarm }}>
               <div style={{ fontSize: 10, fontWeight: 700, color: theme.textLight, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 }}>
-                KOT {idx + 1} \u00b7 {new Date(kot.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+                KOT {idx + 1} · {new Date(kot.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
                 <span style={{ marginLeft: 8, background: kot.status === 'ready' ? '#DCFCE7' : '#FEF3C7', color: kot.status === 'ready' ? '#15803D' : '#B45309', padding: '1px 6px', borderRadius: 10, fontSize: 9 }}>{kot.status}</span>
               </div>
               {kot.kot_items.map((ki, i) => (
@@ -487,9 +487,9 @@ export function NewOrderPage() {
                 </div>
               ))}
               {kot.status !== 'ready' ? (
-                <button onClick={() => markKOTReady(kot.id)} style={{ width: '100%', marginTop: 8, background: '#DCFCE7', color: '#15803D', border: '1px solid #86EFAC', borderRadius: 7, padding: '7px 0', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>\u2713 Mark as Ready</button>
+                <button onClick={() => markKOTReady(kot.id)} style={{ width: '100%', marginTop: 8, background: '#DCFCE7', color: '#15803D', border: '1px solid #86EFAC', borderRadius: 7, padding: '7px 0', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>✓ Mark as Ready</button>
               ) : (
-                <div style={{ width: '100%', marginTop: 8, background: '#DCFCE7', color: '#15803D', border: '1px solid #86EFAC', borderRadius: 7, padding: '7px 0', fontSize: 11, fontWeight: 700, textAlign: 'center' }}>\u2713 Ready</div>
+                <div style={{ width: '100%', marginTop: 8, background: '#DCFCE7', color: '#15803D', border: '1px solid #86EFAC', borderRadius: 7, padding: '7px 0', fontSize: 11, fontWeight: 700, textAlign: 'center' }}>✓ Ready</div>
               )}
             </div>
           ))}
@@ -512,14 +512,14 @@ export function NewOrderPage() {
                     {c.variationName && <div style={{ fontSize: 11, color: '#5B21B6', fontWeight: 600 }}>{c.variationName}</div>}
                     {c.portionName && <div style={{ fontSize: 11, color: '#0D9488', fontWeight: 600 }}>{c.portionName}</div>}
                     {c.addons && c.addons.length > 0 && <div style={{ fontSize: 11, color: '#C2410C' }}>+ {c.addons.map(a => a.name).join(', ')}</div>}
-                    <div style={{ fontSize: 11, color: theme.textLight }}>\u20b9{(c.unitPrice + c.addonsTotal).toFixed(0)} \u00d7 {c.quantity}</div>
+                    <div style={{ fontSize: 11, color: theme.textLight }}>₹{(c.unitPrice + c.addonsTotal).toFixed(0)} × {c.quantity}</div>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                     <button onClick={() => removeFromCart(c.key)} style={{ background: theme.bgWarm, border: '1px solid ' + theme.border, borderRadius: 5, width: 22, height: 22, fontSize: 14, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, color: theme.textMid }}>-</button>
                     <span style={{ fontWeight: 700, fontSize: 13, color: theme.textDark, minWidth: 20, textAlign: 'center' }}>{c.quantity}</span>
                     <button onClick={() => addToCart(c.item)} style={{ background: '#0D9488', border: 'none', borderRadius: 5, width: 22, height: 22, fontSize: 14, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, color: '#fff' }}>+</button>
                   </div>
-                  <div style={{ fontWeight: 700, fontSize: 13, color: theme.textDark }}>\u20b9{((c.unitPrice + c.addonsTotal) * c.quantity).toFixed(0)}</div>
+                  <div style={{ fontWeight: 700, fontSize: 13, color: theme.textDark }}>₹{((c.unitPrice + c.addonsTotal) * c.quantity).toFixed(0)}</div>
                 </div>
                 <input value={c.notes} onChange={e => setCart(prev => prev.map(ci => ci.key === c.key ? { ...ci, notes: e.target.value } : ci))}
                   placeholder="Add note (e.g. no onion...)"
@@ -534,27 +534,27 @@ export function NewOrderPage() {
         {cart.length > 0 && (
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
             <span style={{ fontWeight: 700, fontSize: 13, color: theme.textMid }}>New items</span>
-            <span style={{ fontWeight: 800, fontSize: 15, color: theme.textDark }}>\u20b9{cartTotal.toFixed(0)}</span>
+            <span style={{ fontWeight: 800, fontSize: 15, color: theme.textDark }}>₹{cartTotal.toFixed(0)}</span>
           </div>
         )}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
           <button onClick={() => fireKOT(true)} disabled={cart.length === 0 || submitting}
             style={{ background: cart.length === 0 ? theme.bgWarm : '#FEF3C7', color: cart.length === 0 ? theme.textMuted : '#B45309', border: '1px solid ' + (cart.length === 0 ? theme.border : '#FCD34D'), borderRadius: 8, padding: '10px 0', fontSize: 12, fontWeight: 700, cursor: cart.length === 0 ? 'not-allowed' : 'pointer' }}>
-            \u23f8 Hold
+            ⏸ Hold
           </button>
           <button onClick={() => fireKOT(false)} disabled={cart.length === 0 || submitting}
             style={{ background: cart.length === 0 ? theme.bgWarm : '#0D9488', color: cart.length === 0 ? theme.textMuted : '#fff', border: 'none', borderRadius: 8, padding: '10px 0', fontSize: 12, fontWeight: 700, cursor: cart.length === 0 ? 'not-allowed' : 'pointer' }}>
-            {submitting ? 'Sending...' : '\U0001F525 KOT'}
+            {submitting ? 'Sending...' : '🔥 KOT'}
           </button>
         </div>
         <button onClick={() => fireKOT(false)} disabled={cart.length === 0 || submitting}
           style={{ background: cart.length === 0 ? theme.bgWarm : '#092b33', color: cart.length === 0 ? theme.textMuted : '#fff', border: 'none', borderRadius: 8, padding: '10px 0', fontSize: 13, fontWeight: 700, cursor: cart.length === 0 ? 'not-allowed' : 'pointer' }}>
-          \U0001F525 KOT & Print
+          🔥 KOT & Print
         </button>
         {existingOrder && (
           <button onClick={() => navigate('/billing/order/' + existingOrder.id)}
             style={{ background: '#D4A853', color: '#fff', border: 'none', borderRadius: 8, padding: '10px 0', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
-            \u20b9 Generate Bill
+            ₹ Generate Bill
           </button>
         )}
       </div>
@@ -573,7 +573,7 @@ export function NewOrderPage() {
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
               <div style={{ width: 10, height: 10, borderRadius: 2, background: pickerItem.food_type === 'veg' ? '#15803D' : '#B91C1C', flexShrink: 0 }} />
               <div style={{ fontWeight: 800, fontSize: 18, color: theme.textDark, flex: 1 }}>{pickerItem.name}</div>
-              <div style={{ fontWeight: 900, fontSize: 16, color: '#092b33' }}>\u20b9{pickerItem.price}</div>
+              <div style={{ fontWeight: 900, fontSize: 16, color: '#092b33' }}>₹{pickerItem.price}</div>
             </div>
 
             {/* Variations */}
@@ -593,7 +593,7 @@ export function NewOrderPage() {
                           <div style={{ width: 9, height: 9, borderRadius: 2, border: '2px solid ' + dotColor, background: dotColor, flexShrink: 0 }} />
                           <span style={{ fontWeight: 800, fontSize: 14 }}>{v.name}</span>
                         </div>
-                        <div style={{ fontSize: 13 }}>\u20b9{v.price}</div>
+                        <div style={{ fontSize: 13 }}>₹{v.price}</div>
                       </button>
                     )
                   })}
@@ -615,7 +615,7 @@ export function NewOrderPage() {
                         <div style={{ fontWeight: 700, fontSize: 14, color: theme.textDark }}>{p.name}</div>
                         {p.value > 0 && p.unit && <div style={{ fontSize: 12, color: theme.textLight }}>{p.value}{p.unit}</div>}
                       </div>
-                      <div style={{ fontWeight: 900, fontSize: 16, color: '#092b33' }}>\u20b9{p.price}</div>
+                      <div style={{ fontWeight: 900, fontSize: 16, color: '#092b33' }}>₹{p.price}</div>
                     </button>
                   ))}
                 </div>
@@ -635,7 +635,7 @@ export function NewOrderPage() {
                       <div key={addon.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: qty > 0 ? '#FFF7ED' : '#F9FAFB', borderRadius: 10, border: '1px solid ' + (qty > 0 ? '#FED7AA' : theme.border) }}>
                         <div>
                           <div style={{ fontWeight: 600, fontSize: 14, color: theme.textDark }}>{addon.name}</div>
-                          {addon.price > 0 && <div style={{ fontSize: 12, color: '#C2410C', fontWeight: 600 }}>+\u20b9{addon.price}</div>}
+                          {addon.price > 0 && <div style={{ fontSize: 12, color: '#C2410C', fontWeight: 600 }}>+₹{addon.price}</div>}
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                           {qty > 0 && (
@@ -660,7 +660,7 @@ export function NewOrderPage() {
                 <button onClick={closePicker} style={{ flex: 1, background: theme.bgWarm, border: '1px solid ' + theme.border, borderRadius: 10, padding: '12px', fontSize: 13, fontWeight: 700, cursor: 'pointer', color: theme.textMid }}>Cancel</button>
                 <button onClick={() => confirmPicker(null)} disabled={!canConfirmPicker()}
                   style={{ flex: 2, background: canConfirmPicker() ? '#092b33' : theme.bgWarm, color: canConfirmPicker() ? '#fff' : theme.textMuted, border: 'none', borderRadius: 10, padding: '12px', fontSize: 13, fontWeight: 700, cursor: canConfirmPicker() ? 'pointer' : 'not-allowed' }}>
-                  Add to Order \u2192
+                  Add to Order →
                 </button>
               </div>
             )}
@@ -679,9 +679,9 @@ export function NewOrderPage() {
       {/* MOBILE LAYOUT */}
       <div className="orders-mobile" style={{ display: 'none', flexDirection: 'column', height: 'calc(100vh - 120px)' }}>
         <div style={{ display: 'flex', background: '#092b33', borderRadius: 10, padding: 4, marginBottom: 12, flexShrink: 0 }}>
-          <button onClick={() => setMobileTab('menu')} style={{ flex: 1, padding: '8px 0', borderRadius: 7, border: 'none', fontWeight: 700, fontSize: 13, cursor: 'pointer', background: mobileTab === 'menu' ? '#fff' : 'transparent', color: mobileTab === 'menu' ? '#092b33' : 'rgba(255,255,255,0.6)' }}>\U0001F37D Menu</button>
+          <button onClick={() => setMobileTab('menu')} style={{ flex: 1, padding: '8px 0', borderRadius: 7, border: 'none', fontWeight: 700, fontSize: 13, cursor: 'pointer', background: mobileTab === 'menu' ? '#fff' : 'transparent', color: mobileTab === 'menu' ? '#092b33' : 'rgba(255,255,255,0.6)' }}>🍽 Menu</button>
           <button onClick={() => setMobileTab('order')} style={{ flex: 1, padding: '8px 0', borderRadius: 7, border: 'none', fontWeight: 700, fontSize: 13, cursor: 'pointer', background: mobileTab === 'order' ? '#fff' : 'transparent', color: mobileTab === 'order' ? '#092b33' : 'rgba(255,255,255,0.6)' }}>
-            \U0001F9FE Order {cartCount > 0 && <span style={{ background: '#0D9488', color: '#fff', borderRadius: 10, fontSize: 10, padding: '1px 6px', marginLeft: 4 }}>{cartCount}</span>}
+            🧾 Order {cartCount > 0 && <span style={{ background: '#0D9488', color: '#fff', borderRadius: 10, fontSize: 10, padding: '1px 6px', marginLeft: 4 }}>{cartCount}</span>}
           </button>
         </div>
         <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
@@ -771,13 +771,13 @@ export default function OrdersPage() {
         <div>
           <h1 style={{ fontSize: 22, fontWeight: 800, color: theme.textDark, margin: 0 }}>Today's Orders</h1>
           <p style={{ color: theme.textLight, fontSize: 14, marginTop: 4 }}>
-            {orders.filter(o => o.status === 'active').length} active \u00b7 {orders.filter(o => o.status !== 'active').length} completed
+            {orders.filter(o => o.status === 'active').length} active · {orders.filter(o => o.status !== 'active').length} completed
           </p>
         </div>
         <div ref={dropdownRef} style={{ position: 'relative' }}>
           <button onClick={() => setShowTypeMenu(d => !d)}
             style={{ background: '#092b33', color: '#fff', border: 'none', borderRadius: 9, padding: '10px 20px', fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}>
-            + New Order <span style={{ fontSize: 10, opacity: 0.6 }}>\u25bc</span>
+            + New Order <span style={{ fontSize: 10, opacity: 0.6 }}>▼</span>
           </button>
           {showTypeMenu && (
             <div style={{ position: 'absolute', right: 0, top: 'calc(100% + 6px)', background: '#fff', border: '1px solid ' + theme.border, borderRadius: 12, boxShadow: '0 8px 24px rgba(0,0,0,0.14)', zIndex: 100, minWidth: 200, overflow: 'hidden' }}>
@@ -822,12 +822,12 @@ export default function OrdersPage() {
                       <div style={{ fontWeight: 700, fontSize: 14, color: theme.textDark }}>
                         {order.cafe_tables ? 'Table ' + order.cafe_tables.number : order.customer_name || typeConfig.label}
                       </div>
-                      {!isActive && <span style={{ fontSize: 10, fontWeight: 700, background: '#DCFCE7', color: '#15803D', padding: '2px 8px', borderRadius: 20 }}>\u2713 Done</span>}
+                      {!isActive && <span style={{ fontSize: 10, fontWeight: 700, background: '#DCFCE7', color: '#15803D', padding: '2px 8px', borderRadius: 20 }}>✓ Done</span>}
                     </div>
                     <div style={{ fontSize: 12, color: theme.textLight, marginTop: 2 }}>
                       {typeConfig.label}
-                      {order.customer_phone && ' \u00b7 \U0001F4DE ' + order.customer_phone}
-                      {!isOffTable && ' \u00b7 ' + order.covers + ' cover' + (order.covers !== 1 ? 's' : '')}
+                      {order.customer_phone && ' · 📞 ' + order.customer_phone}
+                      {!isOffTable && ' · ' + order.covers + ' cover' + (order.covers !== 1 ? 's' : '')}
                     </div>
                   </div>
                   <div style={{ fontSize: 12, color: theme.textLight }}>

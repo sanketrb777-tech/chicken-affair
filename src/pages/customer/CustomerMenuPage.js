@@ -188,7 +188,7 @@ export default function CustomerMenuPage() {
       if (qty > 0) { addonsTotal += a.price * qty; addonsArr.push({ id: a.id, name: a.name, price: a.price, qty }) }
     })
     const unitPrice = portion ? parseFloat(portion.price) : pickerVariation ? parseFloat(pickerVariation.price) : parseFloat(item.price)
-    const portionLabel = portion ? `${portion.name}${portion.value ? ` \u00b7 ${portion.value}${portion.unit || ''}` : ''}` : null
+    const portionLabel = portion ? `${portion.name}${portion.value ? ` · ${portion.value}${portion.unit || ''}` : ''}` : null
     const variationLabel = pickerVariation ? pickerVariation.name : null
     const addonKey = Object.entries(pickerAddons).sort().map(([id, qty]) => id + 'x' + qty).join('|')
     const key = `${item.id}_${pickerVariation?.id || 'base'}_${portion?.id || 'noport'}_${addonKey}`
@@ -274,7 +274,7 @@ export default function CustomerMenuPage() {
 
   if (!table) return (
     <div style={{ minHeight: '100vh', background: BG, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div style={{ textAlign: 'center', color: TEXTL }}><div style={{ fontSize: 48, marginBottom: 12 }}>\U0001F50D</div><div style={{ fontWeight: 700, color: TEXTD }}>Table not found</div></div>
+      <div style={{ textAlign: 'center', color: TEXTL }}><div style={{ fontSize: 48, marginBottom: 12 }}>🔍</div><div style={{ fontWeight: 700, color: TEXTD }}>Table not found</div></div>
     </div>
   )
 
@@ -284,18 +284,18 @@ export default function CustomerMenuPage() {
 
       {/* HEADER */}
       <div style={{ background: TEAL, padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 12, position: 'sticky', top: 0, zIndex: 50 }}>
-        <div style={{ width: 38, height: 38, background: GOLD, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>\u2615</div>
+        <div style={{ width: 38, height: 38, background: GOLD, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>☕</div>
         <div>
           <div style={{ color: WHITE, fontWeight: 800, fontSize: 16 }}>Bambini Cafe</div>
-          <div style={{ color: 'rgba(255,255,255,0.6)', fontSize: 12 }}>{table.name || `Table ${table.number}`}{table.area ? ` \u00b7 ${table.area}` : ''}</div>
+          <div style={{ color: 'rgba(255,255,255,0.6)', fontSize: 12 }}>{table.name || `Table ${table.number}`}{table.area ? ` · ${table.area}` : ''}</div>
         </div>
         {step === STEP_MENU && cartCount > 0 && (
           <button onClick={() => setStep(STEP_CONFIRM)} style={{ marginLeft: 'auto', background: GOLD, border: 'none', borderRadius: 20, padding: '6px 14px', color: TEAL, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>
-            \U0001F6D2 {cartCount} \u00b7 \u20b9{cartTotal.toFixed(0)}
+            🛒 {cartCount} · ₹{cartTotal.toFixed(0)}
           </button>
         )}
         {step === STEP_MENU && runningTotal > 0 && cartCount === 0 && (
-          <div style={{ marginLeft: 'auto', color: GOLD, fontWeight: 700, fontSize: 13 }}>Total: \u20b9{runningTotal.toFixed(0)}</div>
+          <div style={{ marginLeft: 'auto', color: GOLD, fontWeight: 700, fontSize: 13 }}>Total: ₹{runningTotal.toFixed(0)}</div>
         )}
       </div>
 
@@ -309,7 +309,7 @@ export default function CustomerMenuPage() {
               <div style={{ width: 10, height: 10, borderRadius: 2, background: pickerItem.food_type === 'veg' ? '#15803D' : '#B91C1C', flexShrink: 0 }} />
               <div style={{ fontWeight: 800, fontSize: 17, color: TEXTD, flex: 1 }}>{pickerItem.name}</div>
               {!variations[pickerItem.id]?.length && !portions[pickerItem.id]?.length && (
-                <div style={{ fontWeight: 900, fontSize: 16, color: TEAL }}>\u20b9{pickerItem.price}</div>
+                <div style={{ fontWeight: 900, fontSize: 16, color: TEAL }}>₹{pickerItem.price}</div>
               )}
             </div>
 
@@ -329,7 +329,7 @@ export default function CustomerMenuPage() {
                           <div style={{ width: 9, height: 9, borderRadius: 2, border: '2px solid ' + dotColor, background: dotColor, flexShrink: 0 }} />
                           <span style={{ fontWeight: 800, fontSize: 15 }}>{v.name}</span>
                         </div>
-                        <div style={{ fontSize: 14 }}>\u20b9{v.price}</div>
+                        <div style={{ fontSize: 14 }}>₹{v.price}</div>
                       </button>
                     )
                   })}
@@ -351,7 +351,7 @@ export default function CustomerMenuPage() {
                         <div style={{ fontWeight: 700, fontSize: 15, color: TEXTD }}>{p.name}</div>
                         {p.value > 0 && p.unit && <div style={{ fontSize: 12, color: TEXTL, marginTop: 2 }}>{p.value}{p.unit}</div>}
                       </div>
-                      <div style={{ fontWeight: 900, fontSize: 18, color: TEAL }}>\u20b9{p.price}</div>
+                      <div style={{ fontWeight: 900, fontSize: 18, color: TEAL }}>₹{p.price}</div>
                     </button>
                   ))}
                 </div>
@@ -371,7 +371,7 @@ export default function CustomerMenuPage() {
                       <div key={addon.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: qty > 0 ? '#FFF7ED' : '#F9FAFB', borderRadius: 12, border: '1px solid ' + (qty > 0 ? '#FED7AA' : BORDER) }}>
                         <div>
                           <div style={{ fontWeight: 600, fontSize: 15, color: TEXTD }}>{addon.name}</div>
-                          {addon.price > 0 && <div style={{ fontSize: 12, color: '#C2410C', fontWeight: 600, marginTop: 2 }}>+\u20b9{addon.price}</div>}
+                          {addon.price > 0 && <div style={{ fontSize: 12, color: '#C2410C', fontWeight: 600, marginTop: 2 }}>+₹{addon.price}</div>}
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                           {qty > 0 && (
@@ -400,7 +400,7 @@ export default function CustomerMenuPage() {
                 </button>
                 <button onClick={() => confirmPicker()} disabled={!canConfirmPicker()}
                   style={{ flex: 2, background: canConfirmPicker() ? TEAL : '#E5E7EB', color: canConfirmPicker() ? WHITE : TEXTL, border: 'none', borderRadius: 14, padding: '14px 0', fontSize: 15, fontWeight: 700, cursor: canConfirmPicker() ? 'pointer' : 'not-allowed' }}>
-                  {canConfirmPicker() ? `Add to Order \u2192` : 'Select required options'}
+                  {canConfirmPicker() ? `Add to Order →` : 'Select required options'}
                 </button>
               </div>
             )}
@@ -412,7 +412,7 @@ export default function CustomerMenuPage() {
       {step === STEP_IDENTITY && (
         <div style={{ padding: 24, animation: 'fadeIn 0.3s ease' }}>
           <div style={{ textAlign: 'center', marginBottom: 32, marginTop: 12 }}>
-            <div style={{ fontSize: 40, marginBottom: 10 }}>\U0001F44B</div>
+            <div style={{ fontSize: 40, marginBottom: 10 }}>👋</div>
             <div style={{ fontWeight: 800, fontSize: 22, color: TEXTD }}>Welcome!</div>
             <div style={{ color: TEXTL, fontSize: 14, marginTop: 6 }}>Tell us who you are to start ordering</div>
           </div>
@@ -426,16 +426,16 @@ export default function CustomerMenuPage() {
             <div style={{ marginBottom: 24 }}>
               <label style={{ fontSize: 11, fontWeight: 700, color: TEXTL, textTransform: 'uppercase', letterSpacing: 0.5, display: 'block', marginBottom: 8 }}>WhatsApp Number</label>
               <div style={{ display: 'flex', alignItems: 'center', border: '1.5px solid ' + (phoneErr ? '#EF4444' : BORDER), borderRadius: 10, background: '#FAFAFA', overflow: 'hidden' }}>
-                <div style={{ padding: '12px', borderRight: '1px solid ' + BORDER, color: TEXTL, fontSize: 14, fontWeight: 600, whiteSpace: 'nowrap' }}>\U0001F1EE\U0001F1F3 +91</div>
+                <div style={{ padding: '12px', borderRight: '1px solid ' + BORDER, color: TEXTL, fontSize: 14, fontWeight: 600, whiteSpace: 'nowrap' }}>🇮🇳 +91</div>
                 <input value={phone} onChange={e => { setPhone(e.target.value.replace(/\D/g, '').slice(0, 10)); setPhoneErr('') }} placeholder="10-digit number" type="tel" inputMode="numeric"
                   style={{ flex: 1, border: 'none', background: 'transparent', padding: '12px 14px', fontSize: 15, color: TEXTD }} />
               </div>
               {phoneErr && <div style={{ color: '#EF4444', fontSize: 12, marginTop: 5, fontWeight: 600 }}>{phoneErr}</div>}
-              <div style={{ fontSize: 11, color: TEXTL, marginTop: 6 }}>\U0001F4F2 OTP will be sent to this WhatsApp number</div>
+              <div style={{ fontSize: 11, color: TEXTL, marginTop: 6 }}>📲 OTP will be sent to this WhatsApp number</div>
             </div>
             <button onClick={handleSendOTP} disabled={submitting}
               style={{ width: '100%', background: TEAL, color: WHITE, border: 'none', borderRadius: 12, padding: '14px 0', fontSize: 15, fontWeight: 700, cursor: submitting ? 'not-allowed' : 'pointer', opacity: submitting ? 0.8 : 1 }}>
-              {submitting ? 'Sending OTP...' : 'Get OTP on WhatsApp \u2192'}
+              {submitting ? 'Sending OTP...' : 'Get OTP on WhatsApp →'}
             </button>
           </div>
         </div>
@@ -444,9 +444,9 @@ export default function CustomerMenuPage() {
       {/* STEP: OTP */}
       {step === STEP_OTP && (
         <div style={{ padding: 24, animation: 'fadeIn 0.3s ease' }}>
-          <button onClick={() => { setStep(STEP_IDENTITY); setOtp(['','','','','','']); setOtpError('') }} style={{ background: 'none', border: 'none', color: TEAL, fontWeight: 700, fontSize: 13, cursor: 'pointer', padding: '0 0 20px', display: 'flex', alignItems: 'center', gap: 4 }}>\u2190 Back</button>
+          <button onClick={() => { setStep(STEP_IDENTITY); setOtp(['','','','','','']); setOtpError('') }} style={{ background: 'none', border: 'none', color: TEAL, fontWeight: 700, fontSize: 13, cursor: 'pointer', padding: '0 0 20px', display: 'flex', alignItems: 'center', gap: 4 }}>← Back</button>
           <div style={{ textAlign: 'center', marginBottom: 32 }}>
-            <div style={{ fontSize: 40, marginBottom: 10 }}>\U0001F4F2</div>
+            <div style={{ fontSize: 40, marginBottom: 10 }}>📲</div>
             <div style={{ fontWeight: 800, fontSize: 22, color: TEXTD }}>Enter OTP</div>
             <div style={{ color: TEXTL, fontSize: 14, marginTop: 6 }}>Sent to <strong style={{ color: TEXTD }}>+91 {phone}</strong> on WhatsApp</div>
           </div>
@@ -470,13 +470,13 @@ export default function CustomerMenuPage() {
       {step === STEP_MENU && (
         <div style={{ animation: 'fadeIn 0.3s ease', paddingBottom: cartCount > 0 ? 80 : 20 }}>
           <div style={{ background: TEAL + '18', borderBottom: '1px solid ' + TEAL + '22', padding: '10px 20px', fontSize: 13, color: TEAL, fontWeight: 600, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span>\U0001F44B Hi <strong>{name}</strong>! {roundCount > 0 ? `Round ${roundCount + 1}` : 'What would you like to order?'}</span>
-            {runningTotal > 0 && <span style={{ fontWeight: 800 }}>\u20b9{runningTotal.toFixed(0)} so far</span>}
+            <span>👋 Hi <strong>{name}</strong>! {roundCount > 0 ? `Round ${roundCount + 1}` : 'What would you like to order?'}</span>
+            {runningTotal > 0 && <span style={{ fontWeight: 800 }}>₹{runningTotal.toFixed(0)} so far</span>}
           </div>
           <div style={{ padding: '14px 16px 0', position: 'relative' }}>
             <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search dishes..."
               style={{ width: '100%', border: '1.5px solid ' + BORDER, borderRadius: 10, padding: '10px 14px 10px 38px', fontSize: 14, color: TEXTD, background: WHITE }} />
-            <span style={{ position: 'absolute', left: 28, top: '50%', transform: 'translateY(-20%)', fontSize: 16 }}>\U0001F50D</span>
+            <span style={{ position: 'absolute', left: 28, top: '50%', transform: 'translateY(-20%)', fontSize: 16 }}>🔍</span>
           </div>
           {!search && (
             <div style={{ display: 'flex', gap: 8, padding: '12px 16px', overflowX: 'auto', scrollbarWidth: 'none' }}>
@@ -513,13 +513,13 @@ export default function CustomerMenuPage() {
                         {itemPorts.length > 0 && !itemVars.length ? `${itemPorts.length} sizes available` : ''}
                       </div>
                     ) : (
-                      <div style={{ fontWeight: 800, fontSize: 15, color: TEAL }}>\u20b9{item.price}</div>
+                      <div style={{ fontWeight: 800, fontSize: 15, color: TEAL }}>₹{item.price}</div>
                     )}
                     {item.description && <div style={{ fontSize: 11, color: TEXTL, marginTop: 2 }}>{item.description}</div>}
                     {cart.filter(c => c.item.id === item.id).map(c => (
                       <div key={c.key} style={{ marginTop: 6, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                         <span style={{ fontSize: 11, color: TEAL2, fontWeight: 600 }}>
-                          {c.variationName || c.portionName || 'Regular'} \u00d7{c.qty} \u2014 \u20b9{((c.unitPrice + c.addonsTotal) * c.qty).toFixed(0)}
+                          {c.variationName || c.portionName || 'Regular'} ×{c.qty} — ₹{((c.unitPrice + c.addonsTotal) * c.qty).toFixed(0)}
                         </span>
                         {c.addons?.length > 0 && <span style={{ fontSize: 10, color: '#C2410C' }}>+ {c.addons.map(a => a.name).join(', ')}</span>}
                         <div style={{ display: 'flex', alignItems: 'center', background: TEAL, borderRadius: 6, overflow: 'hidden' }}>
@@ -532,7 +532,7 @@ export default function CustomerMenuPage() {
                   </div>
                   <button onClick={() => addToCart(item)}
                     style={{ background: hasOptions ? '#5B21B6' : TEAL, color: WHITE, border: 'none', borderRadius: 8, padding: '8px 14px', fontSize: 13, fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}>
-                    {hasOptions ? 'Choose \u2192' : totalQty === 0 ? '+ Add' : '+ More'}
+                    {hasOptions ? 'Choose →' : totalQty === 0 ? '+ Add' : '+ More'}
                   </button>
                 </div>
               )
@@ -542,8 +542,8 @@ export default function CustomerMenuPage() {
             <div style={{ position: 'fixed', bottom: 20, left: '50%', transform: 'translateX(-50%)', width: 'calc(100% - 40px)', maxWidth: 440, zIndex: 100 }}>
               <button onClick={() => setStep(STEP_CONFIRM)}
                 style={{ width: '100%', background: TEAL, color: WHITE, border: 'none', borderRadius: 14, padding: '14px 20px', fontSize: 15, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', boxShadow: '0 8px 24px rgba(9,43,51,0.4)' }}>
-                <span>\U0001F6D2 {cartCount} item{cartCount !== 1 ? 's' : ''}</span>
-                <span>View Order \u00b7 \u20b9{cartTotal.toFixed(0)}</span>
+                <span>🛒 {cartCount} item{cartCount !== 1 ? 's' : ''}</span>
+                <span>View Order · ₹{cartTotal.toFixed(0)}</span>
               </button>
             </div>
           )}
@@ -553,11 +553,11 @@ export default function CustomerMenuPage() {
       {/* STEP: CONFIRM */}
       {step === STEP_CONFIRM && (
         <div style={{ padding: 20, animation: 'fadeIn 0.3s ease' }}>
-          <button onClick={() => setStep(STEP_MENU)} style={{ background: 'none', border: 'none', color: TEAL, fontWeight: 700, fontSize: 13, cursor: 'pointer', padding: '0 0 16px' }}>\u2190 Back to Menu</button>
+          <button onClick={() => setStep(STEP_MENU)} style={{ background: 'none', border: 'none', color: TEAL, fontWeight: 700, fontSize: 13, cursor: 'pointer', padding: '0 0 16px' }}>← Back to Menu</button>
           <div style={{ fontWeight: 800, fontSize: 20, color: TEXTD, marginBottom: roundCount > 0 ? 6 : 20 }}>
-            {roundCount > 0 ? `Round ${roundCount + 1} \u2014 Add to Order` : 'Your Order'}
+            {roundCount > 0 ? `Round ${roundCount + 1} — Add to Order` : 'Your Order'}
           </div>
-          {roundCount > 0 && <div style={{ fontSize: 13, color: TEXTL, marginBottom: 16 }}>These items will be added to your existing order (\u20b9{runningTotal.toFixed(0)} so far)</div>}
+          {roundCount > 0 && <div style={{ fontSize: 13, color: TEXTL, marginBottom: 16 }}>These items will be added to your existing order (₹{runningTotal.toFixed(0)} so far)</div>}
           <div style={{ background: WHITE, borderRadius: 16, overflow: 'hidden', border: '1px solid ' + BORDER, marginBottom: 16 }}>
             {cart.map((c, i) => (
               <div key={c.key} style={{ padding: '14px 16px', borderBottom: i < cart.length - 1 ? '1px solid ' + BORDER : 'none', display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -566,7 +566,7 @@ export default function CustomerMenuPage() {
                   {c.variationName && <div style={{ fontSize: 12, color: '#5B21B6', fontWeight: 600, marginTop: 2 }}>{c.variationName}</div>}
                   {c.portionName && <div style={{ fontSize: 12, color: TEAL2, fontWeight: 600, marginTop: 2 }}>{c.portionName}</div>}
                   {c.addons?.length > 0 && <div style={{ fontSize: 11, color: '#C2410C', marginTop: 2 }}>+ {c.addons.map(a => a.name).join(', ')}</div>}
-                  <div style={{ fontSize: 12, color: TEXTL }}>\u20b9{(c.unitPrice + c.addonsTotal).toFixed(0)} each</div>
+                  <div style={{ fontSize: 12, color: TEXTL }}>₹{(c.unitPrice + c.addonsTotal).toFixed(0)} each</div>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <div style={{ display: 'flex', alignItems: 'center', background: BG, borderRadius: 8, overflow: 'hidden' }}>
@@ -574,23 +574,23 @@ export default function CustomerMenuPage() {
                     <span style={{ fontWeight: 800, fontSize: 14, minWidth: 20, textAlign: 'center', color: TEXTD }}>{c.qty}</span>
                     <button onClick={() => addToCart(c.item)} style={{ background: 'none', border: 'none', padding: '6px 10px', fontSize: 16, cursor: 'pointer', color: TEAL, fontWeight: 700 }}>+</button>
                   </div>
-                  <div style={{ fontWeight: 800, fontSize: 14, color: TEXTD, minWidth: 60, textAlign: 'right' }}>\u20b9{((c.unitPrice + c.addonsTotal) * c.qty).toFixed(0)}</div>
+                  <div style={{ fontWeight: 800, fontSize: 14, color: TEXTD, minWidth: 60, textAlign: 'right' }}>₹{((c.unitPrice + c.addonsTotal) * c.qty).toFixed(0)}</div>
                 </div>
               </div>
             ))}
           </div>
           <div style={{ background: WHITE, borderRadius: 16, padding: 16, border: '1px solid ' + BORDER, marginBottom: 20 }}>
-            {roundCount > 0 && <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, color: TEXTL, marginBottom: 8 }}><span>Previous rounds</span><span>\u20b9{runningTotal.toFixed(0)}</span></div>}
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, color: TEXTL, marginBottom: 8 }}><span>This round</span><span>\u20b9{cartTotal.toFixed(0)}</span></div>
+            {roundCount > 0 && <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, color: TEXTL, marginBottom: 8 }}><span>Previous rounds</span><span>₹{runningTotal.toFixed(0)}</span></div>}
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, color: TEXTL, marginBottom: 8 }}><span>This round</span><span>₹{cartTotal.toFixed(0)}</span></div>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, color: TEXTL, paddingBottom: 12, borderBottom: '1px solid ' + BORDER, marginBottom: 12 }}><span>GST</span><span>Included</span></div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 17, fontWeight: 800, color: TEXTD }}><span>New Total</span><span>\u20b9{(runningTotal + cartTotal).toFixed(0)}</span></div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 17, fontWeight: 800, color: TEXTD }}><span>New Total</span><span>₹{(runningTotal + cartTotal).toFixed(0)}</span></div>
           </div>
           <div style={{ background: TEAL + '10', borderRadius: 12, padding: '12px 16px', marginBottom: 20, fontSize: 13, color: TEAL, fontWeight: 600 }}>
-            \U0001F4CB Order for <strong>{name}</strong> \u00b7 {table.name || `Table ${table.number}`}
+            📋 Order for <strong>{name}</strong> · {table.name || `Table ${table.number}`}
           </div>
           <button onClick={placeOrder} disabled={submitting || cart.length === 0}
             style={{ width: '100%', background: TEAL, color: WHITE, border: 'none', borderRadius: 14, padding: '15px 0', fontSize: 16, fontWeight: 700, cursor: submitting ? 'not-allowed' : 'pointer', opacity: submitting ? 0.8 : 1 }}>
-            {submitting ? 'Placing Order...' : roundCount > 0 ? '\U0001F525 Add to Order' : '\U0001F525 Place Order'}
+            {submitting ? 'Placing Order...' : roundCount > 0 ? '🔥 Add to Order' : '🔥 Place Order'}
           </button>
         </div>
       )}
@@ -599,22 +599,22 @@ export default function CustomerMenuPage() {
       {step === STEP_PLACED && (
         <div style={{ padding: 24, animation: 'fadeIn 0.3s ease' }}>
           <div style={{ background: '#F0FDF4', border: '1px solid #86EFAC', borderRadius: 16, padding: 24, textAlign: 'center', marginBottom: 24 }}>
-            <div style={{ fontSize: 48, marginBottom: 10 }}>\u2705</div>
+            <div style={{ fontSize: 48, marginBottom: 10 }}>✅</div>
             <div style={{ fontWeight: 800, fontSize: 20, color: '#15803D', marginBottom: 6 }}>{roundCount === 1 ? 'Order Placed!' : `Round ${roundCount} Added!`}</div>
             <div style={{ fontSize: 14, color: '#166534' }}>{roundCount === 1 ? 'Your order is being prepared!' : 'New items sent to kitchen!'}</div>
-            {runningTotal > 0 && <div style={{ marginTop: 10, fontWeight: 800, fontSize: 18, color: '#15803D' }}>Total so far: \u20b9{runningTotal.toFixed(0)}</div>}
+            {runningTotal > 0 && <div style={{ marginTop: 10, fontWeight: 800, fontSize: 18, color: '#15803D' }}>Total so far: ₹{runningTotal.toFixed(0)}</div>}
           </div>
           <div style={{ fontWeight: 800, fontSize: 17, color: TEXTD, marginBottom: 16, textAlign: 'center' }}>How would you like to pay?</div>
           <div style={{ display: 'flex', gap: 14, marginBottom: 16 }}>
             <button onClick={() => handlePaymentChoice('pay_at_table')} disabled={submitting}
               style={{ flex: 1, background: WHITE, border: '2.5px solid ' + TEAL, borderRadius: 16, padding: '20px 12px', cursor: 'pointer', textAlign: 'center' }}>
-              <div style={{ fontSize: 32, marginBottom: 8 }}>\U0001F6CB</div>
+              <div style={{ fontSize: 32, marginBottom: 8 }}>🛋</div>
               <div style={{ fontWeight: 800, fontSize: 14, color: TEAL }}>Pay at Table</div>
               <div style={{ fontSize: 11, color: TEXTL, lineHeight: 1.4 }}>Staff will come to you</div>
             </button>
             <button onClick={() => handlePaymentChoice('pay_at_reception')} disabled={submitting}
               style={{ flex: 1, background: WHITE, border: '2.5px solid ' + TEAL, borderRadius: 16, padding: '20px 12px', cursor: 'pointer', textAlign: 'center' }}>
-              <div style={{ fontSize: 32, marginBottom: 8 }}>\U0001F3E7</div>
+              <div style={{ fontSize: 32, marginBottom: 8 }}>🏧</div>
               <div style={{ fontWeight: 800, fontSize: 14, color: TEAL }}>Pay at Reception</div>
               <div style={{ fontSize: 11, color: TEXTL, lineHeight: 1.4 }}>Visit the counter</div>
             </button>
@@ -630,15 +630,15 @@ export default function CustomerMenuPage() {
       {step === STEP_PAYMENT && (
         <div style={{ padding: 24, animation: 'fadeIn 0.3s ease' }}>
           <div style={{ background: WHITE, borderRadius: 20, padding: 32, textAlign: 'center', boxShadow: '0 4px 20px rgba(0,0,0,0.08)', marginBottom: 20 }}>
-            <div style={{ fontSize: 56, marginBottom: 16 }}>{paymentPref === 'pay_at_table' ? '\U0001F6CB' : '\U0001F3E7'}</div>
+            <div style={{ fontSize: 56, marginBottom: 16 }}>{paymentPref === 'pay_at_table' ? '🛋' : '🏧'}</div>
             <div style={{ fontWeight: 800, fontSize: 22, color: TEXTD, marginBottom: 10 }}>{paymentPref === 'pay_at_table' ? 'Pay at Table' : 'Pay at Reception'}</div>
             <div style={{ fontSize: 14, color: TEXTL, lineHeight: 1.6, marginBottom: 24 }}>
-              {paymentPref === 'pay_at_table' ? 'Stay seated \u2014 a staff member will come to your table to collect payment.' : "Please visit the reception counter when you're ready to pay."}
+              {paymentPref === 'pay_at_table' ? 'Stay seated — a staff member will come to your table to collect payment.' : "Please visit the reception counter when you're ready to pay."}
             </div>
             <div style={{ background: TEAL + '10', borderRadius: 12, padding: '12px 16px', fontSize: 13, color: TEAL, fontWeight: 600, marginBottom: 8 }}>
-              \U0001F4CB {table.name || `Table ${table.number}`} \u00b7 {name} \u00b7 \u20b9{runningTotal.toFixed(0)}
+              📋 {table.name || `Table ${table.number}`} · {name} · ₹{runningTotal.toFixed(0)}
             </div>
-            <div style={{ fontSize: 12, color: TEXTL, marginTop: 8 }}>\u2713 Staff has been notified</div>
+            <div style={{ fontSize: 12, color: TEXTL, marginTop: 8 }}>✓ Staff has been notified</div>
           </div>
           <button onClick={() => { setCart([]); setStep(STEP_MENU) }}
             style={{ width: '100%', background: TEAL, color: WHITE, border: 'none', borderRadius: 14, padding: '14px 0', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
