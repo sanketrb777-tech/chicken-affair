@@ -232,18 +232,11 @@ export function NewOrderPage() {
     await fetchExistingOrder()
   }
 
-  async function deleteKOTItem(ki) {
-    if (!window.confirm(`Remove "${ki.order_items?.menu_items?.name}" from this KOT?`)) return
-    await supabase.from('kot_items').delete().eq('id', ki.id)
-    await supabase.from('order_items').delete().eq('id', ki.order_item_id)
-    await fetchExistingOrder()
-  }
-
   async function saveKOTItemQty() {
     const ki = editingKOTItem?.ki
     if (!ki) return
     const qty = parseInt(editQty)
-    if (qty <= 0) { await deleteKOTItem(ki); setEditingKOTItem(null); return }
+    if (qty <= 0) { await deleteKOTItem(ki.id, ki.order_item_id); setEditingKOTItem(null); return }
     await supabase.from('order_items').update({ quantity: qty }).eq('id', ki.order_item_id)
     setEditingKOTItem(null)
     await fetchExistingOrder()
@@ -478,7 +471,7 @@ export function NewOrderPage() {
                         <>
                           <button onClick={() => { setEditingKOTItem({ ki }); setEditQty(ki.order_items?.quantity || 1) }}
                             style={{ background: '#EFF6FF', border: 'none', borderRadius: 5, padding: '2px 6px', fontSize: 10, cursor: 'pointer', color: '#1D4ED8', fontWeight: 700 }}>✏️</button>
-                          <button onClick={() => deleteKOTItem(ki)}
+                          <button onClick={() => deleteKOTItem(ki.id, ki.order_item_id)}
                             style={{ background: '#FEE2E2', border: 'none', borderRadius: 5, padding: '2px 6px', fontSize: 10, cursor: 'pointer', color: '#B91C1C', fontWeight: 700 }}>✕</button>
                         </>
                       )}
