@@ -290,7 +290,7 @@ export function NewOrderPage() {
     finally { setTransferring(false) }
   }
 
-  async function fireKOT(hold) {
+  async function fireKOT(hold, shouldPrint = false) {
     if (cart.length === 0) return
     setSubmitting(true)
     try {
@@ -317,6 +317,7 @@ export function NewOrderPage() {
       const { data: kot, error: kotError } = await supabase.from('kots').insert({ order_id: orderId, status: 'pending' }).select().single()
       if (kotError) throw kotError
       await supabase.from('kot_items').insert(createdItems.map(oi => ({ kot_id: kot.id, order_item_id: oi.id, is_done: false })))
+      if (shouldPrint && kot) printKOT(kot, cart)
       setCart([])
       await fetchExistingOrder()
     } catch (err) {
@@ -325,6 +326,66 @@ export function NewOrderPage() {
     } finally {
       setSubmitting(false)
     }
+  }
+
+  function printKOT(kot, cartItems) {
+    const now = new Date()
+    const dateStr = now.toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: '2-digit' })
+    const timeStr = now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: false })
+    const kotNo   = kot.id ? kot.id.replace(/-/g,'').slice(-5).toUpperCase() : '00001'
+    const tableLabel = tableId ? 'Table ' + tableNumber : (existingOrder?.customer_name || orderType?.replace('_',' ') || 'Takeaway')
+
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"/>
+    <title>KOT</title>
+    <style>
+      * { margin:0; padding:0; box-sizing:border-box; }
+      body { font-family:'Courier New',monospace; font-size:13px; width:80mm; margin:0 auto; padding:8px 10px 16px; color:#000; }
+      .center { text-align:center; }
+      .bold { font-weight:bold; }
+      .divider { border-top:1px dashed #000; margin:6px 0; }
+      .divider-solid { border-top:2px solid #000; margin:6px 0; }
+      .row { display:flex; justify-content:space-between; margin:2px 0; }
+      .item { display:flex; margin:6px 0; }
+      .item .qty { font-size:18px; font-weight:900; width:36px; flex-shrink:0; }
+      .item .name { flex:1; font-size:14px; font-weight:700; padding-top:2px; }
+      .note { font-size:11px; color:#555; padding-left:36px; margin-top:-2px; margin-bottom:4px; font-style:italic; }
+      @media print { body { width:80mm; } @page { size:80mm auto; margin:0; } }
+    </style></head><body>
+
+    <div class="center bold" style="font-size:22px;letter-spacing:3px;margin-bottom:2px">KOT</div>
+    <div class="center" style="font-size:11px;margin-bottom:6px">Kitchen Order Ticket</div>
+    <div class="divider-solid"></div>
+
+    <div class="row bold" style="font-size:14px">
+      <span>${tableLabel}</span>
+      <span>${timeStr}</span>
+    </div>
+    <div class="row" style="font-size:11px;color:#555">
+      <span>${dateStr}</span>
+      <span>KOT# ${kotNo}</span>
+    </div>
+
+    <div class="divider-solid"></div>
+
+    ${cartItems.map(c => `
+      <div class="item">
+        <span class="qty">${c.quantity}×</span>
+        <span class="name">${c.item.name}${c.variationName ? ' (' + c.variationName + ')' : ''}${c.portionName ? ' [' + c.portionName + ']' : ''}</span>
+      </div>
+      ${c.addons && c.addons.length > 0 ? `<div class="note">+ ${c.addons.map(a => a.name).join(', ')}</div>` : ''}
+      ${c.notes ? `<div class="note">⚠ ${c.notes}</div>` : ''}
+    `).join('')}
+
+    <div class="divider-solid"></div>
+    <div class="center" style="font-size:11px;margin-top:4px">— ${cartItems.reduce((s,c) => s + c.quantity, 0)} item(s) —</div>
+
+    </body></html>`
+
+    const win = window.open('', '_blank', 'width=380,height=600')
+    win.document.write(html)
+    win.document.close()
+    win.focus()
+    setTimeout(() => { win.print(); win.close() }, 300)
   }
 
   if (loading) return <div style={{ padding: 40, color: theme.textLight }}>Loading menu...</div>
@@ -577,7 +638,7 @@ export function NewOrderPage() {
             {submitting ? 'Sending...' : '🔥 KOT'}
           </button>
         </div>
-        <button onClick={() => fireKOT(false)} disabled={cart.length === 0 || submitting}
+        <button onClick={() => fireKOT(false, true)} disabled={cart.length === 0 || submitting}
           style={{ background: cart.length === 0 ? theme.bgWarm : '#092b33', color: cart.length === 0 ? theme.textMuted : '#fff', border: 'none', borderRadius: 8, padding: '10px 0', fontSize: 13, fontWeight: 700, cursor: cart.length === 0 ? 'not-allowed' : 'pointer' }}>
           🔥 KOT & Print
         </button>
