@@ -43,9 +43,13 @@ export function NewOrderPage() {
   const [pickerVariation, setPickerVariation] = useState(null)
   const [pickerAddons, setPickerAddons]       = useState({})
 
-  // KOT item edit/delete (manager/owner only)
-  const [editingKOTItem, setEditingKOTItem]   = useState(null) // { ki, kotIdx, itemIdx }
-  const [editQty, setEditQty]                 = useState(1)
+  // KOT item edit/delete/transfer (manager/owner only)
+  const [editingKOTItem, setEditingKOTItem]     = useState(null)
+  const [editQty, setEditQty]                   = useState(1)
+  const [transferKOTItem, setTransferKOTItem]   = useState(null)
+  const [activeTables, setActiveTables]         = useState([])
+  const [transferTargetId, setTransferTargetId] = useState('')
+  const [transferring, setTransferring]         = useState(false)
   const isManager = profile?.role === 'owner' || profile?.role === 'manager'
 
   const isOffTable = !tableId
@@ -101,7 +105,6 @@ export function NewOrderPage() {
     })
     setVariations(varMap)
 
-    // Flat addon map: itemId -> addons[]
     const groupByItem = {}
     ;(allAddonGroups || []).forEach(g => { groupByItem[g.id] = g.menu_item_id })
     const groupMap = {}
@@ -146,10 +149,6 @@ export function NewOrderPage() {
     setPickerItem(null)
     setPickerVariation(null)
     setPickerAddons({})
-  }
-
-  function pickerAddonCount() {
-    return Object.values(pickerAddons).reduce((s, q) => s + q, 0)
   }
 
   function adjustAddon(addon, delta) {
@@ -249,10 +248,47 @@ export function NewOrderPage() {
     await fetchExistingOrder()
   }
 
-  async function updateKOTItemQty(orderItemId, newQty) {
-    if (newQty < 1) return
-    await supabase.from('order_items').update({ quantity: newQty }).eq('id', orderItemId)
-    await fetchExistingOrder()
+  async function openTransfer(ki) {
+    const { data: tables } = await supabase
+      .from('cafe_tables').select('id, number, area')
+      .eq('status', 'occupied').order('number')
+    const others = (tables || []).filter(t => t.id !== tableId)
+    setActiveTables(others)
+    setTransferTargetId(others[0]?.id || '')
+    setTransferKOTItem(ki)
+  }
+
+  async function doTransfer() {
+    if (!transferTargetId || !transferKOTItem) return
+    setTransferring(true)
+    try {
+      const ki = transferKOTItem
+      const { data: targetOrder } = await supabase
+        .from('orders').select('id').eq('table_id', transferTargetId).eq('status', 'active').single()
+      let targetOrderId = targetOrder?.id
+      if (!targetOrderId) {
+        const { data: newOrder } = await supabase
+          .from('orders').insert({ table_id: transferTargetId, captain_id: profile.id, order_type: 'dine_in', covers: 1, status: 'active' }).select().single()
+        targetOrderId = newOrder?.id
+        await supabase.from('cafe_tables').update({ status: 'occupied', captain_id: profile.id }).eq('id', transferTargetId)
+      }
+      const oi = ki.order_items
+      const { data: newItem } = await supabase.from('order_items').insert({
+        order_id: targetOrderId,
+        quantity: oi.quantity, unit_price: oi.unit_price, notes: oi.notes || null,
+        portion_name: oi.portion_name || null, variation_name: oi.variation_name || null,
+        addons: oi.addons || [], addons_total: oi.addons_total || 0, status: 'pending'
+      }).select().single()
+      if (newItem) {
+        const { data: kot } = await supabase.from('kots').insert({ order_id: targetOrderId, status: 'pending' }).select().single()
+        if (kot) await supabase.from('kot_items').insert({ kot_id: kot.id, order_item_id: newItem.id, is_done: false })
+      }
+      await supabase.from('kot_items').delete().eq('id', ki.id)
+      await supabase.from('order_items').delete().eq('id', ki.order_item_id)
+      setTransferKOTItem(null)
+      await fetchExistingOrder()
+    } catch (err) { alert('Transfer failed: ' + err.message) }
+    finally { setTransferring(false) }
   }
 
   async function fireKOT(hold) {
@@ -473,6 +509,8 @@ export function NewOrderPage() {
                             style={{ background: '#EFF6FF', border: 'none', borderRadius: 5, padding: '2px 6px', fontSize: 10, cursor: 'pointer', color: '#1D4ED8', fontWeight: 700 }}>✏️</button>
                           <button onClick={() => deleteKOTItem(ki.id, ki.order_item_id)}
                             style={{ background: '#FEE2E2', border: 'none', borderRadius: 5, padding: '2px 6px', fontSize: 10, cursor: 'pointer', color: '#B91C1C', fontWeight: 700 }}>✕</button>
+                          <button onClick={() => openTransfer(ki)}
+                            style={{ background: '#F0FDF4', border: 'none', borderRadius: 5, padding: '2px 6px', fontSize: 10, cursor: 'pointer', color: '#15803D', fontWeight: 700 }}>🔀</button>
                         </>
                       )}
                     </>
@@ -561,15 +599,11 @@ export function NewOrderPage() {
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000, padding: 20 }}
           onClick={e => { if (e.target === e.currentTarget) closePicker() }}>
           <div style={{ background: '#fff', borderRadius: 20, padding: 28, width: '100%', maxWidth: 440, maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 24px 64px rgba(0,0,0,0.25)' }}>
-
-            {/* Header */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
               <div style={{ width: 10, height: 10, borderRadius: 2, background: pickerItem.food_type === 'veg' ? '#15803D' : '#B91C1C', flexShrink: 0 }} />
               <div style={{ fontWeight: 800, fontSize: 18, color: theme.textDark, flex: 1 }}>{pickerItem.name}</div>
               <div style={{ fontWeight: 900, fontSize: 16, color: '#092b33' }}>₹{pickerItem.price}</div>
             </div>
-
-            {/* Variations */}
             {(variations[pickerItem.id] || []).length > 0 && (
               <div style={{ marginBottom: 20 }}>
                 <div style={{ fontSize: 13, fontWeight: 700, color: theme.textDark, marginBottom: 12 }}>
@@ -593,8 +627,6 @@ export function NewOrderPage() {
                 </div>
               </div>
             )}
-
-            {/* Portions */}
             {(portions[pickerItem.id] || []).length > 0 && (variations[pickerItem.id] || []).length === 0 && (
               <div style={{ marginBottom: 20 }}>
                 <div style={{ fontSize: 13, fontWeight: 700, color: theme.textDark, marginBottom: 12 }}>
@@ -614,8 +646,6 @@ export function NewOrderPage() {
                 </div>
               </div>
             )}
-
-            {/* Add-ons (flat) */}
             {(addonGroups[pickerItem.id] || []).length > 0 && (
               <div style={{ marginBottom: 20 }}>
                 <div style={{ fontSize: 13, fontWeight: 700, color: theme.textDark, marginBottom: 10 }}>
@@ -646,8 +676,6 @@ export function NewOrderPage() {
                 </div>
               </div>
             )}
-
-            {/* Confirm / Cancel */}
             {((variations[pickerItem.id] || []).length > 0 || (addonGroups[pickerItem.id] || []).length > 0) && (
               <div style={{ display: 'flex', gap: 10 }}>
                 <button onClick={closePicker} style={{ flex: 1, background: theme.bgWarm, border: '1px solid ' + theme.border, borderRadius: 10, padding: '12px', fontSize: 13, fontWeight: 700, cursor: 'pointer', color: theme.textMid }}>Cancel</button>
@@ -657,6 +685,42 @@ export function NewOrderPage() {
                 </button>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* TRANSFER MODAL */}
+      {transferKOTItem && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2100, padding: 20 }}>
+          <div style={{ background: '#fff', borderRadius: 18, padding: 28, width: '100%', maxWidth: 380, boxShadow: '0 24px 64px rgba(0,0,0,0.25)' }}>
+            <h3 style={{ fontSize: 17, fontWeight: 800, color: '#092b33', margin: '0 0 6px' }}>Transfer Item</h3>
+            <div style={{ fontSize: 13, color: '#6B7280', marginBottom: 20 }}>
+              Moving <strong>{transferKOTItem.order_items?.menu_items?.name}</strong> ×{transferKOTItem.order_items?.quantity} to another table
+            </div>
+            {activeTables.length === 0 ? (
+              <div style={{ background: '#FEF3C7', borderRadius: 10, padding: '12px 14px', fontSize: 13, color: '#B45309', marginBottom: 20 }}>
+                No other occupied tables found
+              </div>
+            ) : (
+              <div style={{ marginBottom: 20 }}>
+                <label style={{ fontSize: 11, fontWeight: 700, color: '#6B7280', display: 'block', marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 }}>Select Target Table</label>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                  {activeTables.map(t => (
+                    <button key={t.id} onClick={() => setTransferTargetId(t.id)}
+                      style={{ background: transferTargetId === t.id ? '#092b33' : '#F3F4F6', color: transferTargetId === t.id ? '#fff' : '#374151', border: '2px solid ' + (transferTargetId === t.id ? '#092b33' : '#E5E7EB'), borderRadius: 10, padding: '10px 16px', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
+                      Table {t.number}{t.area ? ' · ' + t.area : ''}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button onClick={() => setTransferKOTItem(null)} style={{ flex: 1, background: '#F3F4F6', border: 'none', borderRadius: 10, padding: '12px', fontSize: 13, fontWeight: 700, cursor: 'pointer', color: '#374151' }}>Cancel</button>
+              <button onClick={doTransfer} disabled={transferring || !transferTargetId || activeTables.length === 0}
+                style={{ flex: 2, background: transferring || !transferTargetId ? '#E5E7EB' : '#092b33', color: transferring || !transferTargetId ? '#9CA3AF' : '#fff', border: 'none', borderRadius: 10, padding: '12px', fontSize: 13, fontWeight: 700, cursor: transferring || !transferTargetId ? 'not-allowed' : 'pointer' }}>
+                {transferring ? 'Transferring...' : '🔀 Transfer'}
+              </button>
+            </div>
           </div>
         </div>
       )}

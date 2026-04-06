@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../context/AuthContext'
 import { theme } from '../../lib/theme'
@@ -11,9 +11,14 @@ const STEP_CONFIRM = 'confirm'
 export default function BillScreen() {
   const { orderId } = useParams()
   const navigate    = useNavigate()
+  const [searchParams] = useSearchParams()
   const { profile } = useAuth()
+  const clubParam   = searchParams.get('club') || ''
+  const clubOrderIds = clubParam ? clubParam.split(',').filter(Boolean) : []
 
   const [step, setStep]               = useState(STEP_BILL)
+  const [clubOrders, setClubOrders]   = useState([]) // additional orders for combined bill
+  const [clubOrderItems, setClubOrderItems] = useState({}) // orderId -> orderItems[]
   const [order, setOrder]             = useState(null)
   const [orderItems, setOrderItems]   = useState([])
   const [gstRate, setGstRate]         = useState(5)
@@ -32,7 +37,7 @@ export default function BillScreen() {
   const [upiAmount, setUpiAmount]     = useState('')
   const [notes, setNotes]             = useState('')
 
-  useEffect(() => { fetchData() }, [orderId])
+  useEffect(() => { fetchData() }, [orderId, clubParam])
 
   async function fetchData() {
     const { data: ord } = await supabase
@@ -44,11 +49,28 @@ export default function BillScreen() {
     const { data: setting } = await supabase
       .from('app_settings').select('value').eq('key', 'gst_rate').single()
     if (setting) setGstRate(parseFloat(setting.value))
+    // Load club orders if any
+    if (clubOrderIds.length > 0) {
+      const clubOrderData = []
+      const clubItemsMap = {}
+      for (const cid of clubOrderIds) {
+        const { data: cord } = await supabase.from('orders').select('*, cafe_tables(number, name), staff(name)').eq('id', cid).single()
+        if (cord) clubOrderData.push(cord)
+        const { data: citems } = await supabase.from('order_items').select('*, menu_items(name, gst_rate)').eq('order_id', cid)
+        clubItemsMap[cid] = citems || []
+      }
+      setClubOrders(clubOrderData)
+      setClubOrderItems(clubItemsMap)
+    }
     setLoading(false)
   }
 
   // ── Calculations ──
-  const subtotal = orderItems.reduce((sum, i) => sum + i.quantity * i.unit_price, 0)
+  // All items including club orders
+  const allClubItems = Object.values(clubOrderItems).flat()
+  const allItems = [...orderItems, ...allClubItems]
+  const subtotal = allItems.reduce((sum, i) => sum + i.quantity * i.unit_price, 0)
+  const primarySubtotal = orderItems.reduce((sum, i) => sum + i.quantity * i.unit_price, 0)
 
   const discountPctNum  = Math.min(Math.max(parseFloat(discountPct) || 0, 0), 100)
   const discountAmount  = parseFloat(((subtotal * discountPctNum) / 100).toFixed(2))
@@ -57,7 +79,7 @@ export default function BillScreen() {
 
   const gstBreakdown = {}
   let totalGST = 0
-  orderItems.forEach(item => {
+  allItems.forEach(item => {
     const itemTotal = item.quantity * item.unit_price * discountFactor
     const rate      = item.menu_items?.gst_rate ?? gstRate
     if (rate === 0) return
@@ -71,9 +93,12 @@ export default function BillScreen() {
   const totalPaid = (parseFloat(cashAmount) || 0) + (parseFloat(cardAmount) || 0) + (parseFloat(upiAmount) || 0)
   const balance   = parseFloat((grandTotal - totalPaid).toFixed(2))
 
-  const orderLabel = order?.cafe_tables
+  const primaryLabel = order?.cafe_tables
     ? (order.cafe_tables.name || `Table ${order.cafe_tables.number}`)
     : order?.customer_name || 'Order'
+  const orderLabel = clubOrders.length > 0
+    ? primaryLabel + ' + ' + clubOrders.map(co => co.cafe_tables ? (co.cafe_tables.name || 'Table ' + co.cafe_tables.number) : co.customer_name || 'Order').join(' + ')
+    : primaryLabel
 
   // Auto-fill amount when non-partial mode selected
   function handlePayModeChange(mode) {
@@ -103,7 +128,7 @@ export default function BillScreen() {
     const custPhone = order?.customer_phone || ''
 
     // Totals
-    const totalQty = orderItems.reduce((s, i) => s + i.quantity, 0)
+    const totalQty = allItems.reduce((s, i) => s + i.quantity, 0)
 
     // CGST + SGST: split each GST rate 50/50
     // e.g. 5% GST on item → 2.5% CGST + 2.5% SGST
@@ -187,6 +212,7 @@ export default function BillScreen() {
       <div class="divider-solid"></div>
 
       <!-- ITEMS -->
+      ${clubOrders.length > 0 ? `<div style="font-size:10px;font-weight:bold;text-transform:uppercase;margin:3px 0">${primaryLabel}</div>` : ''}
       ${orderItems.map(item => `
         <div class="row4" style="font-size:11px">
           <span class="n">${item.menu_items?.name || ''}</span>
@@ -194,6 +220,13 @@ export default function BillScreen() {
           <span class="p">${item.unit_price.toFixed(2)}</span>
           <span class="a">${(item.quantity * item.unit_price).toFixed(2)}</span>
         </div>`).join('')}
+      ${clubOrders.map(co => {
+        const coItems2 = clubOrderItems[co.id] || []
+        const coLabel2 = co.cafe_tables ? (co.cafe_tables.name || 'Table ' + co.cafe_tables.number) : co.customer_name || 'Order'
+        const coSub = coItems2.reduce((s, i) => s + i.quantity * i.unit_price, 0)
+        return `<div class="divider"></div><div style="font-size:10px;font-weight:bold;text-transform:uppercase;margin:3px 0">${coLabel2}</div>` +
+          coItems2.map(item => `<div class="row4" style="font-size:11px"><span class="n">${item.menu_items?.name || ''}</span><span class="q">${item.quantity}</span><span class="p">${item.unit_price.toFixed(2)}</span><span class="a">${(item.quantity * item.unit_price).toFixed(2)}</span></div>`).join('')
+      }).join('')}
 
       <div class="divider-solid"></div>
 
@@ -278,10 +311,17 @@ export default function BillScreen() {
       }
       const { error } = await supabase.from('bills').insert(billData)
       if (error) throw error
+      // Complete primary order
       await supabase.from('orders').update({ status: 'completed' }).eq('id', orderId)
       await supabase.from('kots').update({ status: 'completed' }).eq('order_id', orderId)
       if (order?.table_id) {
         await supabase.from('cafe_tables').update({ status: 'free', captain_id: null }).eq('id', order.table_id)
+      }
+      // Complete club orders
+      for (const co of clubOrders) {
+        await supabase.from('orders').update({ status: 'completed' }).eq('id', co.id)
+        await supabase.from('kots').update({ status: 'completed' }).eq('order_id', co.id)
+        if (co.table_id) await supabase.from('cafe_tables').update({ status: 'free', captain_id: null }).eq('id', co.table_id)
       }
       navigate('/billing')
     } catch (err) {
@@ -348,6 +388,12 @@ export default function BillScreen() {
                   </div>
                 ))}
               </div>
+              {/* Primary order items */}
+              {clubOrders.length > 0 && (
+                <div style={{ padding: '8px 18px', background: '#F0FDF4', borderBottom: '1px solid #86EFAC', fontSize: 11, fontWeight: 700, color: '#15803D', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                  {order?.cafe_tables ? (order.cafe_tables.name || 'Table ' + order.cafe_tables.number) : order?.customer_name || 'Order'} — ₹{primarySubtotal.toFixed(2)}
+                </div>
+              )}
               {orderItems.map(item => (
                 <div key={item.id} style={{ display: 'flex', alignItems: 'center', padding: '11px 18px', borderBottom: '1px solid ' + theme.bgWarm }}>
                   <div style={{ flex: 1, fontWeight: 600, fontSize: 13, color: theme.textDark }}>{item.menu_items?.name}</div>
@@ -356,6 +402,27 @@ export default function BillScreen() {
                   <div style={{ width: 75, textAlign: 'right', fontWeight: 700, fontSize: 13, color: theme.textDark }}>₹{(item.quantity * item.unit_price).toFixed(2)}</div>
                 </div>
               ))}
+              {/* Club order items */}
+              {clubOrders.map(co => {
+                const coItems = clubOrderItems[co.id] || []
+                const coSubtotal = coItems.reduce((s, i) => s + i.quantity * i.unit_price, 0)
+                const coLabel = co.cafe_tables ? (co.cafe_tables.name || 'Table ' + co.cafe_tables.number) : co.customer_name || 'Order'
+                return (
+                  <div key={co.id}>
+                    <div style={{ padding: '8px 18px', background: '#F0FDF4', borderBottom: '1px solid #86EFAC', fontSize: 11, fontWeight: 700, color: '#15803D', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                      {coLabel} — ₹{coSubtotal.toFixed(2)}
+                    </div>
+                    {coItems.map(item => (
+                      <div key={item.id} style={{ display: 'flex', alignItems: 'center', padding: '11px 18px', borderBottom: '1px solid ' + theme.bgWarm }}>
+                        <div style={{ flex: 1, fontWeight: 600, fontSize: 13, color: theme.textDark }}>{item.menu_items?.name}</div>
+                        <div style={{ width: 40, textAlign: 'right', fontSize: 13, color: theme.textMid }}>{item.quantity}</div>
+                        <div style={{ width: 65, textAlign: 'right', fontSize: 13, color: theme.textMid }}>₹{item.unit_price}</div>
+                        <div style={{ width: 75, textAlign: 'right', fontWeight: 700, fontSize: 13, color: theme.textDark }}>₹{(item.quantity * item.unit_price).toFixed(2)}</div>
+                      </div>
+                    ))}
+                  </div>
+                )
+              })}
 
               {/* Totals */}
               <div style={{ padding: '14px 18px', borderTop: '2px solid ' + theme.border }}>
