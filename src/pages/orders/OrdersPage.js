@@ -839,18 +839,29 @@ export default function OrdersPage() {
   async function fetchOrders() {
     const start = new Date(); start.setHours(0, 0, 0, 0)
     const end   = new Date(); end.setHours(23, 59, 59, 999)
-    const { data, error } = await supabase
-      .from('orders').select('*, cafe_tables(number), staff(name)')
-      .gte('created_at', start.toISOString()).lte('created_at', end.toISOString())
-      .order('created_at', { ascending: false })
-    if (!error) {
-      const sorted = (data || []).sort((a, b) => {
-        if (a.status === 'active' && b.status !== 'active') return -1
-        if (a.status !== 'active' && b.status === 'active') return 1
-        return new Date(b.created_at) - new Date(a.created_at)
-      })
-      setOrders(sorted)
-    }
+
+    // Always show ALL active orders (regardless of which day they were opened)
+    // + today's completed orders (for today's history)
+    const [{ data: activeData }, { data: completedData }] = await Promise.all([
+      supabase.from('orders').select('*, cafe_tables(number), staff(name)')
+        .eq('status', 'active')
+        .order('created_at', { ascending: false }),
+      supabase.from('orders').select('*, cafe_tables(number), staff(name)')
+        .neq('status', 'active')
+        .gte('created_at', start.toISOString())
+        .lte('created_at', end.toISOString())
+        .order('created_at', { ascending: false }),
+    ])
+
+    // Merge, deduplicate, sort active first
+    const merged = [...(activeData || []), ...(completedData || [])]
+    const unique = Array.from(new Map(merged.map(o => [o.id, o])).values())
+    const sorted = unique.sort((a, b) => {
+      if (a.status === 'active' && b.status !== 'active') return -1
+      if (a.status !== 'active' && b.status === 'active') return 1
+      return new Date(b.created_at) - new Date(a.created_at)
+    })
+    setOrders(sorted)
     setLoading(false)
   }
 
