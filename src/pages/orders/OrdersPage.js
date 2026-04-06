@@ -703,11 +703,11 @@ export function NewOrderPage() {
             ) : (
               <div style={{ marginBottom: 20 }}>
                 <label style={{ fontSize: 11, fontWeight: 700, color: '#6B7280', display: 'block', marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 }}>Select Target Table</label>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                   {activeTables.map(t => (
                     <button key={t.id} onClick={() => setTransferTargetId(t.id)}
-                      style={{ background: transferTargetId === t.id ? '#092b33' : '#F3F4F6', color: transferTargetId === t.id ? '#fff' : '#374151', border: '2px solid ' + (transferTargetId === t.id ? '#092b33' : '#E5E7EB'), borderRadius: 10, padding: '10px 16px', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
-                      Table {t.number}{t.area ? ' · ' + t.area : ''}
+                      style={{ width: 44, height: 44, background: transferTargetId === t.id ? '#092b33' : '#F3F4F6', color: transferTargetId === t.id ? '#fff' : '#374151', border: '2px solid ' + (transferTargetId === t.id ? '#092b33' : '#E5E7EB'), borderRadius: 8, fontSize: 14, fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
+                      {t.number}
                     </button>
                   ))}
                 </div>
