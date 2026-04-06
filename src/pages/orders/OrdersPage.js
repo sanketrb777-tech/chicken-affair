@@ -251,10 +251,9 @@ export function NewOrderPage() {
   async function openTransfer(ki) {
     const { data: tables } = await supabase
       .from('cafe_tables').select('id, number, area')
-      .eq('status', 'occupied').order('number')
-    const others = (tables || []).filter(t => t.id !== tableId)
-    setActiveTables(others)
-    setTransferTargetId(others[0]?.id || '')
+      .eq('status', 'free').order('number')
+    setActiveTables(tables || [])
+    setTransferTargetId(tables?.[0]?.id || '')
     setTransferKOTItem(ki)
   }
 
@@ -699,7 +698,7 @@ export function NewOrderPage() {
             </div>
             {activeTables.length === 0 ? (
               <div style={{ background: '#FEF3C7', borderRadius: 10, padding: '12px 14px', fontSize: 13, color: '#B45309', marginBottom: 20 }}>
-                No other occupied tables found
+                No available (free) tables found
               </div>
             ) : (
               <div style={{ marginBottom: 20 }}>
