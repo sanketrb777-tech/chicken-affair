@@ -20,7 +20,7 @@ const NAV_ITEMS = [
 ]
 
 const ROLE_LABELS = { owner: 'Owner', manager: 'Manager', captain: 'Captain', biller: 'Biller' }
-const ROLE_COLORS = { owner: '#D4A853', manager: '#38BDF8', captain: '#34D399', biller: '#F472B6' }
+const ROLE_COLORS = { owner: '#ef4444', manager: '#f87171', captain: '#34D399', biller: '#f87171' }
 
 // Bottom nav shows only the most important 5 items on mobile
 const BOTTOM_NAV_MODULES = ['dashboard', 'tables', 'orders', 'billing', 'menu']
@@ -33,7 +33,7 @@ export default function Layout({ children }) {
 
   const visibleNav   = NAV_ITEMS.filter(item => can(item.module))
   const bottomNav    = NAV_ITEMS.filter(item => BOTTOM_NAV_MODULES.includes(item.module) && can(item.module))
-  const roleColor    = ROLE_COLORS[profile?.role] || '#D4A853'
+  const roleColor    = ROLE_COLORS[profile?.role] || '#ef4444'
 
   async function handleSignOut() {
     await signOut()
@@ -41,12 +41,12 @@ export default function Layout({ children }) {
   }
 
   return (
-    <div style={{ display: 'flex', height: '100vh', fontFamily: "'DM Sans', 'Segoe UI', sans-serif", background: '#FDFCF9', overflow: 'hidden' }}>
+    <div style={{ display: 'flex', height: '100vh', fontFamily: "'DM Sans', 'Segoe UI', sans-serif", background: '#ffffff', overflow: 'hidden' }}>
 
       {/* ── DESKTOP SIDEBAR (hidden on mobile) ── */}
       <aside style={{
         width: collapsed ? 64 : 224,
-        background: '#092b33',
+        background: '#7f1d1d',
         display: 'flex',
         flexDirection: 'column',
         transition: 'width 0.22s cubic-bezier(0.4,0,0.2,1)',
@@ -61,13 +61,13 @@ export default function Layout({ children }) {
         {/* Logo */}
         <div style={{ padding: collapsed ? '16px 16px' : '16px 20px', borderBottom: '1px solid rgba(255,255,255,0.07)', display: 'flex', alignItems: 'center', justifyContent: collapsed ? 'center' : 'space-between' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div style={{ width: 34, height: 34, background: 'linear-gradient(135deg, #D4A853, #B8860B)', borderRadius: 9, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <div style={{ width: 34, height: 34, background: 'linear-gradient(135deg, #ef4444, #b91c1c)', borderRadius: 9, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
               <Coffee size={18} color="#fff" strokeWidth={2.5} />
             </div>
             {!collapsed && (
               <div>
                 <div style={{ fontWeight: 800, fontSize: 15, color: '#fff', letterSpacing: -0.3, lineHeight: 1 }}>Chicken Affair</div>
-                <div style={{ fontWeight: 600, fontSize: 9, color: '#D4A853', letterSpacing: 2, textTransform: 'uppercase', marginTop: 2 }}>Cafe</div>
+                <div style={{ fontWeight: 600, fontSize: 9, color: '#ef4444', letterSpacing: 2, textTransform: 'uppercase', marginTop: 2 }}>Cafe</div>
               </div>
             )}
           </div>
@@ -102,13 +102,13 @@ export default function Layout({ children }) {
                   justifyContent: collapsed ? 'center' : 'flex-start',
                   textDecoration: 'none', borderRadius: 9,
                   background: isActive ? 'rgba(255,255,255,0.1)' : 'transparent',
-                  borderLeft: isActive ? '3px solid #38BDF8' : '3px solid transparent',
+                  borderLeft: isActive ? '3px solid #f87171' : '3px solid transparent',
                   marginBottom: 2, transition: 'all 0.15s',
                 })}
               >
                 {({ isActive }) => (
                   <>
-                    <Icon size={17} color={isActive ? '#38BDF8' : 'rgba(255,255,255,0.55)'} strokeWidth={isActive ? 2.5 : 2} />
+                    <Icon size={17} color={isActive ? '#f87171' : 'rgba(255,255,255,0.55)'} strokeWidth={isActive ? 2.5 : 2} />
                     {!collapsed && (
                       <span style={{ fontSize: 13, fontWeight: isActive ? 700 : 500, color: isActive ? '#fff' : 'rgba(255,255,255,0.55)' }}>
                         {item.label}
@@ -146,15 +146,15 @@ export default function Layout({ children }) {
           {/* Backdrop */}
           <div onClick={() => setMobileMenuOpen(false)} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.5)' }} />
           {/* Drawer */}
-          <div style={{ position: 'relative', width: 240, background: '#092b33', height: '100%', display: 'flex', flexDirection: 'column', zIndex: 51 }}>
+          <div style={{ position: 'relative', width: 240, background: '#7f1d1d', height: '100%', display: 'flex', flexDirection: 'column', zIndex: 51 }}>
             <div style={{ padding: '16px 20px', borderBottom: '1px solid rgba(255,255,255,0.07)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <div style={{ width: 34, height: 34, background: 'linear-gradient(135deg, #D4A853, #B8860B)', borderRadius: 9, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <div style={{ width: 34, height: 34, background: 'linear-gradient(135deg, #ef4444, #b91c1c)', borderRadius: 9, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <Coffee size={18} color="#fff" strokeWidth={2.5} />
                 </div>
                 <div>
                   <div style={{ fontWeight: 800, fontSize: 15, color: '#fff' }}>Chicken Affair</div>
-                  <div style={{ fontWeight: 600, fontSize: 9, color: '#D4A853', letterSpacing: 2, textTransform: 'uppercase' }}>Cafe</div>
+                  <div style={{ fontWeight: 600, fontSize: 9, color: '#ef4444', letterSpacing: 2, textTransform: 'uppercase' }}>Cafe</div>
                 </div>
               </div>
               <div onClick={() => setMobileMenuOpen(false)} style={{ cursor: 'pointer', color: 'rgba(255,255,255,0.4)' }}>
@@ -178,13 +178,13 @@ export default function Layout({ children }) {
                       display: 'flex', alignItems: 'center', gap: 10, padding: '12px 12px',
                       textDecoration: 'none', borderRadius: 9,
                       background: isActive ? 'rgba(255,255,255,0.1)' : 'transparent',
-                      borderLeft: isActive ? '3px solid #38BDF8' : '3px solid transparent',
+                      borderLeft: isActive ? '3px solid #f87171' : '3px solid transparent',
                       marginBottom: 2,
                     })}
                   >
                     {({ isActive }) => (
                       <>
-                        <Icon size={18} color={isActive ? '#38BDF8' : 'rgba(255,255,255,0.55)'} strokeWidth={isActive ? 2.5 : 2} />
+                        <Icon size={18} color={isActive ? '#f87171' : 'rgba(255,255,255,0.55)'} strokeWidth={isActive ? 2.5 : 2} />
                         <span style={{ fontSize: 14, fontWeight: isActive ? 700 : 500, color: isActive ? '#fff' : 'rgba(255,255,255,0.55)' }}>{item.label}</span>
                       </>
                     )}
@@ -207,17 +207,17 @@ export default function Layout({ children }) {
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
 
         {/* Top bar */}
-        <div style={{ background: '#fff', borderBottom: '1px solid #EDE8E0', padding: '11px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+        <div style={{ background: '#fff', borderBottom: '1px solid #fee2e2', padding: '11px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
           {/* Hamburger — mobile only */}
-          <div onClick={() => setMobileMenuOpen(true)} className="mobile-menu-btn" style={{ cursor: 'pointer', display: 'none', color: '#092b33' }}>
+          <div onClick={() => setMobileMenuOpen(true)} className="mobile-menu-btn" style={{ cursor: 'pointer', display: 'none', color: '#7f1d1d' }}>
             <Menu size={22} />
           </div>
-          <div style={{ fontSize: 12, color: '#A8917A', fontWeight: 500 }}>
+          <div style={{ fontSize: 12, color: '#f87171', fontWeight: 500 }}>
             {new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <div style={{ width: 7, height: 7, borderRadius: '50%', background: '#0D9488' }} />
-            <span style={{ fontSize: 12, color: '#A8917A', fontWeight: 600 }}>Live</span>
+            <div style={{ width: 7, height: 7, borderRadius: '50%', background: '#dc2626' }} />
+            <span style={{ fontSize: 12, color: '#f87171', fontWeight: 600 }}>Live</span>
           </div>
         </div>
 
@@ -227,7 +227,7 @@ export default function Layout({ children }) {
         </main>
 
         {/* ── MOBILE BOTTOM NAV ── */}
-        <nav className="mobile-bottom-nav" style={{ display: 'none', background: '#092b33', borderTop: '1px solid rgba(255,255,255,0.1)', flexShrink: 0 }}>
+        <nav className="mobile-bottom-nav" style={{ display: 'none', background: '#7f1d1d', borderTop: '1px solid rgba(255,255,255,0.1)', flexShrink: 0 }}>
           {bottomNav.map(item => {
             const Icon = item.icon
             return (
@@ -235,8 +235,8 @@ export default function Layout({ children }) {
                 style={({ isActive }) => ({
                   flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center',
                   justifyContent: 'center', padding: '8px 4px', textDecoration: 'none',
-                  color: isActive ? '#38BDF8' : 'rgba(255,255,255,0.45)',
-                  borderTop: isActive ? '2px solid #38BDF8' : '2px solid transparent',
+                  color: isActive ? '#f87171' : 'rgba(255,255,255,0.45)',
+                  borderTop: isActive ? '2px solid #f87171' : '2px solid transparent',
                   gap: 3,
                 })}
               >

@@ -32,12 +32,12 @@ function getDateRange(filter) {
   }
 }
 
-const CHART_COLORS = ['#092b33', '#0D9488', '#D4A853', '#7C3AED', '#B91C1C']
+const CHART_COLORS = ['#7f1d1d', '#dc2626', '#ef4444', '#dc2626', '#B91C1C']
 
 const ORDER_TYPE_BADGE = {
-  dine_in:  { label: 'Dine In',  bg: '#E6FAF8', color: '#0D9488' },
-  takeaway: { label: 'Takeaway', bg: '#FEF3C7', color: '#B45309' },
-  delivery: { label: 'Delivery', bg: '#EEE9FF', color: '#7C3AED' },
+  dine_in:  { label: 'Dine In',  bg: '#fee2e2', color: '#dc2626' },
+  takeaway: { label: 'Takeaway', bg: '#fee2e2', color: '#b91c1c' },
+  delivery: { label: 'Delivery', bg: '#fff5f5', color: '#dc2626' },
 }
 
 function printBill(bill) {
@@ -137,7 +137,7 @@ function BillViewModal({ bill, onClose }) {
     <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
       <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 16, width: '100%', maxWidth: 420, maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }}>
 
-        <div style={{ background: '#092b33', borderRadius: '16px 16px 0 0', padding: '18px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <div style={{ background: '#7f1d1d', borderRadius: '16px 16px 0 0', padding: '18px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
           <div>
             <div style={{ color: '#fff', fontWeight: 800, fontSize: 16 }}>Bill #{bill.id?.slice(0,8).toUpperCase()}</div>
             <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: 12, marginTop: 3 }}>
@@ -213,7 +213,7 @@ function BillViewModal({ bill, onClose }) {
             </div>
           )}
 
-          <button onClick={onClose} style={{ width: '100%', background: '#092b33', color: '#fff', border: 'none', borderRadius: 10, padding: '12px', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
+          <button onClick={onClose} style={{ width: '100%', background: '#7f1d1d', color: '#fff', border: 'none', borderRadius: 10, padding: '12px', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
             Close
           </button>
         </div>
@@ -447,7 +447,7 @@ export default function DashboardPage() {
             <div style={{ position: 'absolute', right: 0, top: 'calc(100% + 6px)', background: '#fff', border: '1px solid ' + theme.border, borderRadius: 12, boxShadow: '0 8px 24px rgba(0,0,0,0.12)', zIndex: 100, minWidth: 180, overflow: 'hidden' }}>
               {filters.map(f => (
                 <div key={f} onClick={() => selectFilter(f)}
-                  style={{ padding: '11px 16px', fontSize: 13, fontWeight: activeFilter === f ? 700 : 500, color: activeFilter === f ? '#fff' : theme.textDark, background: activeFilter === f ? '#092b33' : 'transparent', cursor: 'pointer' }}
+                  style={{ padding: '11px 16px', fontSize: 13, fontWeight: activeFilter === f ? 700 : 500, color: activeFilter === f ? '#fff' : theme.textDark, background: activeFilter === f ? '#7f1d1d' : 'transparent', cursor: 'pointer' }}
                   onMouseEnter={e => { if (activeFilter !== f) e.currentTarget.style.background = theme.bgWarm }}
                   onMouseLeave={e => { if (activeFilter !== f) e.currentTarget.style.background = 'transparent' }}>
                   {f}
@@ -479,9 +479,9 @@ export default function DashboardPage() {
         <>
           {/* Row 1 — Revenue cards */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, marginBottom: 14 }}>
-            <div style={{ background: '#092b33', borderRadius: 14, padding: '20px 22px' }}>
+            <div style={{ background: '#7f1d1d', borderRadius: 14, padding: '20px 22px' }}>
               <div style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>Total Revenue</div>
-              <div style={{ fontSize: 28, fontWeight: 900, color: '#D4A853', letterSpacing: -1 }}>₹{totalRevenue.toFixed(0)}</div>
+              <div style={{ fontSize: 28, fontWeight: 900, color: '#ef4444', letterSpacing: -1 }}>₹{totalRevenue.toFixed(0)}</div>
               <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', marginTop: 4 }}>{billCount} bill{billCount !== 1 ? 's' : ''} · {getFilterLabel()}</div>
             </div>
             {[
@@ -511,8 +511,8 @@ export default function DashboardPage() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                 {[
                   { label: 'Cash', value: cashTotal,  color: '#15803D' },
-                  { label: 'Card', value: cardTotal,  color: '#1D4ED8' },
-                  { label: 'UPI',  value: upiTotal,   color: '#6D28D9' },
+                  { label: 'Card', value: cardTotal,  color: '#b91c1c' },
+                  { label: 'UPI',  value: upiTotal,   color: '#b91c1c' },
                 ].map(({ label, value, color }) => {
                   const pct = paymentTotal > 0 ? Math.round((value / paymentTotal) * 100) : 0
                   return (
@@ -538,7 +538,7 @@ export default function DashboardPage() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
               <div style={{ background: '#fff', borderRadius: 14, padding: '20px 22px', border: '1px solid ' + theme.border }}>
                 <div style={{ fontSize: 11, fontWeight: 700, color: theme.textLight, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>Active Orders Right Now</div>
-                <div style={{ fontSize: 28, fontWeight: 900, color: activeOrders > 0 ? '#B45309' : theme.textDark }}>{activeOrders}</div>
+                <div style={{ fontSize: 28, fontWeight: 900, color: activeOrders > 0 ? '#b91c1c' : theme.textDark }}>{activeOrders}</div>
               </div>
               <div style={{ background: '#fff', borderRadius: 14, padding: '20px 22px', border: '1px solid ' + theme.border, flex: 1 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
@@ -546,12 +546,12 @@ export default function DashboardPage() {
                   <div style={{ fontSize: 12, fontWeight: 700, color: theme.textLight }}>{occupancyPct}% occupied</div>
                 </div>
                 <div style={{ height: 7, background: theme.bgWarm, borderRadius: 99, overflow: 'hidden', marginBottom: 12 }}>
-                  <div style={{ height: '100%', width: occupancyPct + '%', background: occupancyPct > 70 ? theme.red : occupancyPct > 40 ? '#D4A853' : '#0D9488', borderRadius: 99 }} />
+                  <div style={{ height: '100%', width: occupancyPct + '%', background: occupancyPct > 70 ? theme.red : occupancyPct > 40 ? '#ef4444' : '#dc2626', borderRadius: 99 }} />
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
                   {[
-                    { label: 'Free',     value: freeTables,     color: '#0D9488', bg: '#E6FAF8' },
-                    { label: 'Occupied', value: occupiedTables, color: '#B45309', bg: '#FEF3C7' },
+                    { label: 'Free',     value: freeTables,     color: '#dc2626', bg: '#fee2e2' },
+                    { label: 'Occupied', value: occupiedTables, color: '#b91c1c', bg: '#fee2e2' },
                     { label: 'Total',    value: totalTables,    color: theme.textDark, bg: theme.bgWarm },
                   ].map(s => (
                     <div key={s.label} style={{ background: s.bg, borderRadius: 10, padding: '10px', textAlign: 'center' }}>
@@ -583,7 +583,7 @@ export default function DashboardPage() {
                   <div style={{ position: 'absolute', right: 0, top: 'calc(100% + 6px)', background: '#fff', border: '1px solid ' + theme.border, borderRadius: 12, boxShadow: '0 8px 24px rgba(0,0,0,0.12)', zIndex: 100, minWidth: 160, overflow: 'hidden' }}>
                     {Object.entries(CHART_TYPE_LABELS).map(([key, label]) => (
                       <div key={key} onClick={() => { setChartType(key); setShowChartDropdown(false) }}
-                        style={{ padding: '11px 16px', fontSize: 13, fontWeight: chartType === key ? 700 : 500, color: chartType === key ? '#fff' : theme.textDark, background: chartType === key ? '#092b33' : 'transparent', cursor: 'pointer' }}
+                        style={{ padding: '11px 16px', fontSize: 13, fontWeight: chartType === key ? 700 : 500, color: chartType === key ? '#fff' : theme.textDark, background: chartType === key ? '#7f1d1d' : 'transparent', cursor: 'pointer' }}
                         onMouseEnter={e => { if (chartType !== key) e.currentTarget.style.background = theme.bgWarm }}
                         onMouseLeave={e => { if (chartType !== key) e.currentTarget.style.background = 'transparent' }}>
                         {label}
@@ -605,9 +605,9 @@ export default function DashboardPage() {
                     <YAxis tick={{ fontSize: 11, fill: theme.textLight }} tickFormatter={v => '₹' + v} />
                     <Tooltip formatter={(value) => ['₹' + value.toFixed(0)]} contentStyle={{ borderRadius: 10, border: '1px solid ' + theme.border, fontSize: 12 }} />
                     <Legend wrapperStyle={{ fontSize: 12 }} />
-                    <Bar dataKey="Dine In"  fill="#092b33" radius={[4,4,0,0]} />
-                    <Bar dataKey="Takeaway" fill="#0D9488" radius={[4,4,0,0]} />
-                    <Bar dataKey="Delivery" fill="#D4A853" radius={[4,4,0,0]} />
+                    <Bar dataKey="Dine In"  fill="#7f1d1d" radius={[4,4,0,0]} />
+                    <Bar dataKey="Takeaway" fill="#dc2626" radius={[4,4,0,0]} />
+                    <Bar dataKey="Delivery" fill="#ef4444" radius={[4,4,0,0]} />
                   </BarChart>
                 ) : chartType === 'line' ? (
                   <LineChart data={chartData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
@@ -616,9 +616,9 @@ export default function DashboardPage() {
                     <YAxis tick={{ fontSize: 11, fill: theme.textLight }} tickFormatter={v => '₹' + v} />
                     <Tooltip formatter={(value) => ['₹' + value.toFixed(0)]} contentStyle={{ borderRadius: 10, border: '1px solid ' + theme.border, fontSize: 12 }} />
                     <Legend wrapperStyle={{ fontSize: 12 }} />
-                    <Line type="monotone" dataKey="Dine In"  stroke="#092b33" strokeWidth={2} dot={{ r: 4 }} />
-                    <Line type="monotone" dataKey="Takeaway" stroke="#0D9488" strokeWidth={2} dot={{ r: 4 }} />
-                    <Line type="monotone" dataKey="Delivery" stroke="#D4A853" strokeWidth={2} dot={{ r: 4 }} />
+                    <Line type="monotone" dataKey="Dine In"  stroke="#7f1d1d" strokeWidth={2} dot={{ r: 4 }} />
+                    <Line type="monotone" dataKey="Takeaway" stroke="#dc2626" strokeWidth={2} dot={{ r: 4 }} />
+                    <Line type="monotone" dataKey="Delivery" stroke="#ef4444" strokeWidth={2} dot={{ r: 4 }} />
                   </LineChart>
                 ) : (
                   <PieChart>
@@ -691,7 +691,7 @@ export default function DashboardPage() {
                             <div style={{ display: 'flex', gap: 8 }}>
                               <button
                                 onClick={() => setViewBill(bill)}
-                                style={{ display: 'flex', alignItems: 'center', gap: 5, background: '#EFF6FF', border: 'none', borderRadius: 7, padding: '6px 12px', fontSize: 12, fontWeight: 600, color: '#1D4ED8', cursor: 'pointer' }}>
+                                style={{ display: 'flex', alignItems: 'center', gap: 5, background: '#fff5f5', border: 'none', borderRadius: 7, padding: '6px 12px', fontSize: 12, fontWeight: 600, color: '#b91c1c', cursor: 'pointer' }}>
                                 <Eye size={13} /> View
                               </button>
                               <button

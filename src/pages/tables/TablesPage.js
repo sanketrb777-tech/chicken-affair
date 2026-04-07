@@ -8,10 +8,10 @@ const APP_URL = 'https://Chicken Affairapp-hue.vercel.app'
 
 // Card color by status — matching Petpooja style
 const STATUS_CFG = {
-  free:           { bg: '#F0F4FF', border: '#C7D7FF', borderStyle: '2px dashed', color: '#374151' },
-  occupied:       { bg: '#FFFBEB', border: '#FCD34D', borderStyle: '2px solid',  color: '#92400E' },
+  free:           { bg: '#fff5f5', border: '#fecaca', borderStyle: '2px dashed', color: '#374151' },
+  occupied:       { bg: '#fff5f5', border: '#fca5a5', borderStyle: '2px solid',  color: '#92400E' },
   bill_requested: { bg: '#FEF2F2', border: '#FCA5A5', borderStyle: '2px solid',  color: '#991B1B' },
-  reserved:       { bg: '#F5F3FF', border: '#C4B5FD', borderStyle: '2px solid',  color: '#5B21B6' },
+  reserved:       { bg: '#fff5f5', border: '#fca5a5', borderStyle: '2px solid',  color: '#991b1b' },
   cleaning:       { bg: '#F8FAFC', border: '#CBD5E1', borderStyle: '2px dashed', color: '#64748B' },
 }
 
@@ -304,9 +304,9 @@ export default function TablesPage() {
         <div>
           <h1 style={{ fontSize: 22, fontWeight: 800, color: theme.textDark, margin: 0 }}>Tables</h1>
           <p style={{ color: theme.textLight, fontSize: 14, marginTop: 4 }}>
-            <span style={{ color: '#0D9488', fontWeight: 700 }}>{freeCount} free</span>
+            <span style={{ color: '#dc2626', fontWeight: 700 }}>{freeCount} free</span>
             {' · '}
-            <span style={{ color: '#B45309', fontWeight: 700 }}>{occupiedCount} occupied</span>
+            <span style={{ color: '#b91c1c', fontWeight: 700 }}>{occupiedCount} occupied</span>
             {' · '}
             {tables.length} total
           </p>
@@ -315,8 +315,8 @@ export default function TablesPage() {
           {/* Legend */}
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
             {[
-              { label: 'Free',     bg: '#F0F4FF', border: '#C7D7FF', color: '#374151' },
-              { label: 'Occupied', bg: '#FFFBEB', border: '#FCD34D', color: '#92400E' },
+              { label: 'Free',     bg: '#fff5f5', border: '#fecaca', color: '#374151' },
+              { label: 'Occupied', bg: '#fff5f5', border: '#fca5a5', color: '#92400E' },
               { label: 'Bill',     bg: '#FEF2F2', border: '#FCA5A5', color: '#991B1B' },
             ].map(s => (
               <span key={s.label} style={{ background: s.bg, color: s.color, border: '1.5px solid ' + s.border, padding: '4px 12px', borderRadius: 20, fontSize: 11, fontWeight: 700 }}>
@@ -326,7 +326,7 @@ export default function TablesPage() {
           </div>
           {isManager && (
             <button onClick={openAdd}
-              style={{ background: '#092b33', color: '#fff', border: 'none', borderRadius: 9, padding: '9px 18px', fontSize: 13, fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}>
+              style={{ background: '#7f1d1d', color: '#fff', border: 'none', borderRadius: 9, padding: '9px 18px', fontSize: 13, fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}>
               + Add Table
             </button>
           )}
@@ -337,7 +337,7 @@ export default function TablesPage() {
         <div style={{ textAlign: 'center', padding: 48, color: theme.textLight, background: '#fff', borderRadius: 14, border: '2px dashed ' + theme.border }}>
           <div style={{ fontSize: 32, marginBottom: 12 }}>🪑</div>
           <div style={{ fontWeight: 700, color: theme.textDark, marginBottom: 6 }}>No tables yet</div>
-          {isManager && <button onClick={openAdd} style={{ background: '#092b33', color: '#fff', border: 'none', borderRadius: 8, padding: '9px 20px', fontSize: 13, fontWeight: 700, cursor: 'pointer', marginTop: 8 }}>+ Add your first table</button>}
+          {isManager && <button onClick={openAdd} style={{ background: '#7f1d1d', color: '#fff', border: 'none', borderRadius: 8, padding: '9px 20px', fontSize: 13, fontWeight: 700, cursor: 'pointer', marginTop: 8 }}>+ Add your first table</button>}
         </div>
       )}
 
@@ -408,7 +408,7 @@ export default function TablesPage() {
                 Cancel
               </button>
               <button onClick={saveTable} disabled={saving}
-                style={{ flex: 2, background: '#092b33', color: '#fff', border: 'none', borderRadius: 9, padding: '12px', fontSize: 13, fontWeight: 700, cursor: saving ? 'not-allowed' : 'pointer' }}>
+                style={{ flex: 2, background: '#7f1d1d', color: '#fff', border: 'none', borderRadius: 9, padding: '12px', fontSize: 13, fontWeight: 700, cursor: saving ? 'not-allowed' : 'pointer' }}>
                 {saving ? 'Saving...' : editTable ? 'Save Changes' : 'Add Table'}
               </button>
             </div>
@@ -431,10 +431,10 @@ export default function TablesPage() {
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 20 }}>
                 {freeTables.map(t => (
                   <button key={t.id} onClick={() => handleChangeTable(t)} disabled={changingTable}
-                    style={{ background: '#F0F4FF', border: '2px solid #C7D7FF', borderRadius: 12, padding: '14px 10px', cursor: 'pointer', textAlign: 'center', minWidth: 80 }}>
+                    style={{ background: '#fff5f5', border: '2px solid #fecaca', borderRadius: 12, padding: '14px 10px', cursor: 'pointer', textAlign: 'center', minWidth: 80 }}>
                     <div style={{ fontWeight: 900, fontSize: 18, color: theme.textDark }}>{t.number}</div>
                     {t.area && <div style={{ fontSize: 10, color: theme.textLight, marginTop: 2 }}>{t.area}</div>}
-                    <div style={{ fontSize: 10, color: '#0D9488', fontWeight: 700, marginTop: 4 }}>Free</div>
+                    <div style={{ fontSize: 10, color: '#dc2626', fontWeight: 700, marginTop: 4 }}>Free</div>
                   </button>
                 ))}
               </div>
@@ -462,7 +462,7 @@ export default function TablesPage() {
                 Close
               </button>
               <button onClick={() => downloadQR(qrModal)} disabled={downloading}
-                style={{ flex: 2, background: '#092b33', color: '#fff', border: 'none', borderRadius: 9, padding: '11px', fontSize: 13, fontWeight: 700, cursor: downloading ? 'not-allowed' : 'pointer' }}>
+                style={{ flex: 2, background: '#7f1d1d', color: '#fff', border: 'none', borderRadius: 9, padding: '11px', fontSize: 13, fontWeight: 700, cursor: downloading ? 'not-allowed' : 'pointer' }}>
                 {downloading ? 'Downloading...' : '⬇ Download QR'}
               </button>
             </div>

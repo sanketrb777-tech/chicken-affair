@@ -375,12 +375,12 @@ export default function BillScreen() {
             const isDone   = steps.findIndex(x => x.id === step) > i
             return (
               <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                {i > 0 && <div style={{ width: 20, height: 1, background: isDone ? '#092b33' : theme.border }} />}
+                {i > 0 && <div style={{ width: 20, height: 1, background: isDone ? '#7f1d1d' : theme.border }} />}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                  <div style={{ width: 22, height: 22, borderRadius: '50%', background: isActive || isDone ? '#092b33' : theme.bgWarm, border: '2px solid ' + (isActive || isDone ? '#092b33' : theme.border), display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 800, color: isActive || isDone ? '#fff' : theme.textMuted }}>
+                  <div style={{ width: 22, height: 22, borderRadius: '50%', background: isActive || isDone ? '#7f1d1d' : theme.bgWarm, border: '2px solid ' + (isActive || isDone ? '#7f1d1d' : theme.border), display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 800, color: isActive || isDone ? '#fff' : theme.textMuted }}>
                     {isDone ? '✓' : i + 1}
                   </div>
-                  <span style={{ fontSize: 11, fontWeight: 700, color: isActive || isDone ? '#092b33' : theme.textMuted }}>{s.label}</span>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: isActive || isDone ? '#7f1d1d' : theme.textMuted }}>{s.label}</span>
                 </div>
               </div>
             )
@@ -507,21 +507,21 @@ export default function BillScreen() {
             </div>
 
             {/* Grand total */}
-            <div style={{ background: '#092b33', borderRadius: 14, padding: '16px 18px' }}>
+            <div style={{ background: '#7f1d1d', borderRadius: 14, padding: '16px 18px' }}>
               <div style={{ color: 'rgba(255,255,255,0.6)', fontSize: 12, fontWeight: 600 }}>Grand Total</div>
-              <div style={{ color: '#D4A853', fontWeight: 900, fontSize: 28, marginTop: 4, letterSpacing: -1 }}>₹{grandTotal.toFixed(2)}</div>
+              <div style={{ color: '#ef4444', fontWeight: 900, fontSize: 28, marginTop: 4, letterSpacing: -1 }}>₹{grandTotal.toFixed(2)}</div>
               {discountAmount > 0 && <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11, marginTop: 4 }}>After {discountPctNum}% discount</div>}
             </div>
 
             <button onClick={printBill}
-              style={{ width: '100%', background: billPrinted ? theme.bgWarm : '#fff', border: '1.5px solid ' + (billPrinted ? theme.border : '#092b33'), borderRadius: 10, padding: '12px', fontSize: 14, fontWeight: 700, cursor: 'pointer', color: billPrinted ? theme.textMid : '#092b33' }}>
+              style={{ width: '100%', background: billPrinted ? theme.bgWarm : '#fff', border: '1.5px solid ' + (billPrinted ? theme.border : '#7f1d1d'), borderRadius: 10, padding: '12px', fontSize: 14, fontWeight: 700, cursor: 'pointer', color: billPrinted ? theme.textMid : '#7f1d1d' }}>
               🖨️ {billPrinted ? 'Print Again' : 'Print Bill'}
             </button>
 
             <button
               onClick={() => setStep(STEP_PAYMENT)}
               disabled={discountPctNum > 0 && !discountReason.trim()}
-              style={{ width: '100%', background: discountPctNum > 0 && !discountReason.trim() ? theme.bgWarm : '#092b33', color: discountPctNum > 0 && !discountReason.trim() ? theme.textMuted : '#fff', border: 'none', borderRadius: 10, padding: '14px', fontSize: 14, fontWeight: 800, cursor: discountPctNum > 0 && !discountReason.trim() ? 'not-allowed' : 'pointer' }}>
+              style={{ width: '100%', background: discountPctNum > 0 && !discountReason.trim() ? theme.bgWarm : '#7f1d1d', color: discountPctNum > 0 && !discountReason.trim() ? theme.textMuted : '#fff', border: 'none', borderRadius: 10, padding: '14px', fontSize: 14, fontWeight: 800, cursor: discountPctNum > 0 && !discountReason.trim() ? 'not-allowed' : 'pointer' }}>
               Settle Bill →
             </button>
           </div>
@@ -534,10 +534,10 @@ export default function BillScreen() {
           <div style={{ flex: 1, overflowY: 'auto' }}>
 
             {/* Amount banner */}
-            <div style={{ background: '#092b33', borderRadius: 14, padding: '18px 22px', marginBottom: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ background: '#7f1d1d', borderRadius: 14, padding: '18px 22px', marginBottom: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
                 <div style={{ color: 'rgba(255,255,255,0.6)', fontSize: 12, fontWeight: 600 }}>Amount to Collect</div>
-                <div style={{ color: '#D4A853', fontWeight: 900, fontSize: 28, letterSpacing: -1 }}>₹{grandTotal.toFixed(2)}</div>
+                <div style={{ color: '#ef4444', fontWeight: 900, fontSize: 28, letterSpacing: -1 }}>₹{grandTotal.toFixed(2)}</div>
               </div>
               {discountAmount > 0 && (
                 <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13, textAlign: 'right' }}>
@@ -598,11 +598,11 @@ export default function BillScreen() {
                   )}
 
                   {/* Balance indicator */}
-                  <div style={{ background: balance > 0.5 ? '#FEE2E2' : balance < -0.5 ? '#FEF3C7' : '#DCFCE7', borderRadius: 10, padding: '11px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
-                    <span style={{ fontSize: 13, fontWeight: 700, color: balance > 0.5 ? '#B91C1C' : balance < -0.5 ? '#B45309' : '#15803D' }}>
+                  <div style={{ background: balance > 0.5 ? '#FEE2E2' : balance < -0.5 ? '#fee2e2' : '#DCFCE7', borderRadius: 10, padding: '11px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: balance > 0.5 ? '#B91C1C' : balance < -0.5 ? '#b91c1c' : '#15803D' }}>
                       {balance > 0.5 ? 'Remaining' : balance < -0.5 ? 'Change to return' : '✓ Fully Settled'}
                     </span>
-                    <span style={{ fontSize: 15, fontWeight: 900, color: balance > 0.5 ? '#B91C1C' : balance < -0.5 ? '#B45309' : '#15803D' }}>
+                    <span style={{ fontSize: 15, fontWeight: 900, color: balance > 0.5 ? '#B91C1C' : balance < -0.5 ? '#b91c1c' : '#15803D' }}>
                       {Math.abs(balance) > 0.01 ? '₹' + Math.abs(balance).toFixed(2) : ''}
                     </span>
                   </div>
@@ -615,7 +615,7 @@ export default function BillScreen() {
             <button
               onClick={() => setStep(STEP_CONFIRM)}
               disabled={!payMode || balance > 0.5}
-              style={{ width: '100%', background: !payMode || balance > 0.5 ? theme.bgWarm : '#092b33', color: !payMode || balance > 0.5 ? theme.textMuted : '#fff', border: 'none', borderRadius: 12, padding: '15px', fontSize: 15, fontWeight: 800, cursor: !payMode || balance > 0.5 ? 'not-allowed' : 'pointer' }}>
+              style={{ width: '100%', background: !payMode || balance > 0.5 ? theme.bgWarm : '#7f1d1d', color: !payMode || balance > 0.5 ? theme.textMuted : '#fff', border: 'none', borderRadius: 12, padding: '15px', fontSize: 15, fontWeight: 800, cursor: !payMode || balance > 0.5 ? 'not-allowed' : 'pointer' }}>
               {!payMode ? 'Select a payment mode to continue' : balance > 0.5 ? `₹${balance.toFixed(2)} still pending` : 'Confirm Payment →'}
             </button>
           </div>
@@ -626,10 +626,10 @@ export default function BillScreen() {
       {step === STEP_CONFIRM && (
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
           <div style={{ flex: 1, overflowY: 'auto' }}>
-            <div style={{ background: '#092b33', borderRadius: 16, padding: '22px 24px', marginBottom: 16 }}>
+            <div style={{ background: '#7f1d1d', borderRadius: 16, padding: '22px 24px', marginBottom: 16 }}>
               <div style={{ color: 'rgba(255,255,255,0.6)', fontSize: 12, fontWeight: 600, marginBottom: 4 }}>Settling bill for</div>
               <div style={{ color: '#fff', fontWeight: 900, fontSize: 22 }}>{orderLabel}</div>
-              <div style={{ color: '#D4A853', fontWeight: 900, fontSize: 32, marginTop: 8, letterSpacing: -1 }}>₹{grandTotal.toFixed(2)}</div>
+              <div style={{ color: '#ef4444', fontWeight: 900, fontSize: 32, marginTop: 8, letterSpacing: -1 }}>₹{grandTotal.toFixed(2)}</div>
             </div>
 
             <div style={{ background: '#fff', borderRadius: 14, border: '1px solid ' + theme.border, padding: '18px 20px', marginBottom: 16 }}>
@@ -679,7 +679,7 @@ export default function BillScreen() {
               🖨️ Print Bill
             </button>
             <button onClick={confirmPayment} disabled={submitting}
-              style={{ width: '100%', background: '#092b33', color: '#fff', border: 'none', borderRadius: 12, padding: '16px', fontSize: 15, fontWeight: 800, cursor: submitting ? 'not-allowed' : 'pointer', opacity: submitting ? 0.8 : 1 }}>
+              style={{ width: '100%', background: '#7f1d1d', color: '#fff', border: 'none', borderRadius: 12, padding: '16px', fontSize: 15, fontWeight: 800, cursor: submitting ? 'not-allowed' : 'pointer', opacity: submitting ? 0.8 : 1 }}>
               {submitting ? 'Processing...' : '✓ Confirm Payment & Close Table'}
             </button>
           </div>

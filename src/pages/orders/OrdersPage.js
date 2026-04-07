@@ -6,9 +6,9 @@ import { theme } from '../../lib/theme'
 import { Trash2 } from 'lucide-react'
 
 const ORDER_TYPES = {
-  dine_in:  { label: 'Dine In',  icon: '🛋️', color: '#0D9488' },
-  takeaway: { label: 'Takeaway', icon: '🛍️', color: '#D4A853' },
-  delivery: { label: 'Delivery', icon: '🚚', color: '#7C3AED' },
+  dine_in:  { label: 'Dine In',  icon: '🛋️', color: '#dc2626' },
+  takeaway: { label: 'Takeaway', icon: '🛍️', color: '#ef4444' },
+  delivery: { label: 'Delivery', icon: '🚚', color: '#dc2626' },
 }
 
 export function NewOrderPage() {
@@ -410,12 +410,12 @@ export function NewOrderPage() {
           <div style={{ flex: 1 }}>
             <label style={{ fontSize: 11, fontWeight: 700, color: theme.textLight, textTransform: 'uppercase', letterSpacing: 0.5, display: 'block', marginBottom: 5 }}>Customer Name *</label>
             <input value={customerName} onChange={e => setCustomerName(e.target.value)} placeholder="e.g. Rahul Sharma"
-              style={{ width: '100%', border: '1.5px solid ' + (customerName ? '#0D9488' : theme.border), borderRadius: 8, padding: '9px 12px', fontSize: 13, outline: 'none', boxSizing: 'border-box', color: theme.textDark }} />
+              style={{ width: '100%', border: '1.5px solid ' + (customerName ? '#dc2626' : theme.border), borderRadius: 8, padding: '9px 12px', fontSize: 13, outline: 'none', boxSizing: 'border-box', color: theme.textDark }} />
           </div>
           <div style={{ flex: 1 }}>
             <label style={{ fontSize: 11, fontWeight: 700, color: theme.textLight, textTransform: 'uppercase', letterSpacing: 0.5, display: 'block', marginBottom: 5 }}>Phone *</label>
             <input value={customerPhone} onChange={e => setCustomerPhone(e.target.value)} placeholder="9876543210" type="tel"
-              style={{ width: '100%', border: '1.5px solid ' + (customerPhone ? '#0D9488' : theme.border), borderRadius: 8, padding: '9px 12px', fontSize: 13, outline: 'none', boxSizing: 'border-box', color: theme.textDark }} />
+              style={{ width: '100%', border: '1.5px solid ' + (customerPhone ? '#dc2626' : theme.border), borderRadius: 8, padding: '9px 12px', fontSize: 13, outline: 'none', boxSizing: 'border-box', color: theme.textDark }} />
           </div>
         </div>
         {orderType === 'delivery' && (
@@ -446,17 +446,17 @@ export function NewOrderPage() {
       {existingCustomerBadge}
 
       {!isOffTable && (
-        <div style={{ background: '#092b33', borderRadius: 12, padding: '12px 16px', marginBottom: 12 }}>
+        <div style={{ background: '#7f1d1d', borderRadius: 12, padding: '12px 16px', marginBottom: 12 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
             <div style={{ color: '#fff', fontWeight: 800, fontSize: 15 }}>
               {tableId ? 'Table ' + tableNumber : 'New Order'}
-              {existingOrder && <span style={{ fontSize: 11, color: '#D4A853', marginLeft: 8, fontWeight: 600 }}>● Active</span>}
+              {existingOrder && <span style={{ fontSize: 11, color: '#ef4444', marginLeft: 8, fontWeight: 600 }}>● Active</span>}
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 12 }}>Covers:</span>
-              <button onClick={() => setCovers(c => Math.max(1, c - 1))} style={{ background: '#1E3A3A', border: 'none', color: '#fff', width: 26, height: 26, borderRadius: 6, cursor: 'pointer', fontSize: 14 }}>-</button>
+              <button onClick={() => setCovers(c => Math.max(1, c - 1))} style={{ background: '#7f1d1d', border: 'none', color: '#fff', width: 26, height: 26, borderRadius: 6, cursor: 'pointer', fontSize: 14 }}>-</button>
               <span style={{ color: '#fff', fontWeight: 700, minWidth: 18, textAlign: 'center', fontSize: 13 }}>{covers}</span>
-              <button onClick={() => setCovers(c => c + 1)} style={{ background: '#1E3A3A', border: 'none', color: '#fff', width: 26, height: 26, borderRadius: 6, cursor: 'pointer', fontSize: 14 }}>+</button>
+              <button onClick={() => setCovers(c => c + 1)} style={{ background: '#7f1d1d', border: 'none', color: '#fff', width: 26, height: 26, borderRadius: 6, cursor: 'pointer', fontSize: 14 }}>+</button>
             </div>
           </div>
           <div style={{ display: 'flex', gap: 6 }}>
@@ -471,7 +471,7 @@ export function NewOrderPage() {
       )}
 
       {isOffTable && (
-        <div style={{ background: '#092b33', borderRadius: 12, padding: '10px 16px', marginBottom: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ background: '#7f1d1d', borderRadius: 12, padding: '10px 16px', marginBottom: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div style={{ color: '#fff', fontWeight: 800, fontSize: 15 }}>{ORDER_TYPES[orderType]?.icon} {ORDER_TYPES[orderType]?.label} Order</div>
           <button onClick={() => navigate('/orders')} style={{ background: 'rgba(255,255,255,0.1)', border: 'none', color: 'rgba(255,255,255,0.7)', borderRadius: 7, padding: '5px 12px', fontSize: 12, cursor: 'pointer', fontWeight: 600 }}>← Back</button>
         </div>
@@ -487,7 +487,7 @@ export function NewOrderPage() {
         <div style={{ display: 'flex', gap: 6, marginBottom: 10, overflowX: 'auto', paddingBottom: 4, flexShrink: 0 }}>
           {categories.map(cat => (
             <button key={cat.id} onClick={() => setActiveCategory(cat.id)}
-              style={{ background: activeCategory === cat.id ? '#092b33' : '#fff', color: activeCategory === cat.id ? '#fff' : theme.textMid, border: '1px solid ' + theme.border, borderRadius: 8, padding: '7px 14px', fontSize: 12, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+              style={{ background: activeCategory === cat.id ? '#7f1d1d' : '#fff', color: activeCategory === cat.id ? '#fff' : theme.textMid, border: '1px solid ' + theme.border, borderRadius: 8, padding: '7px 14px', fontSize: 12, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>
               {cat.name}
             </button>
           ))}
@@ -502,7 +502,7 @@ export function NewOrderPage() {
             const itemVars     = variations[item.id] || []
             const itemAGs      = addonGroups[item.id] || []
             return (
-              <div key={item.id} style={{ background: '#fff', borderRadius: 10, padding: 12, border: qty > 0 ? '2px solid #0D9488' : '1px solid ' + theme.border, boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+              <div key={item.id} style={{ background: '#fff', borderRadius: 10, padding: 12, border: qty > 0 ? '2px solid #dc2626' : '1px solid ' + theme.border, boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
                 <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6, marginBottom: 6 }}>
                   {itemVars.length > 0 ? (
                     <div style={{ width: 9, height: 9, borderRadius: 2, border: '2px solid #9CA3AF', background: '#9CA3AF', flexShrink: 0, marginTop: 3 }} />
@@ -512,7 +512,7 @@ export function NewOrderPage() {
                   <div style={{ fontWeight: 700, fontSize: 12, color: theme.textDark, lineHeight: 1.3 }}>{item.name}</div>
                 </div>
                 {hasOptions ? (
-                  <div style={{ fontSize: 10, color: '#5B21B6', fontWeight: 700, marginBottom: 6 }}>
+                  <div style={{ fontSize: 10, color: '#991b1b', fontWeight: 700, marginBottom: 6 }}>
                     {itemVars.length > 0 ? 'Veg & Non-Veg options' : ''}
                     {itemVars.length > 0 && itemAGs.length > 0 ? ' · ' : ''}
                     {itemAGs.length > 0 ? itemAGs.length + ' add-on' + (itemAGs.length !== 1 ? 's' : '') : ''}
@@ -521,7 +521,7 @@ export function NewOrderPage() {
                   <div style={{ fontWeight: 800, fontSize: 13, color: theme.textDark, marginBottom: 8 }}>₹{item.price}</div>
                 )}
                 <button onClick={() => addToCart(item)}
-                  style={{ width: '100%', background: hasOptions ? '#5B21B6' : '#092b33', color: '#fff', border: 'none', borderRadius: 6, padding: '6px 0', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+                  style={{ width: '100%', background: hasOptions ? '#991b1b' : '#7f1d1d', color: '#fff', border: 'none', borderRadius: 6, padding: '6px 0', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
                   {hasOptions ? 'Choose →' : qty === 0 ? '+ Add' : '+ Add (' + qty + ')'}
                 </button>
               </div>
@@ -534,9 +534,9 @@ export function NewOrderPage() {
 
   const orderPanel = (
     <div style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', flex: 1 }}>
-      <div style={{ background: '#092b33', padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderRadius: '12px 12px 0 0' }}>
+      <div style={{ background: '#7f1d1d', padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderRadius: '12px 12px 0 0' }}>
         <div style={{ color: '#fff', fontWeight: 800, fontSize: 14 }}>Order Summary</div>
-        {runningTotal > 0 && <div style={{ color: '#D4A853', fontWeight: 800, fontSize: 13 }}>₹{runningTotal.toFixed(0)} total</div>}
+        {runningTotal > 0 && <div style={{ color: '#ef4444', fontWeight: 800, fontSize: 13 }}>₹{runningTotal.toFixed(0)} total</div>}
       </div>
 
       {existingKOTs.length > 0 && (
@@ -545,20 +545,20 @@ export function NewOrderPage() {
             <div key={kot.id} style={{ padding: '10px 14px', borderBottom: '1px solid ' + theme.bgWarm }}>
               <div style={{ fontSize: 10, fontWeight: 700, color: theme.textLight, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 }}>
                 KOT {idx + 1} · {new Date(kot.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
-                <span style={{ marginLeft: 8, background: kot.status === 'ready' ? '#DCFCE7' : '#FEF3C7', color: kot.status === 'ready' ? '#15803D' : '#B45309', padding: '1px 6px', borderRadius: 10, fontSize: 9 }}>{kot.status}</span>
+                <span style={{ marginLeft: 8, background: kot.status === 'ready' ? '#DCFCE7' : '#fee2e2', color: kot.status === 'ready' ? '#15803D' : '#b91c1c', padding: '1px 6px', borderRadius: 10, fontSize: 9 }}>{kot.status}</span>
               </div>
               {kot.kot_items.map((ki, i) => (
                 <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: theme.textMid, padding: '3px 0' }}>
                   <div style={{ flex: 1 }}>
                     <span>{ki.order_items?.menu_items?.name}</span>
-                    {ki.order_items?.variation_name && <span style={{ color: '#5B21B6', fontWeight: 600 }}> ({ki.order_items.variation_name})</span>}
-                    {ki.order_items?.portion_name && <span style={{ color: '#0D9488', fontWeight: 600 }}> [{ki.order_items.portion_name}]</span>}
+                    {ki.order_items?.variation_name && <span style={{ color: '#991b1b', fontWeight: 600 }}> ({ki.order_items.variation_name})</span>}
+                    {ki.order_items?.portion_name && <span style={{ color: '#dc2626', fontWeight: 600 }}> [{ki.order_items.portion_name}]</span>}
                   </div>
                   {editingKOTItem?.ki?.id === ki.id ? (
                     <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                       <input type="number" min="0" value={editQty} onChange={e => setEditQty(e.target.value)} autoFocus
-                        style={{ width: 40, border: '1.5px solid #0D9488', borderRadius: 5, padding: '2px 5px', fontSize: 12, fontWeight: 700, textAlign: 'center', outline: 'none' }} />
-                      <button onClick={saveKOTItemQty} style={{ background: '#0D9488', border: 'none', color: '#fff', borderRadius: 5, padding: '2px 7px', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>✓</button>
+                        style={{ width: 40, border: '1.5px solid #dc2626', borderRadius: 5, padding: '2px 5px', fontSize: 12, fontWeight: 700, textAlign: 'center', outline: 'none' }} />
+                      <button onClick={saveKOTItemQty} style={{ background: '#dc2626', border: 'none', color: '#fff', borderRadius: 5, padding: '2px 7px', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>✓</button>
                       <button onClick={() => setEditingKOTItem(null)} style={{ background: theme.bgWarm, border: '1px solid ' + theme.border, borderRadius: 5, padding: '2px 6px', fontSize: 11, cursor: 'pointer', color: theme.textMid }}>✕</button>
                     </div>
                   ) : (
@@ -567,7 +567,7 @@ export function NewOrderPage() {
                       {isManager && (
                         <>
                           <button onClick={() => { setEditingKOTItem({ ki }); setEditQty(ki.order_items?.quantity || 1) }}
-                            style={{ background: '#EFF6FF', border: 'none', borderRadius: 5, padding: '2px 6px', fontSize: 10, cursor: 'pointer', color: '#1D4ED8', fontWeight: 700 }}>✏️</button>
+                            style={{ background: '#fff5f5', border: 'none', borderRadius: 5, padding: '2px 6px', fontSize: 10, cursor: 'pointer', color: '#b91c1c', fontWeight: 700 }}>✏️</button>
                           <button onClick={() => deleteKOTItem(ki.id, ki.order_item_id)}
                             style={{ background: '#FEE2E2', border: 'none', borderRadius: 5, padding: '2px 6px', fontSize: 10, cursor: 'pointer', color: '#B91C1C', fontWeight: 700 }}>✕</button>
                           <button onClick={() => openTransfer(ki)}
@@ -581,12 +581,12 @@ export function NewOrderPage() {
               {kot.status !== 'ready' ? (
                 <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
                   <button onClick={() => markKOTReady(kot.id)} style={{ flex: 1, background: '#DCFCE7', color: '#15803D', border: '1px solid #86EFAC', borderRadius: 7, padding: '7px 0', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>✓ Mark as Ready</button>
-                  <button onClick={() => printKOT(kot, existingKOTs[idx].kot_items.map(ki => ({ item: { name: ki.order_items?.menu_items?.name || '' }, quantity: ki.order_items?.quantity || 1, variationName: ki.order_items?.variation_name || null, portionName: ki.order_items?.portion_name || null, addons: ki.order_items?.addons || [], notes: ki.order_items?.notes || '' })))} style={{ background: '#EFF6FF', color: '#1D4ED8', border: '1px solid #BFDBFE', borderRadius: 7, padding: '7px 10px', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>🖨️</button>
+                  <button onClick={() => printKOT(kot, existingKOTs[idx].kot_items.map(ki => ({ item: { name: ki.order_items?.menu_items?.name || '' }, quantity: ki.order_items?.quantity || 1, variationName: ki.order_items?.variation_name || null, portionName: ki.order_items?.portion_name || null, addons: ki.order_items?.addons || [], notes: ki.order_items?.notes || '' })))} style={{ background: '#fff5f5', color: '#b91c1c', border: '1px solid #fecaca', borderRadius: 7, padding: '7px 10px', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>🖨️</button>
                 </div>
               ) : (
                 <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
                   <div style={{ flex: 1, background: '#DCFCE7', color: '#15803D', border: '1px solid #86EFAC', borderRadius: 7, padding: '7px 0', fontSize: 11, fontWeight: 700, textAlign: 'center' }}>✓ Ready</div>
-                  <button onClick={() => printKOT(kot, existingKOTs[idx].kot_items.map(ki => ({ item: { name: ki.order_items?.menu_items?.name || '' }, quantity: ki.order_items?.quantity || 1, variationName: ki.order_items?.variation_name || null, portionName: ki.order_items?.portion_name || null, addons: ki.order_items?.addons || [], notes: ki.order_items?.notes || '' })))} style={{ background: '#EFF6FF', color: '#1D4ED8', border: '1px solid #BFDBFE', borderRadius: 7, padding: '7px 10px', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>🖨️</button>
+                  <button onClick={() => printKOT(kot, existingKOTs[idx].kot_items.map(ki => ({ item: { name: ki.order_items?.menu_items?.name || '' }, quantity: ki.order_items?.quantity || 1, variationName: ki.order_items?.variation_name || null, portionName: ki.order_items?.portion_name || null, addons: ki.order_items?.addons || [], notes: ki.order_items?.notes || '' })))} style={{ background: '#fff5f5', color: '#b91c1c', border: '1px solid #fecaca', borderRadius: 7, padding: '7px 10px', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>🖨️</button>
                 </div>
               )}
             </div>
@@ -607,21 +607,21 @@ export function NewOrderPage() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <div style={{ flex: 1 }}>
                     <div style={{ fontWeight: 700, fontSize: 13, color: theme.textDark }}>{c.item.name}</div>
-                    {c.variationName && <div style={{ fontSize: 11, color: '#5B21B6', fontWeight: 600 }}>{c.variationName}</div>}
-                    {c.portionName && <div style={{ fontSize: 11, color: '#0D9488', fontWeight: 600 }}>{c.portionName}</div>}
+                    {c.variationName && <div style={{ fontSize: 11, color: '#991b1b', fontWeight: 600 }}>{c.variationName}</div>}
+                    {c.portionName && <div style={{ fontSize: 11, color: '#dc2626', fontWeight: 600 }}>{c.portionName}</div>}
                     {c.addons && c.addons.length > 0 && <div style={{ fontSize: 11, color: '#C2410C' }}>+ {c.addons.map(a => a.name).join(', ')}</div>}
                     <div style={{ fontSize: 11, color: theme.textLight }}>₹{(c.unitPrice + c.addonsTotal).toFixed(0)} × {c.quantity}</div>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                     <button onClick={() => removeFromCart(c.key)} style={{ background: theme.bgWarm, border: '1px solid ' + theme.border, borderRadius: 5, width: 22, height: 22, fontSize: 14, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, color: theme.textMid }}>-</button>
                     <span style={{ fontWeight: 700, fontSize: 13, color: theme.textDark, minWidth: 20, textAlign: 'center' }}>{c.quantity}</span>
-                    <button onClick={() => addToCart(c.item)} style={{ background: '#0D9488', border: 'none', borderRadius: 5, width: 22, height: 22, fontSize: 14, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, color: '#fff' }}>+</button>
+                    <button onClick={() => addToCart(c.item)} style={{ background: '#dc2626', border: 'none', borderRadius: 5, width: 22, height: 22, fontSize: 14, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, color: '#fff' }}>+</button>
                   </div>
                   <div style={{ fontWeight: 700, fontSize: 13, color: theme.textDark }}>₹{((c.unitPrice + c.addonsTotal) * c.quantity).toFixed(0)}</div>
                 </div>
                 <input value={c.notes} onChange={e => setCart(prev => prev.map(ci => ci.key === c.key ? { ...ci, notes: e.target.value } : ci))}
                   placeholder="Add note (e.g. no onion...)"
-                  style={{ width: '100%', marginTop: 6, background: '#F8F6F2', border: '1px solid ' + theme.border, borderRadius: 6, padding: '5px 10px', fontSize: 11, color: theme.textDark, outline: 'none', boxSizing: 'border-box' }} />
+                  style={{ width: '100%', marginTop: 6, background: '#fff5f5', border: '1px solid ' + theme.border, borderRadius: 6, padding: '5px 10px', fontSize: 11, color: theme.textDark, outline: 'none', boxSizing: 'border-box' }} />
               </div>
             ))}
           </>
@@ -637,17 +637,17 @@ export function NewOrderPage() {
         )}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
           <button onClick={() => fireKOT(true)} disabled={cart.length === 0 || submitting}
-            style={{ background: cart.length === 0 ? theme.bgWarm : '#FEF3C7', color: cart.length === 0 ? theme.textMuted : '#B45309', border: '1px solid ' + (cart.length === 0 ? theme.border : '#FCD34D'), borderRadius: 8, padding: '10px 0', fontSize: 12, fontWeight: 700, cursor: cart.length === 0 ? 'not-allowed' : 'pointer' }}>
+            style={{ background: cart.length === 0 ? theme.bgWarm : '#fee2e2', color: cart.length === 0 ? theme.textMuted : '#b91c1c', border: '1px solid ' + (cart.length === 0 ? theme.border : '#fca5a5'), borderRadius: 8, padding: '10px 0', fontSize: 12, fontWeight: 700, cursor: cart.length === 0 ? 'not-allowed' : 'pointer' }}>
             ⏸ Hold
           </button>
           <button onClick={() => fireKOT(false)} disabled={cart.length === 0 || submitting}
-            style={{ background: cart.length === 0 ? theme.bgWarm : '#0D9488', color: cart.length === 0 ? theme.textMuted : '#fff', border: 'none', borderRadius: 8, padding: '10px 0', fontSize: 12, fontWeight: 700, cursor: cart.length === 0 ? 'not-allowed' : 'pointer' }}>
+            style={{ background: cart.length === 0 ? theme.bgWarm : '#dc2626', color: cart.length === 0 ? theme.textMuted : '#fff', border: 'none', borderRadius: 8, padding: '10px 0', fontSize: 12, fontWeight: 700, cursor: cart.length === 0 ? 'not-allowed' : 'pointer' }}>
             {submitting ? 'Sending...' : '🔥 KOT'}
           </button>
         </div>
         {existingOrder && (
           <button onClick={() => navigate('/billing/order/' + existingOrder.id)}
-            style={{ background: '#D4A853', color: '#fff', border: 'none', borderRadius: 8, padding: '10px 0', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+            style={{ background: '#ef4444', color: '#fff', border: 'none', borderRadius: 8, padding: '10px 0', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
             ₹ Generate Bill
           </button>
         )}
@@ -665,7 +665,7 @@ export function NewOrderPage() {
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
               <div style={{ width: 10, height: 10, borderRadius: 2, background: pickerItem.food_type === 'veg' ? '#15803D' : '#B91C1C', flexShrink: 0 }} />
               <div style={{ fontWeight: 800, fontSize: 18, color: theme.textDark, flex: 1 }}>{pickerItem.name}</div>
-              <div style={{ fontWeight: 900, fontSize: 16, color: '#092b33' }}>₹{pickerItem.price}</div>
+              <div style={{ fontWeight: 900, fontSize: 16, color: '#7f1d1d' }}>₹{pickerItem.price}</div>
             </div>
             {(variations[pickerItem.id] || []).length > 0 && (
               <div style={{ marginBottom: 20 }}>
@@ -678,7 +678,7 @@ export function NewOrderPage() {
                     const selected = pickerVariation?.id === v.id
                     return (
                       <button key={v.id} onClick={() => setPickerVariation(v)}
-                        style={{ background: selected ? '#5B21B6' : '#F5F3FF', color: selected ? '#fff' : '#3B0764', border: '2px solid ' + (selected ? '#5B21B6' : '#C4B5FD'), borderRadius: 12, padding: '14px 10px', cursor: 'pointer', textAlign: 'center' }}>
+                        style={{ background: selected ? '#991b1b' : '#fff5f5', color: selected ? '#fff' : '#7f1d1d', border: '2px solid ' + (selected ? '#991b1b' : '#fca5a5'), borderRadius: 12, padding: '14px 10px', cursor: 'pointer', textAlign: 'center' }}>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginBottom: 4 }}>
                           <div style={{ width: 9, height: 9, borderRadius: 2, border: '2px solid ' + dotColor, background: dotColor, flexShrink: 0 }} />
                           <span style={{ fontWeight: 800, fontSize: 14 }}>{v.name}</span>
@@ -703,7 +703,7 @@ export function NewOrderPage() {
                         <div style={{ fontWeight: 700, fontSize: 14, color: theme.textDark }}>{p.name}</div>
                         {p.value > 0 && p.unit && <div style={{ fontSize: 12, color: theme.textLight }}>{p.value}{p.unit}</div>}
                       </div>
-                      <div style={{ fontWeight: 900, fontSize: 16, color: '#092b33' }}>₹{p.price}</div>
+                      <div style={{ fontWeight: 900, fontSize: 16, color: '#7f1d1d' }}>₹{p.price}</div>
                     </button>
                   ))}
                 </div>
@@ -718,7 +718,7 @@ export function NewOrderPage() {
                   {(addonGroups[pickerItem.id] || []).map(addon => {
                     const qty = pickerAddons[addon.id] || 0
                     return (
-                      <div key={addon.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: qty > 0 ? '#FFF7ED' : '#F9FAFB', borderRadius: 10, border: '1px solid ' + (qty > 0 ? '#FED7AA' : theme.border) }}>
+                      <div key={addon.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: qty > 0 ? '#fff5f5' : '#F9FAFB', borderRadius: 10, border: '1px solid ' + (qty > 0 ? '#fecaca' : theme.border) }}>
                         <div>
                           <div style={{ fontWeight: 600, fontSize: 14, color: theme.textDark }}>{addon.name}</div>
                           {addon.price > 0 && <div style={{ fontSize: 12, color: '#C2410C', fontWeight: 600 }}>+₹{addon.price}</div>}
@@ -731,7 +731,7 @@ export function NewOrderPage() {
                             </>
                           )}
                           <button onClick={() => adjustAddon(addon, 1)}
-                            style={{ background: '#092b33', border: 'none', borderRadius: 6, width: 28, height: 28, fontSize: 16, cursor: 'pointer', fontWeight: 700, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>+</button>
+                            style={{ background: '#7f1d1d', border: 'none', borderRadius: 6, width: 28, height: 28, fontSize: 16, cursor: 'pointer', fontWeight: 700, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>+</button>
                         </div>
                       </div>
                     )
@@ -743,7 +743,7 @@ export function NewOrderPage() {
               <div style={{ display: 'flex', gap: 10 }}>
                 <button onClick={closePicker} style={{ flex: 1, background: theme.bgWarm, border: '1px solid ' + theme.border, borderRadius: 10, padding: '12px', fontSize: 13, fontWeight: 700, cursor: 'pointer', color: theme.textMid }}>Cancel</button>
                 <button onClick={() => confirmPicker(null)} disabled={!canConfirmPicker()}
-                  style={{ flex: 2, background: canConfirmPicker() ? '#092b33' : theme.bgWarm, color: canConfirmPicker() ? '#fff' : theme.textMuted, border: 'none', borderRadius: 10, padding: '12px', fontSize: 13, fontWeight: 700, cursor: canConfirmPicker() ? 'pointer' : 'not-allowed' }}>
+                  style={{ flex: 2, background: canConfirmPicker() ? '#7f1d1d' : theme.bgWarm, color: canConfirmPicker() ? '#fff' : theme.textMuted, border: 'none', borderRadius: 10, padding: '12px', fontSize: 13, fontWeight: 700, cursor: canConfirmPicker() ? 'pointer' : 'not-allowed' }}>
                   Add to Order →
                 </button>
               </div>
@@ -756,12 +756,12 @@ export function NewOrderPage() {
       {transferKOTItem && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2100, padding: 20 }}>
           <div style={{ background: '#fff', borderRadius: 18, padding: 28, width: '100%', maxWidth: 380, boxShadow: '0 24px 64px rgba(0,0,0,0.25)' }}>
-            <h3 style={{ fontSize: 17, fontWeight: 800, color: '#092b33', margin: '0 0 6px' }}>Transfer Item</h3>
+            <h3 style={{ fontSize: 17, fontWeight: 800, color: '#7f1d1d', margin: '0 0 6px' }}>Transfer Item</h3>
             <div style={{ fontSize: 13, color: '#6B7280', marginBottom: 20 }}>
               Moving <strong>{transferKOTItem.order_items?.menu_items?.name}</strong> ×{transferKOTItem.order_items?.quantity} to another table
             </div>
             {activeTables.length === 0 ? (
-              <div style={{ background: '#FEF3C7', borderRadius: 10, padding: '12px 14px', fontSize: 13, color: '#B45309', marginBottom: 20 }}>
+              <div style={{ background: '#fee2e2', borderRadius: 10, padding: '12px 14px', fontSize: 13, color: '#b91c1c', marginBottom: 20 }}>
                 No available (free) tables found
               </div>
             ) : (
@@ -773,7 +773,7 @@ export function NewOrderPage() {
                     const isSelected = transferTargetId === t.id
                     return (
                       <button key={t.id} onClick={() => setTransferTargetId(t.id)}
-                        style={{ width: 44, height: 44, background: isSelected ? '#092b33' : isOccupied ? '#FEF3C7' : '#F3F4F6', color: isSelected ? '#fff' : isOccupied ? '#92400E' : '#374151', border: '2px solid ' + (isSelected ? '#092b33' : isOccupied ? '#FCD34D' : '#E5E7EB'), borderRadius: 8, fontSize: 14, fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
+                        style={{ width: 44, height: 44, background: isSelected ? '#7f1d1d' : isOccupied ? '#fee2e2' : '#F3F4F6', color: isSelected ? '#fff' : isOccupied ? '#92400E' : '#374151', border: '2px solid ' + (isSelected ? '#7f1d1d' : isOccupied ? '#fca5a5' : '#E5E7EB'), borderRadius: 8, fontSize: 14, fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
                         {t.number}
                       </button>
                     )
@@ -784,7 +784,7 @@ export function NewOrderPage() {
             <div style={{ display: 'flex', gap: 10 }}>
               <button onClick={() => setTransferKOTItem(null)} style={{ flex: 1, background: '#F3F4F6', border: 'none', borderRadius: 10, padding: '12px', fontSize: 13, fontWeight: 700, cursor: 'pointer', color: '#374151' }}>Cancel</button>
               <button onClick={doTransfer} disabled={transferring || !transferTargetId || activeTables.length === 0}
-                style={{ flex: 2, background: transferring || !transferTargetId ? '#E5E7EB' : '#092b33', color: transferring || !transferTargetId ? '#9CA3AF' : '#fff', border: 'none', borderRadius: 10, padding: '12px', fontSize: 13, fontWeight: 700, cursor: transferring || !transferTargetId ? 'not-allowed' : 'pointer' }}>
+                style={{ flex: 2, background: transferring || !transferTargetId ? '#E5E7EB' : '#7f1d1d', color: transferring || !transferTargetId ? '#9CA3AF' : '#fff', border: 'none', borderRadius: 10, padding: '12px', fontSize: 13, fontWeight: 700, cursor: transferring || !transferTargetId ? 'not-allowed' : 'pointer' }}>
                 {transferring ? 'Transferring...' : '🔀 Transfer'}
               </button>
             </div>
@@ -802,10 +802,10 @@ export function NewOrderPage() {
 
       {/* MOBILE LAYOUT */}
       <div className="orders-mobile" style={{ display: 'none', flexDirection: 'column', height: 'calc(100vh - 120px)' }}>
-        <div style={{ display: 'flex', background: '#092b33', borderRadius: 10, padding: 4, marginBottom: 12, flexShrink: 0 }}>
-          <button onClick={() => setMobileTab('menu')} style={{ flex: 1, padding: '8px 0', borderRadius: 7, border: 'none', fontWeight: 700, fontSize: 13, cursor: 'pointer', background: mobileTab === 'menu' ? '#fff' : 'transparent', color: mobileTab === 'menu' ? '#092b33' : 'rgba(255,255,255,0.6)' }}>🍽 Menu</button>
-          <button onClick={() => setMobileTab('order')} style={{ flex: 1, padding: '8px 0', borderRadius: 7, border: 'none', fontWeight: 700, fontSize: 13, cursor: 'pointer', background: mobileTab === 'order' ? '#fff' : 'transparent', color: mobileTab === 'order' ? '#092b33' : 'rgba(255,255,255,0.6)' }}>
-            🧾 Order {cartCount > 0 && <span style={{ background: '#0D9488', color: '#fff', borderRadius: 10, fontSize: 10, padding: '1px 6px', marginLeft: 4 }}>{cartCount}</span>}
+        <div style={{ display: 'flex', background: '#7f1d1d', borderRadius: 10, padding: 4, marginBottom: 12, flexShrink: 0 }}>
+          <button onClick={() => setMobileTab('menu')} style={{ flex: 1, padding: '8px 0', borderRadius: 7, border: 'none', fontWeight: 700, fontSize: 13, cursor: 'pointer', background: mobileTab === 'menu' ? '#fff' : 'transparent', color: mobileTab === 'menu' ? '#7f1d1d' : 'rgba(255,255,255,0.6)' }}>🍽 Menu</button>
+          <button onClick={() => setMobileTab('order')} style={{ flex: 1, padding: '8px 0', borderRadius: 7, border: 'none', fontWeight: 700, fontSize: 13, cursor: 'pointer', background: mobileTab === 'order' ? '#fff' : 'transparent', color: mobileTab === 'order' ? '#7f1d1d' : 'rgba(255,255,255,0.6)' }}>
+            🧾 Order {cartCount > 0 && <span style={{ background: '#dc2626', color: '#fff', borderRadius: 10, fontSize: 10, padding: '1px 6px', marginLeft: 4 }}>{cartCount}</span>}
           </button>
         </div>
         <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
@@ -917,7 +917,7 @@ export default function OrdersPage() {
         </div>
         <div ref={dropdownRef} style={{ position: 'relative' }}>
           <button onClick={() => setShowTypeMenu(d => !d)}
-            style={{ background: '#092b33', color: '#fff', border: 'none', borderRadius: 9, padding: '10px 20px', fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}>
+            style={{ background: '#7f1d1d', color: '#fff', border: 'none', borderRadius: 9, padding: '10px 20px', fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}>
             + New Order <span style={{ fontSize: 10, opacity: 0.6 }}>▼</span>
           </button>
           {showTypeMenu && (

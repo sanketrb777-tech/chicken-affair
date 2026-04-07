@@ -6,11 +6,11 @@ import { theme } from '../../lib/theme'
 const FOOD_TYPE = {
   veg:     { label: 'Veg',     color: '#15803D', bg: '#DCFCE7', border: '#86EFAC' },
   non_veg: { label: 'Non-Veg', color: '#B91C1C', bg: '#FEE2E2', border: '#FCA5A5' },
-  egg:     { label: 'Egg',     color: '#B45309', bg: '#FEF3C7', border: '#FCD34D' },
+  egg:     { label: 'Egg',     color: '#b91c1c', bg: '#fee2e2', border: '#fca5a5' },
 }
 const PRIORITY_CONFIG = {
   1: { label: 'P1', color: '#B91C1C', bg: '#FEE2E2', border: '#FCA5A5', desc: 'Rush items, fire first' },
-  2: { label: 'P2', color: '#B45309', bg: '#FEF3C7', border: '#FCD34D', desc: 'Standard priority' },
+  2: { label: 'P2', color: '#b91c1c', bg: '#fee2e2', border: '#fca5a5', desc: 'Standard priority' },
   3: { label: 'P3', color: '#15803D', bg: '#DCFCE7', border: '#86EFAC', desc: 'Can wait, fire last' },
 }
 const UNITS = [
@@ -293,7 +293,7 @@ export default function MenuPage() {
         <div style={{ padding: '14px 16px 10px', borderBottom: '1px solid ' + theme.border }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
             <div style={{ fontWeight: 800, fontSize: 13, color: theme.textDark }}>Categories</div>
-            <button onClick={openAddCat} style={{ background: '#092b33', color: '#fff', border: 'none', borderRadius: 6, width: 26, height: 26, fontSize: 16, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700 }}>+</button>
+            <button onClick={openAddCat} style={{ background: '#7f1d1d', color: '#fff', border: 'none', borderRadius: 6, width: 26, height: 26, fontSize: 16, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700 }}>+</button>
           </div>
           <div style={{ fontSize: 10, color: theme.textMuted }}>⠿ Drag to reorder priority</div>
         </div>
@@ -303,12 +303,12 @@ export default function MenuPage() {
             const isActive = activeCategory === cat.id; const isDragOver = dragOver === idx; const isDragging = dragging && dragIndex.current === idx
             return (
               <div key={cat.id} draggable onDragStart={e => handleDragStart(e, idx)} onDragEnter={() => handleDragEnter(idx)} onDragOver={e => e.preventDefault()} onDragEnd={handleDragEnd} onClick={() => setActiveCategory(cat.id)}
-                style={{ padding: '11px 12px', cursor: 'grab', background: isActive ? '#092b33' : isDragOver ? '#E6F0FF' : 'transparent', borderBottom: '1px solid ' + (isDragOver ? '#3B82F6' : theme.bgWarm), borderTop: isDragOver ? '2px solid #3B82F6' : '2px solid transparent', opacity: isDragging ? 0.4 : 1, userSelect: 'none' }}>
+                style={{ padding: '11px 12px', cursor: 'grab', background: isActive ? '#7f1d1d' : isDragOver ? '#fff5f5' : 'transparent', borderBottom: '1px solid ' + (isDragOver ? '#dc2626' : theme.bgWarm), borderTop: isDragOver ? '2px solid #dc2626' : '2px solid transparent', opacity: isDragging ? 0.4 : 1, userSelect: 'none' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <span style={{ color: isActive ? 'rgba(255,255,255,0.4)' : theme.textMuted, fontSize: 14, flexShrink: 0 }}>⠿</span>
                   <span style={{ fontSize: 9, fontWeight: 800, background: isActive ? 'rgba(255,255,255,0.15)' : '#F1F5F9', color: isActive ? '#fff' : theme.textMuted, padding: '1px 5px', borderRadius: 4, flexShrink: 0 }}>#{idx + 1}</span>
                   <div style={{ fontWeight: 700, fontSize: 13, color: isActive ? '#fff' : theme.textDark, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{cat.name}</div>
-                  {cat.available_days?.length > 0 && <span style={{ fontSize: 9, background: isActive ? 'rgba(255,255,255,0.2)' : '#EFF6FF', color: isActive ? '#fff' : '#1D4ED8', padding: '1px 4px', borderRadius: 4, fontWeight: 700, flexShrink: 0 }}>📅</span>}
+                  {cat.available_days?.length > 0 && <span style={{ fontSize: 9, background: isActive ? 'rgba(255,255,255,0.2)' : '#fff5f5', color: isActive ? '#fff' : '#b91c1c', padding: '1px 4px', borderRadius: 4, fontWeight: 700, flexShrink: 0 }}>📅</span>}
                   <span style={{ fontSize: 10, background: isActive ? 'rgba(255,255,255,0.15)' : theme.bgWarm, color: isActive ? '#fff' : theme.textLight, padding: '2px 6px', borderRadius: 10, fontWeight: 700 }}>{items.filter(i => i.category_id === cat.id).length}</span>
                   {!isActive && <button onClick={e => { e.stopPropagation(); openEditCat(cat) }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: theme.textMuted, fontSize: 11, padding: '1px 3px' }}>✏️</button>}
                 </div>
@@ -329,7 +329,7 @@ export default function MenuPage() {
               {activeCat && (<><span style={{ margin: '0 8px', color: theme.border }}>·</span><span onClick={() => openEditCat(activeCat)} style={{ color: theme.primary, cursor: 'pointer', fontWeight: 600 }}>Edit category</span><span style={{ margin: '0 8px', color: theme.border }}>·</span><span onClick={() => deleteCat(activeCat.id)} style={{ color: theme.red, cursor: 'pointer', fontWeight: 600 }}>Delete</span></>)}
             </p>
           </div>
-          <button onClick={openAddItem} disabled={!activeCategory} style={{ background: '#092b33', color: '#fff', border: 'none', borderRadius: 9, padding: '10px 20px', fontSize: 13, fontWeight: 700, cursor: activeCategory ? 'pointer' : 'not-allowed', opacity: activeCategory ? 1 : 0.5 }}>+ Add Item</button>
+          <button onClick={openAddItem} disabled={!activeCategory} style={{ background: '#7f1d1d', color: '#fff', border: 'none', borderRadius: 9, padding: '10px 20px', fontSize: 13, fontWeight: 700, cursor: activeCategory ? 'pointer' : 'not-allowed', opacity: activeCategory ? 1 : 0.5 }}>+ Add Item</button>
         </div>
 
         <div style={{ flex: 1, overflowY: 'auto' }}>
@@ -354,9 +354,9 @@ export default function MenuPage() {
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                         <div style={{ fontWeight: 700, fontSize: 14, color: isOn ? theme.textDark : theme.textLight, textDecoration: isOn ? 'none' : 'line-through' }}>{item.name}</div>
                         {!isOn && <span style={{ fontSize: 10, fontWeight: 800, background: '#FEE2E2', color: '#B91C1C', padding: '2px 7px', borderRadius: 10 }}>OUT OF STOCK</span>}
-                        {(item.available_from || item.available_until) && <span style={{ fontSize: 10, fontWeight: 700, background: '#EFF6FF', color: '#1D4ED8', border: '1px solid #BFDBFE', padding: '2px 7px', borderRadius: 10 }}>🕐 {item.available_from?.slice(0,5)||'00:00'} – {item.available_until?.slice(0,5)||'23:59'}</span>}
-                        {itemVariations.length > 0 && <span style={{ fontSize: 10, fontWeight: 700, background: '#F5F3FF', color: '#5B21B6', border: '1px solid #C4B5FD', padding: '2px 7px', borderRadius: 10 }}>⚙ {itemVariations.length} variation{itemVariations.length!==1?'s':''}</span>}
-                        {itemAddonList.length > 0 && <span style={{ fontSize: 10, fontWeight: 700, background: '#FFF7ED', color: '#C2410C', border: '1px solid #FED7AA', padding: '2px 7px', borderRadius: 10 }}>+ {itemAddonList.length} add-on{itemAddonList.length!==1?'s':''}</span>}
+                        {(item.available_from || item.available_until) && <span style={{ fontSize: 10, fontWeight: 700, background: '#fff5f5', color: '#b91c1c', border: '1px solid #fecaca', padding: '2px 7px', borderRadius: 10 }}>🕐 {item.available_from?.slice(0,5)||'00:00'} – {item.available_until?.slice(0,5)||'23:59'}</span>}
+                        {itemVariations.length > 0 && <span style={{ fontSize: 10, fontWeight: 700, background: '#fff5f5', color: '#991b1b', border: '1px solid #fca5a5', padding: '2px 7px', borderRadius: 10 }}>⚙ {itemVariations.length} variation{itemVariations.length!==1?'s':''}</span>}
+                        {itemAddonList.length > 0 && <span style={{ fontSize: 10, fontWeight: 700, background: '#fff5f5', color: '#C2410C', border: '1px solid #fecaca', padding: '2px 7px', borderRadius: 10 }}>+ {itemAddonList.length} add-on{itemAddonList.length!==1?'s':''}</span>}
                       </div>
                       {item.description && <div style={{ fontSize: 12, color: theme.textLight, marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.description}</div>}
                       {itemPortions.length > 0 && (
@@ -409,21 +409,21 @@ export default function MenuPage() {
                       const current = catForm.available_days || []
                       const next = selected ? current.filter(d => d !== day) : [...current, day]
                       setCatForm(f => ({ ...f, available_days: next.length === 0 ? null : next }))
-                    }} style={{ flex: 1, background: selected ? '#092b33' : theme.bgWarm, color: selected ? '#fff' : theme.textMid, border: '1.5px solid ' + (selected ? '#092b33' : theme.border), borderRadius: 8, padding: '8px 0', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
+                    }} style={{ flex: 1, background: selected ? '#7f1d1d' : theme.bgWarm, color: selected ? '#fff' : theme.textMid, border: '1.5px solid ' + (selected ? '#7f1d1d' : theme.border), borderRadius: 8, padding: '8px 0', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
                       {day}
                     </button>
                   )
                 })}
               </div>
               {catForm.available_days?.length > 0 && (
-                <div style={{ marginTop: 8, background: '#EFF6FF', border: '1px solid #BFDBFE', borderRadius: 8, padding: '7px 12px', fontSize: 11, color: '#1D4ED8', fontWeight: 600 }}>
+                <div style={{ marginTop: 8, background: '#fff5f5', border: '1px solid #fecaca', borderRadius: 8, padding: '7px 12px', fontSize: 11, color: '#b91c1c', fontWeight: 600 }}>
                   📅 Visible only on: {catForm.available_days.join(', ')}
                 </div>
               )}
             </div>
             <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
               <button onClick={() => setShowCatForm(false)} style={{ flex: 1, background: theme.bgWarm, border: '1px solid ' + theme.border, borderRadius: 9, padding: '12px', fontSize: 13, cursor: 'pointer', fontWeight: 600, color: theme.textMid }}>Cancel</button>
-              <button onClick={saveCat} disabled={saving} style={{ flex: 2, background: '#092b33', color: '#fff', border: 'none', borderRadius: 9, padding: '12px', fontSize: 13, fontWeight: 700, cursor: saving ? 'not-allowed' : 'pointer' }}>{saving ? 'Saving...' : editCat ? 'Save Changes' : 'Add Category'}</button>
+              <button onClick={saveCat} disabled={saving} style={{ flex: 2, background: '#7f1d1d', color: '#fff', border: 'none', borderRadius: 9, padding: '12px', fontSize: 13, fontWeight: 700, cursor: saving ? 'not-allowed' : 'pointer' }}>{saving ? 'Saving...' : editCat ? 'Save Changes' : 'Add Category'}</button>
             </div>
           </div>
         </div>
@@ -488,7 +488,7 @@ export default function MenuPage() {
                 <div style={{ display: 'flex', gap: 8 }}>
                   {[0,5,12,18].map(rate => (
                     <button key={rate} onClick={() => setItemForm(f => ({ ...f, gst_rate: rate }))}
-                      style={{ flex: 1, background: itemForm.gst_rate === rate ? '#092b33' : theme.bgWarm, color: itemForm.gst_rate === rate ? '#fff' : theme.textMid, border: '1.5px solid ' + (itemForm.gst_rate === rate ? '#092b33' : theme.border), borderRadius: 8, padding: '8px 0', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+                      style={{ flex: 1, background: itemForm.gst_rate === rate ? '#7f1d1d' : theme.bgWarm, color: itemForm.gst_rate === rate ? '#fff' : theme.textMid, border: '1.5px solid ' + (itemForm.gst_rate === rate ? '#7f1d1d' : theme.border), borderRadius: 8, padding: '8px 0', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
                       {rate}%
                     </button>
                   ))}
@@ -503,13 +503,13 @@ export default function MenuPage() {
                   <div style={{ flex: 1 }}>
                     <label style={{ fontSize: 11, fontWeight: 700, color: theme.textLight, display: 'block', marginBottom: 5, textTransform: 'uppercase', letterSpacing: 0.5 }}>From</label>
                     <input type="time" value={itemForm.available_from} onChange={e => setItemForm(f => ({ ...f, available_from: e.target.value }))}
-                      style={{ width: '100%', border: '1.5px solid ' + theme.border, borderRadius: 9, padding: '9px 12px', fontSize: 13, outline: 'none', boxSizing: 'border-box', color: theme.textDark, background: itemForm.available_from ? '#EFF6FF' : '#fff' }} />
+                      style={{ width: '100%', border: '1.5px solid ' + theme.border, borderRadius: 9, padding: '9px 12px', fontSize: 13, outline: 'none', boxSizing: 'border-box', color: theme.textDark, background: itemForm.available_from ? '#fff5f5' : '#fff' }} />
                   </div>
                   <div style={{ paddingTop: 18, color: theme.textLight, fontWeight: 700 }}>–</div>
                   <div style={{ flex: 1 }}>
                     <label style={{ fontSize: 11, fontWeight: 700, color: theme.textLight, display: 'block', marginBottom: 5, textTransform: 'uppercase', letterSpacing: 0.5 }}>Until</label>
                     <input type="time" value={itemForm.available_until} onChange={e => setItemForm(f => ({ ...f, available_until: e.target.value }))}
-                      style={{ width: '100%', border: '1.5px solid ' + theme.border, borderRadius: 9, padding: '9px 12px', fontSize: 13, outline: 'none', boxSizing: 'border-box', color: theme.textDark, background: itemForm.available_until ? '#EFF6FF' : '#fff' }} />
+                      style={{ width: '100%', border: '1.5px solid ' + theme.border, borderRadius: 9, padding: '9px 12px', fontSize: 13, outline: 'none', boxSizing: 'border-box', color: theme.textDark, background: itemForm.available_until ? '#fff5f5' : '#fff' }} />
                   </div>
                   {(itemForm.available_from || itemForm.available_until) && (
                     <button onClick={() => setItemForm(f => ({ ...f, available_from: '', available_until: '' }))}
@@ -525,17 +525,17 @@ export default function MenuPage() {
                     <div style={{ fontWeight: 800, fontSize: 13, color: theme.textDark }}>Variations</div>
                     <div style={{ fontSize: 11, color: theme.textLight, marginTop: 2 }}>e.g. Veg ₹500, Chicken ₹550 — customer must pick one</div>
                   </div>
-                  <button onClick={openAddVariation} style={{ background: '#5B21B6', color: '#fff', border: 'none', borderRadius: 7, padding: '7px 14px', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>+ Add Variation</button>
+                  <button onClick={openAddVariation} style={{ background: '#991b1b', color: '#fff', border: 'none', borderRadius: 7, padding: '7px 14px', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>+ Add Variation</button>
                 </div>
                 {variationList.length === 0 ? (
                   <div style={{ background: theme.bgWarm, borderRadius: 10, padding: '10px 14px', fontSize: 12, color: theme.textLight, textAlign: 'center' }}>No variations — item ordered at base price</div>
                 ) : (
                   <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                     {variationList.map((v, idx) => (
-                      <div key={idx} style={{ background: '#F5F3FF', border: '1px solid #C4B5FD', borderRadius: 10, padding: '8px 12px', display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <div key={idx} style={{ background: '#fff5f5', border: '1px solid #fca5a5', borderRadius: 10, padding: '8px 12px', display: 'flex', alignItems: 'center', gap: 8 }}>
                         <div>
-                          <div style={{ fontWeight: 700, fontSize: 13, color: '#3B0764' }}>{v.name}</div>
-                          <div style={{ fontSize: 11, color: '#5B21B6' }}>₹{v.price}</div>
+                          <div style={{ fontWeight: 700, fontSize: 13, color: '#7f1d1d' }}>{v.name}</div>
+                          <div style={{ fontSize: 11, color: '#991b1b' }}>₹{v.price}</div>
                         </div>
                         <button onClick={() => openEditVariation(v, idx)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: theme.textMid }}>✏️</button>
                         <button onClick={() => deleteVariation(v, idx)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: theme.red }}>🗑</button>
@@ -559,7 +559,7 @@ export default function MenuPage() {
                 ) : (
                   <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                     {addonList.map((a, idx) => (
-                      <div key={idx} style={{ background: '#FFF7ED', border: '1px solid #FED7AA', borderRadius: 10, padding: '8px 12px', display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <div key={idx} style={{ background: '#fff5f5', border: '1px solid #fecaca', borderRadius: 10, padding: '8px 12px', display: 'flex', alignItems: 'center', gap: 8 }}>
                         <div>
                           <div style={{ fontWeight: 700, fontSize: 13, color: '#7C2D12' }}>{a.name}</div>
                           <div style={{ fontSize: 11, color: '#C2410C' }}>{a.price > 0 ? '+₹' + a.price : 'Free'}</div>
@@ -579,7 +579,7 @@ export default function MenuPage() {
                     <div style={{ fontWeight: 800, fontSize: 13, color: theme.textDark }}>Portions / Sizes</div>
                     <div style={{ fontSize: 11, color: theme.textLight, marginTop: 2 }}>e.g. Half, Full, 500ml — each with its own price</div>
                   </div>
-                  <button onClick={openAddPortion} style={{ background: '#092b33', color: '#fff', border: 'none', borderRadius: 7, padding: '7px 14px', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>+ Add Portion</button>
+                  <button onClick={openAddPortion} style={{ background: '#7f1d1d', color: '#fff', border: 'none', borderRadius: 7, padding: '7px 14px', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>+ Add Portion</button>
                 </div>
                 {portionList.length === 0 ? (
                   <div style={{ background: theme.bgWarm, borderRadius: 10, padding: '10px 14px', fontSize: 12, color: theme.textLight, textAlign: 'center' }}>No portions — item ordered at base price</div>
@@ -602,7 +602,7 @@ export default function MenuPage() {
 
             <div style={{ display: 'flex', gap: 10, marginTop: 24 }}>
               <button onClick={() => setShowItemForm(false)} style={{ flex: 1, background: theme.bgWarm, border: '1px solid ' + theme.border, borderRadius: 9, padding: '12px', fontSize: 13, cursor: 'pointer', fontWeight: 600, color: theme.textMid }}>Cancel</button>
-              <button onClick={saveItem} disabled={saving} style={{ flex: 2, background: '#092b33', color: '#fff', border: 'none', borderRadius: 9, padding: '12px', fontSize: 13, fontWeight: 700, cursor: saving ? 'not-allowed' : 'pointer' }}>{saving ? 'Saving...' : editItem ? 'Save Changes' : 'Add Item'}</button>
+              <button onClick={saveItem} disabled={saving} style={{ flex: 2, background: '#7f1d1d', color: '#fff', border: 'none', borderRadius: 9, padding: '12px', fontSize: 13, fontWeight: 700, cursor: saving ? 'not-allowed' : 'pointer' }}>{saving ? 'Saving...' : editItem ? 'Save Changes' : 'Add Item'}</button>
             </div>
           </div>
         </div>
@@ -630,7 +630,7 @@ export default function MenuPage() {
             </div>
             <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
               <button onClick={() => setShowVariationForm(false)} style={{ flex: 1, background: theme.bgWarm, border: '1px solid ' + theme.border, borderRadius: 8, padding: '11px', fontSize: 13, cursor: 'pointer', fontWeight: 600, color: theme.textMid }}>Cancel</button>
-              <button onClick={saveVariation} disabled={savingVariation} style={{ flex: 2, background: '#5B21B6', color: '#fff', border: 'none', borderRadius: 8, padding: '11px', fontSize: 13, fontWeight: 700, cursor: savingVariation ? 'not-allowed' : 'pointer' }}>{savingVariation ? 'Saving...' : editVariationIdx !== null ? 'Save Variation' : 'Add Variation'}</button>
+              <button onClick={saveVariation} disabled={savingVariation} style={{ flex: 2, background: '#991b1b', color: '#fff', border: 'none', borderRadius: 8, padding: '11px', fontSize: 13, fontWeight: 700, cursor: savingVariation ? 'not-allowed' : 'pointer' }}>{savingVariation ? 'Saving...' : editVariationIdx !== null ? 'Save Variation' : 'Add Variation'}</button>
             </div>
           </div>
         </div>
@@ -701,7 +701,7 @@ export default function MenuPage() {
             </div>
             <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
               <button onClick={() => setShowPortionForm(false)} style={{ flex: 1, background: theme.bgWarm, border: '1px solid ' + theme.border, borderRadius: 8, padding: '11px', fontSize: 13, cursor: 'pointer', fontWeight: 600, color: theme.textMid }}>Cancel</button>
-              <button onClick={savePortion} disabled={savingPortion} style={{ flex: 2, background: '#092b33', color: '#fff', border: 'none', borderRadius: 8, padding: '11px', fontSize: 13, fontWeight: 700, cursor: savingPortion ? 'not-allowed' : 'pointer' }}>{savingPortion ? 'Saving...' : editPortionIdx !== null ? 'Save Portion' : 'Add Portion'}</button>
+              <button onClick={savePortion} disabled={savingPortion} style={{ flex: 2, background: '#7f1d1d', color: '#fff', border: 'none', borderRadius: 8, padding: '11px', fontSize: 13, fontWeight: 700, cursor: savingPortion ? 'not-allowed' : 'pointer' }}>{savingPortion ? 'Saving...' : editPortionIdx !== null ? 'Save Portion' : 'Add Portion'}</button>
             </div>
           </div>
         </div>

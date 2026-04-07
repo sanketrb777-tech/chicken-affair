@@ -6,10 +6,10 @@ import { theme } from '../../lib/theme'
 const ROLES = ['owner', 'manager', 'captain', 'biller']
 
 const ROLE_CONFIG = {
-  owner:   { label: 'Owner',   bg: '#FEF3C7', color: '#B45309', border: '#FCD34D' },
-  manager: { label: 'Manager', bg: '#DBEAFE', color: '#1D4ED8', border: '#93C5FD' },
+  owner:   { label: 'Owner',   bg: '#fee2e2', color: '#b91c1c', border: '#fca5a5' },
+  manager: { label: 'Manager', bg: '#fee2e2', color: '#b91c1c', border: '#fca5a5' },
   captain: { label: 'Captain', bg: '#DCFCE7', color: '#15803D', border: '#86EFAC' },
-  biller:  { label: 'Biller',  bg: '#EDE9FE', color: '#6D28D9', border: '#C4B5FD' },
+  biller:  { label: 'Biller',  bg: '#fee2e2', color: '#b91c1c', border: '#fca5a5' },
 }
 
 export default function StaffPage() {
@@ -120,7 +120,7 @@ export default function StaffPage() {
           </p>
         </div>
         <button onClick={openAdd}
-          style={{ background: '#092b33', color: '#fff', border: 'none', borderRadius: 9, padding: '10px 20px', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+          style={{ background: '#7f1d1d', color: '#fff', border: 'none', borderRadius: 9, padding: '10px 20px', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
           + Invite Staff
         </button>
       </div>
@@ -132,7 +132,7 @@ export default function StaffPage() {
           return (
             <div key={s.id} style={{ background: '#fff', borderRadius: 12, border: '1px solid ' + theme.border, padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 16, boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
               {/* Avatar */}
-              <div style={{ width: 44, height: 44, background: '#092b33', borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 16, color: '#fff', flexShrink: 0 }}>
+              <div style={{ width: 44, height: 44, background: '#7f1d1d', borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 16, color: '#fff', flexShrink: 0 }}>
                 {s.name.charAt(0).toUpperCase()}
               </div>
 
@@ -162,7 +162,7 @@ export default function StaffPage() {
                   Edit
                 </button>
                 <button onClick={() => toggleActive(s)}
-                  style={{ background: '#FEF3C7', border: '1px solid #FCD34D', borderRadius: 7, padding: '6px 14px', fontSize: 12, fontWeight: 600, cursor: 'pointer', color: '#B45309' }}>
+                  style={{ background: '#fee2e2', border: '1px solid #fca5a5', borderRadius: 7, padding: '6px 14px', fontSize: 12, fontWeight: 600, cursor: 'pointer', color: '#b91c1c' }}>
                   Deactivate
                 </button>
                 <button onClick={() => deleteStaff(s)}
@@ -285,7 +285,7 @@ export default function StaffPage() {
                 Cancel
               </button>
               <button onClick={saveStaff} disabled={saving || inviting}
-                style={{ flex: 2, background: '#092b33', color: '#fff', border: 'none', borderRadius: 9, padding: '12px', fontSize: 13, fontWeight: 700, cursor: (saving || inviting) ? 'not-allowed' : 'pointer' }}>
+                style={{ flex: 2, background: '#7f1d1d', color: '#fff', border: 'none', borderRadius: 9, padding: '12px', fontSize: 13, fontWeight: 700, cursor: (saving || inviting) ? 'not-allowed' : 'pointer' }}>
                 {saving ? 'Saving...' : editStaff ? 'Save Changes' : 'Create Account'}
               </button>
             </div>
