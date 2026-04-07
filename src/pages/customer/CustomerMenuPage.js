@@ -2,10 +2,10 @@ import { useEffect, useState, useRef } from 'react'
 import { useParams } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 
-const TEAL  = '#092b33'
-const TEAL2 = '#0D9488'
-const GOLD  = '#D4A853'
-const BG    = '#F4F6F5'
+const TEAL  = '#7f1d1d'
+const TEAL2 = '#dc2626'
+const GOLD  = '#ef4444'
+const BG    = '#fff5f5'
 const WHITE = '#FFFFFF'
 const BORDER = '#E5E7EB'
 const TEXTD = '#1a1a1a'
@@ -324,7 +324,7 @@ export default function CustomerMenuPage() {
                     const dotColor = /chicken|mutton|prawn|fish|egg|non.?veg/i.test(v.name) ? '#B91C1C' : '#15803D'
                     return (
                       <button key={v.id} onClick={() => setPickerVariation(v)}
-                        style={{ background: pickerVariation?.id === v.id ? '#5B21B6' : '#F5F3FF', color: pickerVariation?.id === v.id ? WHITE : '#3B0764', border: '2px solid ' + (pickerVariation?.id === v.id ? '#5B21B6' : '#C4B5FD'), borderRadius: 14, padding: '16px 10px', cursor: 'pointer', textAlign: 'center' }}>
+                        style={{ background: pickerVariation?.id === v.id ? '#991b1b' : '#fff5f5', color: pickerVariation?.id === v.id ? WHITE : '#7f1d1d', border: '2px solid ' + (pickerVariation?.id === v.id ? '#991b1b' : '#fca5a5'), borderRadius: 14, padding: '16px 10px', cursor: 'pointer', textAlign: 'center' }}>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginBottom: 4 }}>
                           <div style={{ width: 9, height: 9, borderRadius: 2, border: '2px solid ' + dotColor, background: dotColor, flexShrink: 0 }} />
                           <span style={{ fontWeight: 800, fontSize: 15 }}>{v.name}</span>
@@ -346,7 +346,7 @@ export default function CustomerMenuPage() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                   {(portions[pickerItem.id] || []).map(p => (
                     <button key={p.id} onClick={() => confirmPicker(p)}
-                      style={{ background: '#F0FDF4', border: '2px solid #86EFAC', borderRadius: 14, padding: '14px 18px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      style={{ background: '#fff5f5', border: '2px solid #fecaca', borderRadius: 14, padding: '14px 18px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <div>
                         <div style={{ fontWeight: 700, fontSize: 15, color: TEXTD }}>{p.name}</div>
                         {p.value > 0 && p.unit && <div style={{ fontSize: 12, color: TEXTL, marginTop: 2 }}>{p.value}{p.unit}</div>}
@@ -368,10 +368,10 @@ export default function CustomerMenuPage() {
                   {(addonGroups[pickerItem.id] || []).map(addon => {
                     const qty = pickerAddons[addon.id] || 0
                     return (
-                      <div key={addon.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: qty > 0 ? '#FFF7ED' : '#F9FAFB', borderRadius: 12, border: '1px solid ' + (qty > 0 ? '#FED7AA' : BORDER) }}>
+                      <div key={addon.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: qty > 0 ? '#fff5f5' : '#F9FAFB', borderRadius: 12, border: '1px solid ' + (qty > 0 ? '#fecaca' : BORDER) }}>
                         <div>
                           <div style={{ fontWeight: 600, fontSize: 15, color: TEXTD }}>{addon.name}</div>
-                          {addon.price > 0 && <div style={{ fontSize: 12, color: '#C2410C', fontWeight: 600, marginTop: 2 }}>+₹{addon.price}</div>}
+                          {addon.price > 0 && <div style={{ fontSize: 12, color: '#b91c1c', fontWeight: 600, marginTop: 2 }}>+₹{addon.price}</div>}
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                           {qty > 0 && (
@@ -454,7 +454,7 @@ export default function CustomerMenuPage() {
             <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginBottom: 20 }}>
               {otp.map((digit, idx) => (
                 <input key={idx} ref={el => otpRefs.current[idx] = el} value={digit} onChange={e => handleOtpInput(e.target.value, idx)} onKeyDown={e => handleOtpKeyDown(e, idx)} maxLength={1} inputMode="numeric" type="tel"
-                  style={{ width: 46, height: 56, textAlign: 'center', fontSize: 22, fontWeight: 800, border: '2px solid ' + (digit ? TEAL : BORDER), borderRadius: 10, color: TEXTD, background: digit ? '#F0FDF9' : '#FAFAFA' }} />
+                  style={{ width: 46, height: 56, textAlign: 'center', fontSize: 22, fontWeight: 800, border: '2px solid ' + (digit ? TEAL : BORDER), borderRadius: 10, color: TEXTD, background: digit ? '#fff5f5' : '#FAFAFA' }} />
               ))}
             </div>
             {otpError && <div style={{ background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 8, padding: '10px 14px', color: '#DC2626', fontSize: 13, fontWeight: 600, textAlign: 'center', marginBottom: 16 }}>{otpError}</div>}
@@ -507,7 +507,7 @@ export default function CustomerMenuPage() {
                       <div style={{ fontWeight: 700, fontSize: 15, color: TEXTD }}>{item.name}</div>
                     </div>
                     {hasOptions ? (
-                      <div style={{ fontSize: 11, fontWeight: 700, color: '#5B21B6' }}>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: '#991b1b' }}>
                         {itemVars.length > 0 ? `Veg & Non-Veg options available` : ''}
                         {itemVars.length === 0 && itemAGs.length > 0 ? `${itemAGs.length} add-on${itemAGs.length !== 1 ? 's' : ''} available` : ''}
                         {itemPorts.length > 0 && !itemVars.length ? `${itemPorts.length} sizes available` : ''}
@@ -521,7 +521,7 @@ export default function CustomerMenuPage() {
                         <span style={{ fontSize: 11, color: TEAL2, fontWeight: 600 }}>
                           {c.variationName || c.portionName || 'Regular'} ×{c.qty} — ₹{((c.unitPrice + c.addonsTotal) * c.qty).toFixed(0)}
                         </span>
-                        {c.addons?.length > 0 && <span style={{ fontSize: 10, color: '#C2410C' }}>+ {c.addons.map(a => a.name).join(', ')}</span>}
+                        {c.addons?.length > 0 && <span style={{ fontSize: 10, color: '#b91c1c' }}>+ {c.addons.map(a => a.name).join(', ')}</span>}
                         <div style={{ display: 'flex', alignItems: 'center', background: TEAL, borderRadius: 6, overflow: 'hidden' }}>
                           <button onClick={() => removeFromCart(c.key)} style={{ background: 'none', border: 'none', color: WHITE, padding: '3px 8px', fontSize: 14, cursor: 'pointer', fontWeight: 700 }}>-</button>
                           <span style={{ color: WHITE, fontWeight: 800, fontSize: 12, minWidth: 16, textAlign: 'center' }}>{c.qty}</span>
@@ -531,7 +531,7 @@ export default function CustomerMenuPage() {
                     ))}
                   </div>
                   <button onClick={() => addToCart(item)}
-                    style={{ background: hasOptions ? '#5B21B6' : TEAL, color: WHITE, border: 'none', borderRadius: 8, padding: '8px 14px', fontSize: 13, fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}>
+                    style={{ background: hasOptions ? '#991b1b' : TEAL, color: WHITE, border: 'none', borderRadius: 8, padding: '8px 14px', fontSize: 13, fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}>
                     {hasOptions ? 'Choose →' : totalQty === 0 ? '+ Add' : '+ More'}
                   </button>
                 </div>
@@ -563,9 +563,9 @@ export default function CustomerMenuPage() {
               <div key={c.key} style={{ padding: '14px 16px', borderBottom: i < cart.length - 1 ? '1px solid ' + BORDER : 'none', display: 'flex', alignItems: 'center', gap: 12 }}>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontWeight: 700, fontSize: 14, color: TEXTD }}>{c.item.name}</div>
-                  {c.variationName && <div style={{ fontSize: 12, color: '#5B21B6', fontWeight: 600, marginTop: 2 }}>{c.variationName}</div>}
+                  {c.variationName && <div style={{ fontSize: 12, color: '#991b1b', fontWeight: 600, marginTop: 2 }}>{c.variationName}</div>}
                   {c.portionName && <div style={{ fontSize: 12, color: TEAL2, fontWeight: 600, marginTop: 2 }}>{c.portionName}</div>}
-                  {c.addons?.length > 0 && <div style={{ fontSize: 11, color: '#C2410C', marginTop: 2 }}>+ {c.addons.map(a => a.name).join(', ')}</div>}
+                  {c.addons?.length > 0 && <div style={{ fontSize: 11, color: '#b91c1c', marginTop: 2 }}>+ {c.addons.map(a => a.name).join(', ')}</div>}
                   <div style={{ fontSize: 12, color: TEXTL }}>₹{(c.unitPrice + c.addonsTotal).toFixed(0)} each</div>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -598,7 +598,7 @@ export default function CustomerMenuPage() {
       {/* STEP: PLACED */}
       {step === STEP_PLACED && (
         <div style={{ padding: 24, animation: 'fadeIn 0.3s ease' }}>
-          <div style={{ background: '#F0FDF4', border: '1px solid #86EFAC', borderRadius: 16, padding: 24, textAlign: 'center', marginBottom: 24 }}>
+          <div style={{ background: '#fff5f5', border: '1px solid #fecaca', borderRadius: 16, padding: 24, textAlign: 'center', marginBottom: 24 }}>
             <div style={{ fontSize: 48, marginBottom: 10 }}>✅</div>
             <div style={{ fontWeight: 800, fontSize: 20, color: '#15803D', marginBottom: 6 }}>{roundCount === 1 ? 'Order Placed!' : `Round ${roundCount} Added!`}</div>
             <div style={{ fontSize: 14, color: '#166534' }}>{roundCount === 1 ? 'Your order is being prepared!' : 'New items sent to kitchen!'}</div>

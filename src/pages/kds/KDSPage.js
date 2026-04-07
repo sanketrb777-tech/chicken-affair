@@ -1,15 +1,15 @@
-﻿import { useEffect, useState, useRef, useCallback } from 'react'
+import { useEffect, useState, useRef, useCallback } from 'react'
 import { supabase } from '../../lib/supabase'
 
-const TEAL       = '#092b33'
-const TEAL_LIGHT = '#0D9488'
-const TEAL_BG    = '#E6FAF8'
+const TEAL       = '#7f1d1d'
+const TEAL_LIGHT = '#dc2626'
+const TEAL_BG    = '#fee2e2'
 const BORDER     = '#E5E7EB'
 const TEXT_DARK  = '#111827'
 const TEXT_MID   = '#374151'
 const TEXT_LIGHT = '#6B7280'
 const WHITE      = '#FFFFFF'
-const BG         = '#F4F6F5'
+const BG         = '#fff5f5'
 
 export default function KDSPage() {
   const [groups, setGroups]           = useState([])
@@ -138,14 +138,14 @@ export default function KDSPage() {
   function getElapsedColor(createdAt) {
     const diff = Math.floor((new Date() - new Date(createdAt)) / 60000)
     if (diff > 15) return '#DC2626'
-    if (diff > 8)  return '#D97706'
+    if (diff > 8)  return '#dc2626'
     return TEAL
   }
 
   function getGroupLabel(group) {
     if (group.orderType === 'dine_in') return { label: 'Dine In', sub: group.tableName || `Table ${group.tableNum}`, badge: `T${group.tableNum}` }
-    if (group.orderType === 'takeaway') return { label: 'Takeaway', sub: group.customerName || '', badge: '🛍' }
-    if (group.orderType === 'delivery') return { label: 'Delivery', sub: group.customerName || '', badge: '🚚' }
+    if (group.orderType === 'takeaway') return { label: 'Takeaway', sub: group.customerName || '', badge: '??' }
+    if (group.orderType === 'delivery') return { label: 'Delivery', sub: group.customerName || '', badge: '??' }
     return { label: 'Order', sub: '', badge: '#' }
   }
 
@@ -188,14 +188,14 @@ export default function KDSPage() {
         <div style={{ width: 240, background: WHITE, borderRight: '1px solid ' + BORDER, display: 'flex', flexDirection: 'column', flexShrink: 0, overflowY: 'auto' }}>
           {batchCategories.length === 0 ? (
             <div style={{ padding: 24, textAlign: 'center', color: TEXT_LIGHT, fontSize: 13, marginTop: 40 }}>
-              <div style={{ fontSize: 32, marginBottom: 10 }}>✓</div>All items done
+              <div style={{ fontSize: 32, marginBottom: 10 }}>?</div>All items done
             </div>
           ) : batchCategories.map(cat => (
             <div key={cat.id} style={{ borderBottom: '1px solid ' + BORDER }}>
               <div onClick={() => toggleCat(cat.id)}
                 style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', background: '#F9FAFB', userSelect: 'none' }}>
                 <div style={{ fontWeight: 800, fontSize: 13, color: TEXT_DARK, textTransform: 'uppercase', letterSpacing: 0.5 }}>{cat.name}</div>
-                <span style={{ fontSize: 14, color: TEXT_LIGHT, transform: collapsedCats[cat.id] ? 'rotate(-90deg)' : 'rotate(0)', transition: 'transform 0.15s', display: 'inline-block' }}>∨</span>
+                <span style={{ fontSize: 14, color: TEXT_LIGHT, transform: collapsedCats[cat.id] ? 'rotate(-90deg)' : 'rotate(0)', transition: 'transform 0.15s', display: 'inline-block' }}>?</span>
               </div>
               {!collapsedCats[cat.id] && cat.items.map(item => (
                 <div key={item.name} style={{ padding: '9px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid ' + BORDER, background: WHITE }}>
@@ -215,7 +215,7 @@ export default function KDSPage() {
         <div style={{ flex: 1, overflowY: 'auto', padding: 16 }}>
           {groups.length === 0 ? (
             <div style={{ textAlign: 'center', marginTop: 80 }}>
-              <div style={{ width: 72, height: 72, borderRadius: '50%', background: TEAL_BG, border: '2px solid ' + TEAL_LIGHT, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px', fontSize: 32 }}>✓</div>
+              <div style={{ width: 72, height: 72, borderRadius: '50%', background: TEAL_BG, border: '2px solid ' + TEAL_LIGHT, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px', fontSize: 32 }}>?</div>
               <div style={{ color: TEAL_LIGHT, fontSize: 22, fontWeight: 800 }}>All Orders Done</div>
               <div style={{ color: TEXT_LIGHT, fontSize: 14, marginTop: 8 }}>Waiting for new orders...</div>
             </div>
@@ -233,7 +233,7 @@ export default function KDSPage() {
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                         <div style={{ width: 14, height: 14, borderRadius: '50%', border: '2px solid ' + (allItemsDone ? TEAL_LIGHT : TEAL), background: allItemsDone ? TEAL_LIGHT : 'transparent', flexShrink: 0 }} />
                         <span style={{ fontWeight: 700, fontSize: 14, color: TEXT_DARK }}>{label}</span>
-                        {sub && <span style={{ fontSize: 12, color: TEXT_LIGHT }}>· {sub}</span>}
+                        {sub && <span style={{ fontSize: 12, color: TEXT_LIGHT }}>� {sub}</span>}
                       </div>
                       <span style={{ fontWeight: 900, fontSize: 16, color: TEXT_DARK }}>{badge}</span>
                     </div>
@@ -251,7 +251,7 @@ export default function KDSPage() {
                       return (
                         <div key={kot.id}>
                           {group.kots.length > 1 && (
-                            <div style={{ padding: '5px 14px', background: kotAllDone ? '#F0FDF4' : '#FAFAFA', borderBottom: '1px solid ' + BORDER, display: 'flex', justifyContent: 'space-between' }}>
+                            <div style={{ padding: '5px 14px', background: kotAllDone ? '#fff5f5' : '#FAFAFA', borderBottom: '1px solid ' + BORDER, display: 'flex', justifyContent: 'space-between' }}>
                               <span style={{ fontSize: 10, fontWeight: 800, color: TEXT_LIGHT, textTransform: 'uppercase', letterSpacing: 0.8 }}>Round {kotIdx + 1}</span>
                               <span style={{ fontSize: 10, color: TEXT_LIGHT }}>{new Date(kot.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })}</span>
                             </div>
@@ -262,12 +262,12 @@ export default function KDSPage() {
                             const notes  = ki.order_items?.notes
                             const isDone = kotItems[ki.id] ?? ki.is_done
                             return (
-                              <div key={ki.id} style={{ padding: '10px 14px', borderBottom: '1px solid ' + BORDER, display: 'flex', alignItems: 'center', gap: 10, background: isDone ? '#F0FDF4' : WHITE, transition: 'background 0.2s' }}>
+                              <div key={ki.id} style={{ padding: '10px 14px', borderBottom: '1px solid ' + BORDER, display: 'flex', alignItems: 'center', gap: 10, background: isDone ? '#fff5f5' : WHITE, transition: 'background 0.2s' }}>
                                 <div style={{ fontWeight: 800, fontSize: 14, color: TEXT_DARK, minWidth: 18, textAlign: 'center', flexShrink: 0 }}>{qty}</div>
                                 {item?.food_type === 'non_veg' && <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#DC2626', border: '2px solid #DC2626', flexShrink: 0 }} />}
                                 <div style={{ flex: 1, minWidth: 0 }}>
                                   <div style={{ fontSize: 13, fontWeight: 600, color: isDone ? TEXT_LIGHT : TEXT_DARK, textDecoration: isDone ? 'line-through' : 'none', lineHeight: 1.3 }}>{item?.name}</div>
-                                  {notes && <div style={{ fontSize: 11, color: '#D97706', marginTop: 2 }}>{notes}</div>}
+                                  {notes && <div style={{ fontSize: 11, color: '#dc2626', marginTop: 2 }}>{notes}</div>}
                                 </div>
                                 <div onClick={() => toggleItem(ki.id, isDone, group.groupKey, kot.id)}
                                   style={{ position: 'relative', width: 44, height: 24, borderRadius: 12, background: isDone ? TEAL_LIGHT : '#D1D5DB', cursor: 'pointer', transition: 'background 0.2s', flexShrink: 0 }}>
@@ -283,7 +283,7 @@ export default function KDSPage() {
                     <div style={{ padding: '12px 14px', borderTop: '1px solid ' + BORDER }}>
                       <button onClick={() => markGroupReady(group)}
                         style={{ width: '100%', background: allItemsDone ? TEAL : '#E5E7EB', color: allItemsDone ? WHITE : TEXT_LIGHT, border: 'none', borderRadius: 8, padding: '11px 0', fontSize: 14, fontWeight: 800, cursor: allItemsDone ? 'pointer' : 'default', transition: 'all 0.2s' }}>
-                        {allItemsDone ? '✓ Food Ready' : 'Food Ready'}
+                        {allItemsDone ? '? Food Ready' : 'Food Ready'}
                       </button>
                     </div>
                   </div>

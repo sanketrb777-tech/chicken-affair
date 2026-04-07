@@ -10,7 +10,7 @@ style.textContent = `
 
   body {
     font-family: 'DM Sans', 'Segoe UI', sans-serif;
-    background: #FDFCF9;
+    background: #ffffff;
     color: #1C1917;
     -webkit-font-smoothing: antialiased;
   }
@@ -35,14 +35,14 @@ html, body, #root {
 
   .splash {
     display: flex; align-items: center; justify-content: center;
-    height: 100vh; font-size: 14px; color: #A8917A;
+    height: 100vh; font-size: 14px; color: #f87171;
   }
 
   /* Scrollbar styling */
   ::-webkit-scrollbar { width: 5px; height: 5px; }
   ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb { background: #DDD5C8; border-radius: 10px; }
-  ::-webkit-scrollbar-thumb:hover { background: #C4B8A8; }
+  ::-webkit-scrollbar-thumb { background: #fecaca; border-radius: 10px; }
+  ::-webkit-scrollbar-thumb:hover { background: #fca5a5; }
 `
 document.head.appendChild(style)
 

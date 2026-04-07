@@ -53,7 +53,7 @@ export default function LoginPage() {
 
         {/* Logo */}
         <div style={{ textAlign: 'center', marginBottom: 40 }}>
-          <img src="/icons/icon-192x192.png" alt="Chicken Affair" style={{ width: 80, height: 80, borderRadius: 16, margin: '0 auto 16px', display: 'block', boxShadow: '0 8px 32px rgba(0,0,0,0.4)', border: '1px solid #C9A84C' }} />
+          <img src="/icons/icon-192x192.png" alt="Chicken Affair" style={{ width: 80, height: 80, borderRadius: 16, margin: '0 auto 16px', display: 'block', boxShadow: '0 8px 32px rgba(0,0,0,0.4)', border: '1px solid #dc2626' }} />
           <h1 style={{ color: '#fff', fontSize: 28, fontWeight: 800, margin: 0 }}>Chicken Affair</h1>
           <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: 14, marginTop: 6 }}>Sign in to your account</p>
         </div>
@@ -101,7 +101,7 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={loading}
-            style={{ background: loading ? 'rgba(255,255,255,0.2)' : '#1a3c3e', color: '#fff', border: 'none', borderRadius: 8, padding: '12px', fontSize: 15, fontWeight: 700, cursor: loading ? 'not-allowed' : 'pointer', marginTop: 4 }}
+            style={{ background: loading ? 'rgba(255,255,255,0.2)' : '#7f1d1d', color: '#fff', border: 'none', borderRadius: 8, padding: '12px', fontSize: 15, fontWeight: 700, cursor: loading ? 'not-allowed' : 'pointer', marginTop: 4 }}
           >
             {loading ? 'Signing in...' : 'Sign In'}
           </button>
