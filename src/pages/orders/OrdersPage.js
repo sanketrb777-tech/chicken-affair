@@ -340,7 +340,7 @@ export function NewOrderPage() {
     <title>KOT</title>
     <style>
       * { margin:0; padding:0; box-sizing:border-box; }
-      body { font-family:'Courier New',monospace; font-size:13px; width:80mm; margin:0 auto; padding:8px 10px 16px; color:#000; }
+      body { font-family:'Courier New',monospace; font-size:14px; font-weight:600; width:80mm; margin:0 auto; padding:8px 10px 16px; color:#000; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
       .center { text-align:center; }
       .bold { font-weight:bold; }
       .divider { border-top:1px dashed #000; margin:6px 0; }
@@ -349,19 +349,19 @@ export function NewOrderPage() {
       .item { display:flex; margin:6px 0; }
       .item .qty { font-size:18px; font-weight:900; width:36px; flex-shrink:0; }
       .item .name { flex:1; font-size:14px; font-weight:700; padding-top:2px; }
-      .note { font-size:11px; color:#555; padding-left:36px; margin-top:-2px; margin-bottom:4px; font-style:italic; }
+      .note { font-size:13px; color:#000; padding-left:36px; margin-top:-2px; margin-bottom:4px; font-style:italic; }
       @media print { body { width:80mm; } @page { size:80mm auto; margin:0; } }
     </style></head><body>
 
     <div class="center bold" style="font-size:22px;letter-spacing:3px;margin-bottom:2px">KOT</div>
-    <div class="center" style="font-size:11px;margin-bottom:6px">Kitchen Order Ticket</div>
+    <div class="center" style="font-size:13px;font-weight:700;margin-bottom:6px">Kitchen Order Ticket</div>
     <div class="divider-solid"></div>
 
     <div class="row bold" style="font-size:14px">
       <span>${tableLabel}</span>
       <span>${timeStr}</span>
     </div>
-    <div class="row" style="font-size:11px;color:#555">
+    <div class="row" style="font-size:13px;color:#000;font-weight:600">
       <span>${dateStr}</span>
       <span>KOT# ${kotNo}</span>
     </div>
@@ -378,7 +378,7 @@ export function NewOrderPage() {
     `).join('')}
 
     <div class="divider-solid"></div>
-    <div class="center" style="font-size:11px;margin-top:4px">— ${cartItems.reduce((s,c) => s + c.quantity, 0)} item(s) —</div>
+    <div class="center" style="font-size:14px;font-weight:700;margin-top:4px">— ${cartItems.reduce((s,c) => s + c.quantity, 0)} item(s) —</div>
 
     </body></html>`
 
