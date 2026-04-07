@@ -144,8 +144,8 @@ export default function KDSPage() {
 
   function getGroupLabel(group) {
     if (group.orderType === 'dine_in') return { label: 'Dine In', sub: group.tableName || `Table ${group.tableNum}`, badge: `T${group.tableNum}` }
-    if (group.orderType === 'takeaway') return { label: 'Takeaway', sub: group.customerName || '', badge: '??' }
-    if (group.orderType === 'delivery') return { label: 'Delivery', sub: group.customerName || '', badge: '??' }
+    if (group.orderType === 'takeaway') return { label: 'Takeaway', sub: group.customerName || '', badge: '???' }
+    if (group.orderType === 'delivery') return { label: 'Delivery', sub: group.customerName || '', badge: '???' }
     return { label: 'Order', sub: '', badge: '#' }
   }
 
@@ -283,7 +283,7 @@ export default function KDSPage() {
                     <div style={{ padding: '12px 14px', borderTop: '1px solid ' + BORDER }}>
                       <button onClick={() => markGroupReady(group)}
                         style={{ width: '100%', background: allItemsDone ? TEAL : '#E5E7EB', color: allItemsDone ? WHITE : TEXT_LIGHT, border: 'none', borderRadius: 8, padding: '11px 0', fontSize: 14, fontWeight: 800, cursor: allItemsDone ? 'pointer' : 'default', transition: 'all 0.2s' }}>
-                        {allItemsDone ? '? Food Ready' : 'Food Ready'}
+                        {allItemsDone ? '?'? Food Ready' : 'Food Ready'}
                       </button>
                     </div>
                   </div>
