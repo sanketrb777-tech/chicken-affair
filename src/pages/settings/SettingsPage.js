@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router-dom'
+﻿import { useNavigate } from 'react-router-dom'
 import { theme } from '../../lib/theme'
 import { LayoutGrid, Printer } from 'lucide-react'
 
@@ -13,7 +13,7 @@ export default function SettingsPage() {
     <div>
       <div style={{ marginBottom: 28 }}>
         <h1 style={{ fontSize: 22, fontWeight: 800, color: theme.textDark, margin: 0 }}>Settings</h1>
-        <p style={{ color: theme.textLight, fontSize: 14, marginTop: 4 }}>Configure your caf�</p>
+        <p style={{ color: theme.textLight, fontSize: 14, marginTop: 4 }}>Configure your café</p>
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 14 }}>
         {SECTIONS.map((s, i) => {
@@ -28,7 +28,7 @@ export default function SettingsPage() {
               </div>
               <div style={{ fontWeight: 700, fontSize: 14, color: theme.textDark, marginBottom: 4 }}>{s.title}</div>
               <div style={{ fontSize: 12, color: theme.textLight }}>{s.desc}</div>
-              <div style={{ marginTop: 14, color: '#7f1d1d', fontSize: 12, fontWeight: 700 }}>Configure ?</div>
+              <div style={{ marginTop: 14, color: '#092b33', fontSize: 12, fontWeight: 700 }}>Configure →</div>
             </div>
           )
         })}

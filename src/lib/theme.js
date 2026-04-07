@@ -1,38 +1,38 @@
 export const theme = {
   // Colours
-  sidebar:     '#7f1d1d',
-  primary:     '#dc2626',
-  primaryDark: '#b91c1c',
-  gold:        '#ef4444',
-  goldLight:   '#fee2e2',
-  bg:          '#ffffff',
-  bgWarm:      '#fff5f5',
+  sidebar:     '#092b33',
+  primary:     '#0D9488',
+  primaryDark: '#0A6E66',
+  gold:        '#D4A853',
+  goldLight:   '#F5E6C0',
+  bg:          '#FDFCF9',
+  bgWarm:      '#F7F3EE',
   white:       '#FFFFFF',
-  border:      '#fee2e2',
-  borderWarm:  '#fecaca',
+  border:      '#E8E0D5',
+  borderWarm:  '#DDD5C8',
 
   // Text
   textDark:    '#1C1917',
   textMid:     '#57534E',
-  textLight:   '#f87171',
-  textMuted:   '#fca5a5',
+  textLight:   '#A8917A',
+  textMuted:   '#C4B8A8',
 
   // Status
   green:       '#15803D',
-  greenBg:     '#fee2e2',
-  yellow:      '#b91c1c',
-  yellowBg:    '#fee2e2',
+  greenBg:     '#DCFCE7',
+  yellow:      '#B45309',
+  yellowBg:    '#FEF3C7',
   red:         '#B91C1C',
   redBg:       '#FEE2E2',
-  blue:        '#b91c1c',
-  blueBg:      '#fee2e2',
+  blue:        '#1D4ED8',
+  blueBg:      '#DBEAFE',
 
   // Card style (reuse everywhere)
   card: {
     background:   '#FFFFFF',
     borderRadius: 14,
     boxShadow:    '0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.04)',
-    border:       '1px solid #fee2e2',
+    border:       '1px solid #EDE8E0',
     padding:      24,
   },
 
@@ -46,7 +46,7 @@ export const theme = {
 
   pageSubtitle: {
     fontSize:  14,
-    color:     '#f87171',
+    color:     '#A8917A',
     marginTop: 4,
   },
 }
@@ -54,7 +54,7 @@ export const theme = {
 // Reusable button styles
 export const btn = {
   primary: {
-    background:   '#dc2626',
+    background:   '#0D9488',
     color:        '#fff',
     border:       'none',
     borderRadius: 9,
@@ -64,7 +64,7 @@ export const btn = {
     cursor:       'pointer',
   },
   gold: {
-    background:   '#ef4444',
+    background:   '#D4A853',
     color:        '#fff',
     border:       'none',
     borderRadius: 9,
@@ -74,9 +74,9 @@ export const btn = {
     cursor:       'pointer',
   },
   ghost: {
-    background:   '#fff5f5',
+    background:   '#F7F3EE',
     color:        '#57534E',
-    border:       '1px solid #fee2e2',
+    border:       '1px solid #E8E0D5',
     borderRadius: 9,
     padding:      '10px 20px',
     fontSize:     13,

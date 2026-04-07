@@ -93,7 +93,7 @@ export default function DiscountsSettingsPage() {
             <span style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', fontSize: 14, fontWeight: 700, color: theme.textLight }}>%</span>
           </div>
           <button onClick={saveGST} disabled={savingGST}
-            style={{ background: '#7f1d1d', color: '#fff', border: 'none', borderRadius: 9, padding: '10px 22px', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+            style={{ background: '#092b33', color: '#fff', border: 'none', borderRadius: 9, padding: '10px 22px', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
             {savingGST ? 'Saving...' : 'Update GST Rate'}
           </button>
         </div>
@@ -106,7 +106,7 @@ export default function DiscountsSettingsPage() {
           <div style={{ fontSize: 13, color: theme.textLight, marginTop: 2 }}>These appear as options in the billing screen dropdown</div>
         </div>
         <button onClick={openAdd}
-          style={{ background: '#7f1d1d', color: '#fff', border: 'none', borderRadius: 9, padding: '10px 20px', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+          style={{ background: '#092b33', color: '#fff', border: 'none', borderRadius: 9, padding: '10px 20px', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
           + Add Discount
         </button>
       </div>
@@ -129,7 +129,7 @@ export default function DiscountsSettingsPage() {
                 <div style={{ fontSize: 12, color: theme.textLight, marginTop: 2 }}>{d.percentage}% off on total bill</div>
               </div>
               <div onClick={() => toggleDiscount(d)}
-                style={{ background: d.is_active ? '#fee2e2' : theme.bgWarm, color: d.is_active ? '#15803D' : theme.textMuted, border: '1px solid ' + (d.is_active ? '#fecaca' : theme.border), padding: '4px 12px', borderRadius: 20, fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
+                style={{ background: d.is_active ? '#DCFCE7' : theme.bgWarm, color: d.is_active ? '#15803D' : theme.textMuted, border: '1px solid ' + (d.is_active ? '#86EFAC' : theme.border), padding: '4px 12px', borderRadius: 20, fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
                 {d.is_active ? 'Active' : 'Inactive'}
               </div>
               <button onClick={() => openEdit(d)}
@@ -172,7 +172,7 @@ export default function DiscountsSettingsPage() {
                 Cancel
               </button>
               <button onClick={saveDiscount} disabled={saving}
-                style={{ flex: 2, background: '#7f1d1d', color: '#fff', border: 'none', borderRadius: 9, padding: '12px', fontSize: 13, fontWeight: 700, cursor: saving ? 'not-allowed' : 'pointer' }}>
+                style={{ flex: 2, background: '#092b33', color: '#fff', border: 'none', borderRadius: 9, padding: '12px', fontSize: 13, fontWeight: 700, cursor: saving ? 'not-allowed' : 'pointer' }}>
                 {saving ? 'Saving...' : editItem ? 'Save Changes' : 'Add Discount'}
               </button>
             </div>

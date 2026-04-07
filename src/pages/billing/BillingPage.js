@@ -67,22 +67,22 @@ export default function BillingPage() {
         </div>
         {orders.length >= 2 && (
           <button onClick={() => { setClubMode(m => !m); setSelectedIds([]) }}
-            style={{ background: clubMode ? '#7f1d1d' : '#fff', color: clubMode ? '#fff' : '#7f1d1d', border: '2px solid #7f1d1d', borderRadius: 9, padding: '9px 18px', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+            style={{ background: clubMode ? '#092b33' : '#fff', color: clubMode ? '#fff' : '#092b33', border: '2px solid #092b33', borderRadius: 9, padding: '9px 18px', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
             {clubMode ? '✕ Cancel Club' : '🔗 Club Bills'}
           </button>
         )}
       </div>
 
       {clubMode && (
-        <div style={{ background: '#fff5f5', border: '1px solid #fecaca', borderRadius: 12, padding: '12px 16px', marginBottom: 20, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div style={{ fontSize: 13, color: '#b91c1c', fontWeight: 600 }}>
+        <div style={{ background: '#EFF6FF', border: '1px solid #BFDBFE', borderRadius: 12, padding: '12px 16px', marginBottom: 20, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ fontSize: 13, color: '#1D4ED8', fontWeight: 600 }}>
             {selectedIds.length === 0 ? 'Select 2 or more tables to club their bills together' :
              selectedIds.length === 1 ? '1 table selected — select at least 1 more' :
              `${selectedIds.length} tables selected · Combined total: ₹${clubTotal.toFixed(2)}`}
           </div>
           {selectedIds.length >= 2 && (
             <button onClick={generateCombinedBill}
-              style={{ background: '#7f1d1d', color: '#fff', border: 'none', borderRadius: 8, padding: '9px 18px', fontSize: 13, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap', marginLeft: 16 }}>
+              style={{ background: '#092b33', color: '#fff', border: 'none', borderRadius: 8, padding: '9px 18px', fontSize: 13, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap', marginLeft: 16 }}>
               Generate Combined Bill →
             </button>
           )}
@@ -104,12 +104,12 @@ export default function BillingPage() {
             const isSelected = selectedIds.includes(order.id)
             return (
               <div key={order.id} onClick={() => handleCardClick(order)}
-                style={{ background: '#fff', borderRadius: 14, border: '2px solid ' + (isSelected ? '#7f1d1d' : theme.border), overflow: 'hidden', cursor: 'pointer', boxShadow: isSelected ? '0 0 0 3px rgba(9,43,51,0.15)' : '0 1px 4px rgba(0,0,0,0.05)', transition: 'all 0.15s', position: 'relative' }}
+                style={{ background: '#fff', borderRadius: 14, border: '2px solid ' + (isSelected ? '#092b33' : theme.border), overflow: 'hidden', cursor: 'pointer', boxShadow: isSelected ? '0 0 0 3px rgba(9,43,51,0.15)' : '0 1px 4px rgba(0,0,0,0.05)', transition: 'all 0.15s', position: 'relative' }}
                 onMouseEnter={e => { if (!isSelected) { e.currentTarget.style.borderColor = theme.primary; e.currentTarget.style.boxShadow = '0 6px 16px rgba(0,0,0,0.1)' }}}
                 onMouseLeave={e => { if (!isSelected) { e.currentTarget.style.borderColor = theme.border; e.currentTarget.style.boxShadow = '0 1px 4px rgba(0,0,0,0.05)' }}}>
                 {/* Club mode checkbox */}
                 {clubMode && (
-                  <div style={{ position: 'absolute', top: 10, right: 10, width: 22, height: 22, borderRadius: 6, background: isSelected ? '#7f1d1d' : '#fff', border: '2px solid ' + (isSelected ? '#7f1d1d' : '#D1D5DB'), display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1 }}>
+                  <div style={{ position: 'absolute', top: 10, right: 10, width: 22, height: 22, borderRadius: 6, background: isSelected ? '#092b33' : '#fff', border: '2px solid ' + (isSelected ? '#092b33' : '#D1D5DB'), display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1 }}>
                     {isSelected && <span style={{ color: '#fff', fontSize: 13, fontWeight: 900 }}>✓</span>}
                   </div>
                 )}
@@ -130,7 +130,7 @@ export default function BillingPage() {
                     <div style={{ fontSize: 20, fontWeight: 900, color: theme.textDark }}>₹{total.toFixed(2)}</div>
                   </div>
                   {!clubMode && (
-                    <div style={{ background: '#7f1d1d', color: '#fff', borderRadius: 9, padding: '8px 16px', fontSize: 12, fontWeight: 700 }}>
+                    <div style={{ background: '#092b33', color: '#fff', borderRadius: 9, padding: '8px 16px', fontSize: 12, fontWeight: 700 }}>
                       Generate Bill →
                     </div>
                   )}
