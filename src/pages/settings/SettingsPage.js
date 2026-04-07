@@ -13,7 +13,7 @@ export default function SettingsPage() {
     <div>
       <div style={{ marginBottom: 28 }}>
         <h1 style={{ fontSize: 22, fontWeight: 800, color: theme.textDark, margin: 0 }}>Settings</h1>
-        <p style={{ color: theme.textLight, fontSize: 14, marginTop: 4 }}>Configure your café</p>
+        <p style={{ color: theme.textLight, fontSize: 14, marginTop: 4 }}>Configure your cafÃ©</p>
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 14 }}>
         {SECTIONS.map((s, i) => {
