@@ -250,10 +250,11 @@ export function NewOrderPage() {
 
   async function openTransfer(ki) {
     const { data: tables } = await supabase
-      .from('cafe_tables').select('id, number, area')
-      .eq('status', 'free').order('number')
-    setActiveTables(tables || [])
-    setTransferTargetId(tables?.[0]?.id || '')
+      .from('cafe_tables').select('id, number, area, status')
+      .in('status', ['free', 'occupied']).order('number')
+    const others = (tables || []).filter(t => t.id !== tableId)
+    setActiveTables(others)
+    setTransferTargetId(others[0]?.id || '')
     setTransferKOTItem(ki)
   }
 
@@ -578,9 +579,15 @@ export function NewOrderPage() {
                 </div>
               ))}
               {kot.status !== 'ready' ? (
-                <button onClick={() => markKOTReady(kot.id)} style={{ width: '100%', marginTop: 8, background: '#DCFCE7', color: '#15803D', border: '1px solid #86EFAC', borderRadius: 7, padding: '7px 0', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>✓ Mark as Ready</button>
+                <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
+                  <button onClick={() => markKOTReady(kot.id)} style={{ flex: 1, background: '#DCFCE7', color: '#15803D', border: '1px solid #86EFAC', borderRadius: 7, padding: '7px 0', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>✓ Mark as Ready</button>
+                  <button onClick={() => printKOT(kot, existingKOTs[idx].kot_items.map(ki => ({ item: { name: ki.order_items?.menu_items?.name || '' }, quantity: ki.order_items?.quantity || 1, variationName: ki.order_items?.variation_name || null, portionName: ki.order_items?.portion_name || null, addons: ki.order_items?.addons || [], notes: ki.order_items?.notes || '' })))} style={{ background: '#EFF6FF', color: '#1D4ED8', border: '1px solid #BFDBFE', borderRadius: 7, padding: '7px 10px', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>🖨️</button>
+                </div>
               ) : (
-                <div style={{ width: '100%', marginTop: 8, background: '#DCFCE7', color: '#15803D', border: '1px solid #86EFAC', borderRadius: 7, padding: '7px 0', fontSize: 11, fontWeight: 700, textAlign: 'center' }}>✓ Ready</div>
+                <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
+                  <div style={{ flex: 1, background: '#DCFCE7', color: '#15803D', border: '1px solid #86EFAC', borderRadius: 7, padding: '7px 0', fontSize: 11, fontWeight: 700, textAlign: 'center' }}>✓ Ready</div>
+                  <button onClick={() => printKOT(kot, existingKOTs[idx].kot_items.map(ki => ({ item: { name: ki.order_items?.menu_items?.name || '' }, quantity: ki.order_items?.quantity || 1, variationName: ki.order_items?.variation_name || null, portionName: ki.order_items?.portion_name || null, addons: ki.order_items?.addons || [], notes: ki.order_items?.notes || '' })))} style={{ background: '#EFF6FF', color: '#1D4ED8', border: '1px solid #BFDBFE', borderRadius: 7, padding: '7px 10px', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>🖨️</button>
+                </div>
               )}
             </div>
           ))}
@@ -638,10 +645,6 @@ export function NewOrderPage() {
             {submitting ? 'Sending...' : '🔥 KOT'}
           </button>
         </div>
-        <button onClick={() => fireKOT(false, true)} disabled={cart.length === 0 || submitting}
-          style={{ background: cart.length === 0 ? theme.bgWarm : '#092b33', color: cart.length === 0 ? theme.textMuted : '#fff', border: 'none', borderRadius: 8, padding: '10px 0', fontSize: 13, fontWeight: 700, cursor: cart.length === 0 ? 'not-allowed' : 'pointer' }}>
-          🔥 KOT & Print
-        </button>
         {existingOrder && (
           <button onClick={() => navigate('/billing/order/' + existingOrder.id)}
             style={{ background: '#D4A853', color: '#fff', border: 'none', borderRadius: 8, padding: '10px 0', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
@@ -765,12 +768,16 @@ export function NewOrderPage() {
               <div style={{ marginBottom: 20 }}>
                 <label style={{ fontSize: 11, fontWeight: 700, color: '#6B7280', display: 'block', marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 }}>Select Target Table</label>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                  {activeTables.map(t => (
-                    <button key={t.id} onClick={() => setTransferTargetId(t.id)}
-                      style={{ width: 44, height: 44, background: transferTargetId === t.id ? '#092b33' : '#F3F4F6', color: transferTargetId === t.id ? '#fff' : '#374151', border: '2px solid ' + (transferTargetId === t.id ? '#092b33' : '#E5E7EB'), borderRadius: 8, fontSize: 14, fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
-                      {t.number}
-                    </button>
-                  ))}
+                  {activeTables.map(t => {
+                    const isOccupied = t.status === 'occupied'
+                    const isSelected = transferTargetId === t.id
+                    return (
+                      <button key={t.id} onClick={() => setTransferTargetId(t.id)}
+                        style={{ width: 44, height: 44, background: isSelected ? '#092b33' : isOccupied ? '#FEF3C7' : '#F3F4F6', color: isSelected ? '#fff' : isOccupied ? '#92400E' : '#374151', border: '2px solid ' + (isSelected ? '#092b33' : isOccupied ? '#FCD34D' : '#E5E7EB'), borderRadius: 8, fontSize: 14, fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
+                        {t.number}
+                      </button>
+                    )
+                  })}
                 </div>
               </div>
             )}
