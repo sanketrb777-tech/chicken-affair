@@ -74,8 +74,8 @@ function printBill(bill) {
       @media print { body { margin: 0; } }
     </style>
   </head><body>
-    <h2>Cafe Bambini</h2>
-    <div class="sub">Bambini Cafe · Pune</div>
+    <h2>Cafe Chicken Affair</h2>
+    <div class="sub">Chicken Affair · Pune</div>
     <div class="divider"></div>
     <div style="font-size:11px">
       <div><b>Date:</b> ${date}</div>

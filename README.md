@@ -1,4 +1,4 @@
-# ☕ Bambini Cafe — Management App
+# ☕ Chicken Affair — Management App
 
 A complete café management system replacing Petpooja.  
 Single app, role-based access: Owner · Manager · Captain · Biller
@@ -35,7 +35,7 @@ src/
 ## Setup — Step by Step
 
 ### Step 1 — Create Supabase Project
-1. Go to [supabase.com](https://supabase.com) → New Project → Name it `bambini-cafe`
+1. Go to [supabase.com](https://supabase.com) → New Project → Name it `Chicken Affair-cafe`
 2. Choose region: `ap-south-1` (Mumbai)
 3. Save your database password
 4. Go to **Settings → API** → copy your **Project URL** and **anon/public key**

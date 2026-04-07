@@ -1,5 +1,5 @@
 -- ═══════════════════════════════════════════════════════════════════════
--- BAMBINI CAFE — SUPABASE DATABASE SCHEMA
+-- Chicken Affair — SUPABASE DATABASE SCHEMA
 -- Run this entire file in: Supabase Dashboard → SQL Editor → Run
 -- ═══════════════════════════════════════════════════════════════════════
 

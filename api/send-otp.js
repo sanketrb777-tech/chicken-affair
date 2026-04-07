@@ -23,8 +23,8 @@
           'Authorization': `Bearer ${process.env.WATI_TOKEN}`,
         },
         body: JSON.stringify({
-          template_name: 'bambinicafeapp',
-          broadcast_name: 'bambinicafeapp',
+          template_name: 'Chicken Affaircafeapp',
+          broadcast_name: 'Chicken Affaircafeapp',
           parameters: [{ name: '1', value: String(otp) }],
         }),
       }

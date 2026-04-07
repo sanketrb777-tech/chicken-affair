@@ -4,7 +4,7 @@ import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../context/AuthContext'
 import { theme } from '../../lib/theme'
 
-const APP_URL = 'https://bambiniapp-hue.vercel.app'
+const APP_URL = 'https://Chicken Affairapp-hue.vercel.app'
 
 // Card color by status — matching Petpooja style
 const STATUS_CFG = {

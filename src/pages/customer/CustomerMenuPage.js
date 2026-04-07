@@ -286,7 +286,7 @@ export default function CustomerMenuPage() {
       <div style={{ background: TEAL, padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 12, position: 'sticky', top: 0, zIndex: 50 }}>
         <div style={{ width: 38, height: 38, background: GOLD, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>☕</div>
         <div>
-          <div style={{ color: WHITE, fontWeight: 800, fontSize: 16 }}>Bambini Cafe</div>
+          <div style={{ color: WHITE, fontWeight: 800, fontSize: 16 }}>Chicken Affair</div>
           <div style={{ color: 'rgba(255,255,255,0.6)', fontSize: 12 }}>{table.name || `Table ${table.number}`}{table.area ? ` · ${table.area}` : ''}</div>
         </div>
         {step === STEP_MENU && cartCount > 0 && (

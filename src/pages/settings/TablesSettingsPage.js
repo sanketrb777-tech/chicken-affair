@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { theme } from '../../lib/theme'
 
-const APP_URL = 'https://bambiniapp-hue.vercel.app'
+const APP_URL = 'https://Chicken Affairapp-hue.vercel.app'
 
 export default function TablesSettingsPage() {
   const [tables, setTables]       = useState([])

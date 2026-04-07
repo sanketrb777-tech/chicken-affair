@@ -1,7 +1,7 @@
 {
-  "name": "Bambini Cafe",
-  "short_name": "Bambini",
-  "description": "Bambini Cafe POS System",
+  "name": "Chicken Affair",
+  "short_name": "Chicken Affair",
+  "description": "Chicken Affair POS System",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#1a3c3e",

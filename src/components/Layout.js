@@ -66,7 +66,7 @@ export default function Layout({ children }) {
             </div>
             {!collapsed && (
               <div>
-                <div style={{ fontWeight: 800, fontSize: 15, color: '#fff', letterSpacing: -0.3, lineHeight: 1 }}>Bambini</div>
+                <div style={{ fontWeight: 800, fontSize: 15, color: '#fff', letterSpacing: -0.3, lineHeight: 1 }}>Chicken Affair</div>
                 <div style={{ fontWeight: 600, fontSize: 9, color: '#D4A853', letterSpacing: 2, textTransform: 'uppercase', marginTop: 2 }}>Cafe</div>
               </div>
             )}
@@ -153,7 +153,7 @@ export default function Layout({ children }) {
                   <Coffee size={18} color="#fff" strokeWidth={2.5} />
                 </div>
                 <div>
-                  <div style={{ fontWeight: 800, fontSize: 15, color: '#fff' }}>Bambini</div>
+                  <div style={{ fontWeight: 800, fontSize: 15, color: '#fff' }}>Chicken Affair</div>
                   <div style={{ fontWeight: 600, fontSize: 9, color: '#D4A853', letterSpacing: 2, textTransform: 'uppercase' }}>Cafe</div>
                 </div>
               </div>
