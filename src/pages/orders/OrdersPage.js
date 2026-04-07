@@ -833,8 +833,14 @@ export default function OrdersPage() {
   useEffect(() => {
     fetchOrders()
     const now = new Date(); const midnight = new Date(now); midnight.setHours(24, 0, 0, 0)
-    const timer = setTimeout(() => fetchOrders(), midnight - now)
-    return () => clearTimeout(timer)
+    const midnightTimer = setTimeout(() => fetchOrders(), midnight - now)
+    const channel = supabase
+      .channel('orders-list-live')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' },      fetchOrders)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'cafe_tables' }, fetchOrders)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'kots' },        fetchOrders)
+      .subscribe()
+    return () => { clearTimeout(midnightTimer); supabase.removeChannel(channel) }
   }, [])
 
   useEffect(() => {
