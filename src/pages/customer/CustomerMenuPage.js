@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 
@@ -12,20 +12,10 @@ const TEXTD = '#1a1a1a'
 const TEXTL = '#6B7280'
 
 const STEP_IDENTITY = 'identity'
-const STEP_OTP      = 'otp'
 const STEP_MENU     = 'menu'
 const STEP_CONFIRM  = 'confirm'
 const STEP_PLACED   = 'placed'
 const STEP_PAYMENT  = 'payment'
-
-function generateOTP() { return Math.floor(100000 + Math.random() * 900000).toString() }
-
-async function sendOTPviaWATI(phone, otp) {
-  try {
-    const response = await fetch('/api/send-otp', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ phone, otp }) })
-    return response.ok
-  } catch { return false }
-}
 
 export default function CustomerMenuPage() {
   const { tableId } = useParams()
@@ -35,7 +25,7 @@ export default function CustomerMenuPage() {
   const [items, setItems]           = useState([])
   const [portions, setPortions]     = useState({})
   const [variations, setVariations] = useState({})
-  const [addonGroups, setAddonGroups] = useState({})  // itemId -> flat addons[]
+  const [addonGroups, setAddonGroups] = useState({})
   const [activeCategory, setActiveCategory] = useState(null)
   const [cart, setCart]             = useState([])
   const [search, setSearch]         = useState('')
@@ -47,28 +37,14 @@ export default function CustomerMenuPage() {
   const [roundCount, setRoundCount]       = useState(0)
   const [runningTotal, setRunningTotal]   = useState(0)
 
-  const [name, setName]   = useState('')
-  const [phone, setPhone] = useState('')
-  const [nameErr, setNameErr]   = useState('')
-  const [phoneErr, setPhoneErr] = useState('')
-
-  const [otp, setOtp]                   = useState(['', '', '', '', '', ''])
-  const [generatedOtp, setGeneratedOtp] = useState('')
-  const [otpError, setOtpError]         = useState('')
-  const [resendTimer, setResendTimer]   = useState(30)
-  const otpRefs = useRef([])
+  const [name, setName]     = useState('')
+  const [nameErr, setNameErr] = useState('')
 
   const [pickerItem, setPickerItem]           = useState(null)
   const [pickerVariation, setPickerVariation] = useState(null)
-  const [pickerAddons, setPickerAddons]       = useState({}) // addonId -> qty (flat)
+  const [pickerAddons, setPickerAddons]       = useState({})
 
   useEffect(() => { fetchData() }, [tableId])
-  useEffect(() => {
-    if (step !== STEP_OTP) return
-    let t = 30; setResendTimer(t)
-    const interval = setInterval(() => { t -= 1; setResendTimer(t); if (t <= 0) clearInterval(interval) }, 1000)
-    return () => clearInterval(interval)
-  }, [step])
 
   async function fetchData() {
     const [{ data: tableData }, { data: cats }, { data: menuItems }, { data: allPortions }, { data: allVariations }, { data: allAddonGroups }, { data: allAddons }] = await Promise.all([
@@ -105,7 +81,6 @@ export default function CustomerMenuPage() {
     ;(allVariations || []).forEach(v => { if (!varMap[v.menu_item_id]) varMap[v.menu_item_id] = []; varMap[v.menu_item_id].push(v) })
     setVariations(varMap)
 
-    // Flat addon map: itemId -> addons[]
     const groupByItem = {}
     ;(allAddonGroups || []).forEach(g => { groupByItem[g.id] = g.menu_item_id })
     const groupMap = {}
@@ -126,38 +101,9 @@ export default function CustomerMenuPage() {
     setRunningTotal((data || []).reduce((s, i) => s + i.quantity * (i.unit_price + (i.addons_total || 0)), 0))
   }
 
-  async function handleSendOTP() {
-    setNameErr(''); setPhoneErr('')
+  function handleStartOrdering() {
     if (!name.trim()) return setNameErr('Please enter your name')
-    if (!/^[6-9]\d{9}$/.test(phone)) return setPhoneErr('Enter a valid 10-digit mobile number')
-    setSubmitting(true)
-    const newOtp = generateOTP(); setGeneratedOtp(newOtp)
-    const sent = await sendOTPviaWATI(phone, newOtp)
-    setSubmitting(false)
-    if (!sent) return setPhoneErr('Failed to send OTP. Please try again.')
-    setStep(STEP_OTP)
-  }
-
-  function handleOtpInput(val, idx) {
-    const digit = val.replace(/\D/g, '').slice(0, 1)
-    const newOtp = [...otp]; newOtp[idx] = digit; setOtp(newOtp); setOtpError('')
-    if (digit && idx < 5) otpRefs.current[idx + 1]?.focus()
-  }
-  function handleOtpKeyDown(e, idx) { if (e.key === 'Backspace' && !otp[idx] && idx > 0) otpRefs.current[idx - 1]?.focus() }
-  function handleVerifyOTP() {
-    const entered = otp.join('')
-    if (entered.length < 6) return setOtpError('Enter the 6-digit OTP')
-    if (entered !== generatedOtp) return setOtpError('Incorrect OTP. Please try again.')
     setStep(STEP_MENU)
-  }
-  async function handleResendOTP() {
-    const newOtp = generateOTP(); setGeneratedOtp(newOtp); setOtp(['','','','','','']); setOtpError(''); setResendTimer(30)
-    await sendOTPviaWATI(phone, newOtp)
-  }
-
-  // Item Picker
-  function itemNeedsPicker(item) {
-    return (variations[item.id]?.length > 0) || (addonGroups[item.id]?.length > 0) || (portions[item.id]?.length > 0)
   }
 
   function openPicker(item) { setPickerItem(item); setPickerVariation(null); setPickerAddons({}) }
@@ -200,6 +146,10 @@ export default function CustomerMenuPage() {
     closePicker()
   }
 
+  function itemNeedsPicker(item) {
+    return (variations[item.id]?.length > 0) || (addonGroups[item.id]?.length > 0) || (portions[item.id]?.length > 0)
+  }
+
   function addToCart(item) {
     if (itemNeedsPicker(item)) { openPicker(item); return }
     const key = `${item.id}_base_noport_`
@@ -229,7 +179,7 @@ export default function CustomerMenuPage() {
     try {
       let orderId = placedOrderId
       if (!orderId) {
-        const { data: order, error: oErr } = await supabase.from('orders').insert({ table_id: tableId, order_type: 'dine_in', customer_name: name, customer_phone: phone, covers: 1, status: 'active' }).select().single()
+        const { data: order, error: oErr } = await supabase.from('orders').insert({ table_id: tableId, order_type: 'dine_in', customer_name: name || 'Guest', covers: 1, status: 'active' }).select().single()
         if (oErr) throw oErr
         orderId = order.id; setPlacedOrderId(orderId)
         await supabase.from('cafe_tables').update({ status: 'occupied' }).eq('id', tableId)
@@ -284,13 +234,13 @@ export default function CustomerMenuPage() {
 
       {/* HEADER */}
       <div style={{ background: TEAL, padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 12, position: 'sticky', top: 0, zIndex: 50 }}>
-        <div style={{ width: 38, height: 38, background: GOLD, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>☕</div>
+        <div style={{ width: 38, height: 38, background: GOLD, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>🍗</div>
         <div>
           <div style={{ color: WHITE, fontWeight: 800, fontSize: 16 }}>Chicken Affair</div>
           <div style={{ color: 'rgba(255,255,255,0.6)', fontSize: 12 }}>{table.name || `Table ${table.number}`}{table.area ? ` · ${table.area}` : ''}</div>
         </div>
         {step === STEP_MENU && cartCount > 0 && (
-          <button onClick={() => setStep(STEP_CONFIRM)} style={{ marginLeft: 'auto', background: GOLD, border: 'none', borderRadius: 20, padding: '6px 14px', color: TEAL, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>
+          <button onClick={() => setStep(STEP_CONFIRM)} style={{ marginLeft: 'auto', background: GOLD, border: 'none', borderRadius: 20, padding: '6px 14px', color: WHITE, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>
             🛒 {cartCount} · ₹{cartTotal.toFixed(0)}
           </button>
         )}
@@ -304,7 +254,6 @@ export default function CustomerMenuPage() {
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', zIndex: 200 }}
           onClick={e => e.target === e.currentTarget && closePicker()}>
           <div style={{ background: WHITE, borderRadius: '20px 20px 0 0', padding: 24, width: '100%', maxWidth: 480, maxHeight: '85vh', overflowY: 'auto', boxShadow: '0 -8px 32px rgba(0,0,0,0.2)' }}>
-
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
               <div style={{ width: 10, height: 10, borderRadius: 2, background: pickerItem.food_type === 'veg' ? '#15803D' : '#a93226', flexShrink: 0 }} />
               <div style={{ fontWeight: 800, fontSize: 17, color: TEXTD, flex: 1 }}>{pickerItem.name}</div>
@@ -337,7 +286,7 @@ export default function CustomerMenuPage() {
               </div>
             )}
 
-            {/* Portions (only if no variations) */}
+            {/* Portions */}
             {(portions[pickerItem.id] || []).length > 0 && !(variations[pickerItem.id] || []).length && (
               <div style={{ marginBottom: 20 }}>
                 <div style={{ fontSize: 13, fontWeight: 700, color: TEXTD, marginBottom: 12 }}>
@@ -346,7 +295,7 @@ export default function CustomerMenuPage() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                   {(portions[pickerItem.id] || []).map(p => (
                     <button key={p.id} onClick={() => confirmPicker(p)}
-                      style={{ background: '#F0FDF4', border: '2px solid #86EFAC', borderRadius: 14, padding: '14px 18px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      style={{ background: '#fdf9f9', border: '2px solid #fadbd8', borderRadius: 14, padding: '14px 18px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <div>
                         <div style={{ fontWeight: 700, fontSize: 15, color: TEXTD }}>{p.name}</div>
                         {p.value > 0 && p.unit && <div style={{ fontSize: 12, color: TEXTL, marginTop: 2 }}>{p.value}{p.unit}</div>}
@@ -358,7 +307,7 @@ export default function CustomerMenuPage() {
               </div>
             )}
 
-            {/* Add-ons (flat) */}
+            {/* Add-ons */}
             {(addonGroups[pickerItem.id] || []).length > 0 && (
               <div style={{ marginBottom: 20 }}>
                 <div style={{ fontSize: 13, fontWeight: 700, color: TEXTD, marginBottom: 10 }}>
@@ -376,13 +325,11 @@ export default function CustomerMenuPage() {
                         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                           {qty > 0 && (
                             <>
-                              <button onClick={() => adjustAddon(addon, -1)}
-                                style={{ background: '#fdedec', border: 'none', borderRadius: 8, width: 32, height: 32, fontSize: 18, cursor: 'pointer', fontWeight: 700, color: '#a93226', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>-</button>
+                              <button onClick={() => adjustAddon(addon, -1)} style={{ background: '#fdedec', border: 'none', borderRadius: 8, width: 32, height: 32, fontSize: 18, cursor: 'pointer', fontWeight: 700, color: '#a93226', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>-</button>
                               <span style={{ fontWeight: 800, fontSize: 16, minWidth: 20, textAlign: 'center' }}>{qty}</span>
                             </>
                           )}
-                          <button onClick={() => adjustAddon(addon, 1)}
-                            style={{ background: TEAL, border: 'none', borderRadius: 8, width: 32, height: 32, fontSize: 18, cursor: 'pointer', fontWeight: 700, color: WHITE, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>+</button>
+                          <button onClick={() => adjustAddon(addon, 1)} style={{ background: TEAL, border: 'none', borderRadius: 8, width: 32, height: 32, fontSize: 18, cursor: 'pointer', fontWeight: 700, color: WHITE, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>+</button>
                         </div>
                       </div>
                     )
@@ -391,13 +338,9 @@ export default function CustomerMenuPage() {
               </div>
             )}
 
-            {/* Confirm button */}
             {((variations[pickerItem.id] || []).length > 0 || (addonGroups[pickerItem.id] || []).length > 0) && (
               <div style={{ display: 'flex', gap: 10, paddingTop: 8 }}>
-                <button onClick={closePicker}
-                  style={{ flex: 1, background: BG, border: '1px solid ' + BORDER, borderRadius: 14, padding: '14px 0', fontSize: 14, fontWeight: 700, cursor: 'pointer', color: TEXTL }}>
-                  Cancel
-                </button>
+                <button onClick={closePicker} style={{ flex: 1, background: BG, border: '1px solid ' + BORDER, borderRadius: 14, padding: '14px 0', fontSize: 14, fontWeight: 700, cursor: 'pointer', color: TEXTL }}>Cancel</button>
                 <button onClick={() => confirmPicker()} disabled={!canConfirmPicker()}
                   style={{ flex: 2, background: canConfirmPicker() ? TEAL : '#E5E7EB', color: canConfirmPicker() ? WHITE : TEXTL, border: 'none', borderRadius: 14, padding: '14px 0', fontSize: 15, fontWeight: 700, cursor: canConfirmPicker() ? 'pointer' : 'not-allowed' }}>
                   {canConfirmPicker() ? `Add to Order →` : 'Select required options'}
@@ -408,60 +351,30 @@ export default function CustomerMenuPage() {
         </div>
       )}
 
-      {/* STEP: IDENTITY */}
+      {/* STEP: IDENTITY — Simple name only, no OTP */}
       {step === STEP_IDENTITY && (
         <div style={{ padding: 24, animation: 'fadeIn 0.3s ease' }}>
-          <div style={{ textAlign: 'center', marginBottom: 32, marginTop: 12 }}>
-            <div style={{ fontSize: 40, marginBottom: 10 }}>👋</div>
-            <div style={{ fontWeight: 800, fontSize: 22, color: TEXTD }}>Welcome!</div>
-            <div style={{ color: TEXTL, fontSize: 14, marginTop: 6 }}>Tell us who you are to start ordering</div>
+          <div style={{ textAlign: 'center', marginBottom: 32, marginTop: 20 }}>
+            <div style={{ fontSize: 48, marginBottom: 10 }}>🍗</div>
+            <div style={{ fontWeight: 800, fontSize: 24, color: TEXTD }}>Welcome!</div>
+            <div style={{ color: TEXTL, fontSize: 14, marginTop: 6 }}>{table.name || `Table ${table.number}`} · {table.area || 'Main'}</div>
           </div>
           <div style={{ background: WHITE, borderRadius: 16, padding: 24, boxShadow: '0 2px 12px rgba(0,0,0,0.06)' }}>
-            <div style={{ marginBottom: 16 }}>
+            <div style={{ marginBottom: 24 }}>
               <label style={{ fontSize: 11, fontWeight: 700, color: TEXTL, textTransform: 'uppercase', letterSpacing: 0.5, display: 'block', marginBottom: 8 }}>Your Name</label>
-              <input value={name} onChange={e => { setName(e.target.value); setNameErr('') }} placeholder="e.g. Rahul Sharma"
-                style={{ width: '100%', border: '1.5px solid ' + (nameErr ? '#cd6155' : BORDER), borderRadius: 10, padding: '12px 14px', fontSize: 15, color: TEXTD, background: '#FAFAFA' }} />
+              <input
+                value={name}
+                onChange={e => { setName(e.target.value); setNameErr('') }}
+                placeholder="e.g. Rahul"
+                onKeyDown={e => e.key === 'Enter' && handleStartOrdering()}
+                style={{ width: '100%', border: '1.5px solid ' + (nameErr ? '#cd6155' : BORDER), borderRadius: 10, padding: '13px 14px', fontSize: 16, color: TEXTD, background: '#FAFAFA' }}
+              />
               {nameErr && <div style={{ color: '#cd6155', fontSize: 12, marginTop: 5, fontWeight: 600 }}>{nameErr}</div>}
             </div>
-            <div style={{ marginBottom: 24 }}>
-              <label style={{ fontSize: 11, fontWeight: 700, color: TEXTL, textTransform: 'uppercase', letterSpacing: 0.5, display: 'block', marginBottom: 8 }}>WhatsApp Number</label>
-              <div style={{ display: 'flex', alignItems: 'center', border: '1.5px solid ' + (phoneErr ? '#cd6155' : BORDER), borderRadius: 10, background: '#FAFAFA', overflow: 'hidden' }}>
-                <div style={{ padding: '12px', borderRight: '1px solid ' + BORDER, color: TEXTL, fontSize: 14, fontWeight: 600, whiteSpace: 'nowrap' }}>🇮🇳 +91</div>
-                <input value={phone} onChange={e => { setPhone(e.target.value.replace(/\D/g, '').slice(0, 10)); setPhoneErr('') }} placeholder="10-digit number" type="tel" inputMode="numeric"
-                  style={{ flex: 1, border: 'none', background: 'transparent', padding: '12px 14px', fontSize: 15, color: TEXTD }} />
-              </div>
-              {phoneErr && <div style={{ color: '#cd6155', fontSize: 12, marginTop: 5, fontWeight: 600 }}>{phoneErr}</div>}
-              <div style={{ fontSize: 11, color: TEXTL, marginTop: 6 }}>📲 OTP will be sent to this WhatsApp number</div>
-            </div>
-            <button onClick={handleSendOTP} disabled={submitting}
-              style={{ width: '100%', background: TEAL, color: WHITE, border: 'none', borderRadius: 12, padding: '14px 0', fontSize: 15, fontWeight: 700, cursor: submitting ? 'not-allowed' : 'pointer', opacity: submitting ? 0.8 : 1 }}>
-              {submitting ? 'Sending OTP...' : 'Get OTP on WhatsApp →'}
+            <button onClick={handleStartOrdering}
+              style={{ width: '100%', background: TEAL, color: WHITE, border: 'none', borderRadius: 12, padding: '15px 0', fontSize: 16, fontWeight: 700, cursor: 'pointer' }}>
+              View Menu →
             </button>
-          </div>
-        </div>
-      )}
-
-      {/* STEP: OTP */}
-      {step === STEP_OTP && (
-        <div style={{ padding: 24, animation: 'fadeIn 0.3s ease' }}>
-          <button onClick={() => { setStep(STEP_IDENTITY); setOtp(['','','','','','']); setOtpError('') }} style={{ background: 'none', border: 'none', color: TEAL, fontWeight: 700, fontSize: 13, cursor: 'pointer', padding: '0 0 20px', display: 'flex', alignItems: 'center', gap: 4 }}>← Back</button>
-          <div style={{ textAlign: 'center', marginBottom: 32 }}>
-            <div style={{ fontSize: 40, marginBottom: 10 }}>📲</div>
-            <div style={{ fontWeight: 800, fontSize: 22, color: TEXTD }}>Enter OTP</div>
-            <div style={{ color: TEXTL, fontSize: 14, marginTop: 6 }}>Sent to <strong style={{ color: TEXTD }}>+91 {phone}</strong> on WhatsApp</div>
-          </div>
-          <div style={{ background: WHITE, borderRadius: 16, padding: 24, boxShadow: '0 2px 12px rgba(0,0,0,0.06)' }}>
-            <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginBottom: 20 }}>
-              {otp.map((digit, idx) => (
-                <input key={idx} ref={el => otpRefs.current[idx] = el} value={digit} onChange={e => handleOtpInput(e.target.value, idx)} onKeyDown={e => handleOtpKeyDown(e, idx)} maxLength={1} inputMode="numeric" type="tel"
-                  style={{ width: 46, height: 56, textAlign: 'center', fontSize: 22, fontWeight: 800, border: '2px solid ' + (digit ? TEAL : BORDER), borderRadius: 10, color: TEXTD, background: digit ? '#F0FDF9' : '#FAFAFA' }} />
-              ))}
-            </div>
-            {otpError && <div style={{ background: '#FEF2F2', border: '1px solid #fadbd8', borderRadius: 8, padding: '10px 14px', color: '#c0392b', fontSize: 13, fontWeight: 600, textAlign: 'center', marginBottom: 16 }}>{otpError}</div>}
-            <button onClick={handleVerifyOTP} style={{ width: '100%', background: TEAL, color: WHITE, border: 'none', borderRadius: 12, padding: '14px 0', fontSize: 15, fontWeight: 700, cursor: 'pointer', marginBottom: 16 }}>Verify OTP</button>
-            <div style={{ textAlign: 'center', fontSize: 13, color: TEXTL }}>
-              {resendTimer > 0 ? <>Resend OTP in <strong style={{ color: TEXTD }}>{resendTimer}s</strong></> : <button onClick={handleResendOTP} style={{ background: 'none', border: 'none', color: TEAL, fontWeight: 700, fontSize: 13, cursor: 'pointer', textDecoration: 'underline' }}>Resend OTP</button>}
-            </div>
           </div>
         </div>
       )}
@@ -470,7 +383,7 @@ export default function CustomerMenuPage() {
       {step === STEP_MENU && (
         <div style={{ animation: 'fadeIn 0.3s ease', paddingBottom: cartCount > 0 ? 80 : 20 }}>
           <div style={{ background: TEAL + '18', borderBottom: '1px solid ' + TEAL + '22', padding: '10px 20px', fontSize: 13, color: TEAL, fontWeight: 600, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span>👋 Hi <strong>{name}</strong>! {roundCount > 0 ? `Round ${roundCount + 1}` : 'What would you like to order?'}</span>
+            <span>👋 Hi <strong>{name}</strong>! {roundCount > 0 ? `Round ${roundCount + 1}` : 'What would you like?'}</span>
             {runningTotal > 0 && <span style={{ fontWeight: 800 }}>₹{runningTotal.toFixed(0)} so far</span>}
           </div>
           <div style={{ padding: '14px 16px 0', position: 'relative' }}>
@@ -541,7 +454,7 @@ export default function CustomerMenuPage() {
           {cartCount > 0 && (
             <div style={{ position: 'fixed', bottom: 20, left: '50%', transform: 'translateX(-50%)', width: 'calc(100% - 40px)', maxWidth: 440, zIndex: 100 }}>
               <button onClick={() => setStep(STEP_CONFIRM)}
-                style={{ width: '100%', background: TEAL, color: WHITE, border: 'none', borderRadius: 14, padding: '14px 20px', fontSize: 15, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', boxShadow: '0 8px 24px rgba(9,43,51,0.4)' }}>
+                style={{ width: '100%', background: TEAL, color: WHITE, border: 'none', borderRadius: 14, padding: '14px 20px', fontSize: 15, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', boxShadow: '0 8px 24px rgba(107,31,31,0.4)' }}>
                 <span>🛒 {cartCount} item{cartCount !== 1 ? 's' : ''}</span>
                 <span>View Order · ₹{cartTotal.toFixed(0)}</span>
               </button>
@@ -598,11 +511,11 @@ export default function CustomerMenuPage() {
       {/* STEP: PLACED */}
       {step === STEP_PLACED && (
         <div style={{ padding: 24, animation: 'fadeIn 0.3s ease' }}>
-          <div style={{ background: '#F0FDF4', border: '1px solid #86EFAC', borderRadius: 16, padding: 24, textAlign: 'center', marginBottom: 24 }}>
+          <div style={{ background: '#fdf9f9', border: '1px solid #fadbd8', borderRadius: 16, padding: 24, textAlign: 'center', marginBottom: 24 }}>
             <div style={{ fontSize: 48, marginBottom: 10 }}>✅</div>
-            <div style={{ fontWeight: 800, fontSize: 20, color: '#15803D', marginBottom: 6 }}>{roundCount === 1 ? 'Order Placed!' : `Round ${roundCount} Added!`}</div>
-            <div style={{ fontSize: 14, color: '#166534' }}>{roundCount === 1 ? 'Your order is being prepared!' : 'New items sent to kitchen!'}</div>
-            {runningTotal > 0 && <div style={{ marginTop: 10, fontWeight: 800, fontSize: 18, color: '#15803D' }}>Total so far: ₹{runningTotal.toFixed(0)}</div>}
+            <div style={{ fontWeight: 800, fontSize: 20, color: TEAL, marginBottom: 6 }}>{roundCount === 1 ? 'Order Placed!' : `Round ${roundCount} Added!`}</div>
+            <div style={{ fontSize: 14, color: TEXTL }}>{roundCount === 1 ? 'Your order is being prepared!' : 'New items sent to kitchen!'}</div>
+            {runningTotal > 0 && <div style={{ marginTop: 10, fontWeight: 800, fontSize: 18, color: TEAL }}>Total so far: ₹{runningTotal.toFixed(0)}</div>}
           </div>
           <div style={{ fontWeight: 800, fontSize: 17, color: TEXTD, marginBottom: 16, textAlign: 'center' }}>How would you like to pay?</div>
           <div style={{ display: 'flex', gap: 14, marginBottom: 16 }}>
@@ -626,7 +539,7 @@ export default function CustomerMenuPage() {
         </div>
       )}
 
-      {/* STEP: PAYMENT CONFIRMATION */}
+      {/* STEP: PAYMENT */}
       {step === STEP_PAYMENT && (
         <div style={{ padding: 24, animation: 'fadeIn 0.3s ease' }}>
           <div style={{ background: WHITE, borderRadius: 20, padding: 32, textAlign: 'center', boxShadow: '0 4px 20px rgba(0,0,0,0.08)', marginBottom: 20 }}>
