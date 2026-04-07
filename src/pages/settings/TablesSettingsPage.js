@@ -99,7 +99,7 @@ export default function TablesSettingsPage() {
           <p style={{ color: theme.textLight, fontSize: 14, marginTop: 4 }}>{tables.length} tables across {areas.length} area{areas.length !== 1 ? 's' : ''}</p>
         </div>
         <button onClick={openAdd}
-          style={{ background: '#7f1d1d', color: '#fff', border: 'none', borderRadius: 9, padding: '10px 22px', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+          style={{ background: '#6b1f1f', color: '#fff', border: 'none', borderRadius: 9, padding: '10px 22px', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
           + Add Table
         </button>
       </div>
@@ -118,7 +118,7 @@ export default function TablesSettingsPage() {
         return (
           <div key={area} style={{ marginBottom: 32 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
-              <div style={{ width: 32, height: 32, background: '#7f1d1d', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15 }}>
+              <div style={{ width: 32, height: 32, background: '#6b1f1f', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15 }}>
                 ??
               </div>
               <div>
@@ -134,7 +134,7 @@ export default function TablesSettingsPage() {
                 return (
                   <div key={table.id} style={{ background: '#fff', borderRadius: 14, border: '1.5px solid ' + theme.border, overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
                     <div style={{ background: theme.bgWarm, padding: '14px 14px 12px', textAlign: 'center', borderBottom: '1px solid ' + theme.border }}>
-                      <div style={{ width: 44, height: 44, background: '#7f1d1d', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 8px', fontWeight: 900, fontSize: 15, color: '#fff' }}>
+                      <div style={{ width: 44, height: 44, background: '#6b1f1f', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 8px', fontWeight: 900, fontSize: 15, color: '#fff' }}>
                         T{table.number}
                       </div>
                       <div style={{ fontWeight: 700, fontSize: 13, color: theme.textDark }}>{table.name || `Table ${table.number}`}</div>
@@ -151,7 +151,7 @@ export default function TablesSettingsPage() {
                         ?? Edit
                       </button>
                       <button onClick={() => setQrModal(table)}
-                        style={{ flex: 1, background: 'none', border: 'none', borderRight: '1px solid ' + theme.border, padding: '10px 0', fontSize: 12, fontWeight: 600, cursor: 'pointer', color: '#b91c1c' }}>
+                        style={{ flex: 1, background: 'none', border: 'none', borderRight: '1px solid ' + theme.border, padding: '10px 0', fontSize: 12, fontWeight: 600, cursor: 'pointer', color: '#a93226' }}>
                         ?? QR
                       </button>
                       <button onClick={() => deleteTable(table.id)}
@@ -166,7 +166,7 @@ export default function TablesSettingsPage() {
               {/* Add table to area shortcut */}
               <div onClick={openAdd}
                 style={{ background: '#fff', borderRadius: 14, border: '2px dashed ' + theme.border, padding: '30px 14px', textAlign: 'center', cursor: 'pointer', color: theme.textMuted, transition: 'all 0.15s' }}
-                onMouseEnter={e => { e.currentTarget.style.borderColor = '#7f1d1d'; e.currentTarget.style.color = '#7f1d1d' }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = '#6b1f1f'; e.currentTarget.style.color = '#6b1f1f' }}
                 onMouseLeave={e => { e.currentTarget.style.borderColor = theme.border; e.currentTarget.style.color = theme.textMuted }}>
                 <div style={{ fontSize: 22, marginBottom: 6 }}>+</div>
                 <div style={{ fontSize: 12, fontWeight: 600 }}>Add table to {area}</div>
@@ -225,7 +225,7 @@ export default function TablesSettingsPage() {
                 Cancel
               </button>
               <button onClick={saveTable} disabled={saving}
-                style={{ flex: 2, background: '#7f1d1d', color: '#fff', border: 'none', borderRadius: 9, padding: '12px', fontSize: 13, fontWeight: 700, cursor: saving ? 'not-allowed' : 'pointer' }}>
+                style={{ flex: 2, background: '#6b1f1f', color: '#fff', border: 'none', borderRadius: 9, padding: '12px', fontSize: 13, fontWeight: 700, cursor: saving ? 'not-allowed' : 'pointer' }}>
                 {saving ? 'Saving...' : editTable ? 'Save Changes' : 'Add Table'}
               </button>
             </div>
@@ -250,7 +250,7 @@ export default function TablesSettingsPage() {
                 Close
               </button>
               <button onClick={() => handleDownloadQR(qrModal)} disabled={downloading}
-                style={{ flex: 2, background: '#7f1d1d', color: '#fff', border: 'none', borderRadius: 9, padding: '11px', fontSize: 13, fontWeight: 700, cursor: downloading ? 'not-allowed' : 'pointer' }}>
+                style={{ flex: 2, background: '#6b1f1f', color: '#fff', border: 'none', borderRadius: 9, padding: '11px', fontSize: 13, fontWeight: 700, cursor: downloading ? 'not-allowed' : 'pointer' }}>
                 {downloading ? 'Downloading...' : '? Download QR'}
               </button>
             </div>

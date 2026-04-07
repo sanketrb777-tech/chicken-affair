@@ -2,10 +2,10 @@ import { useEffect, useState, useRef } from 'react'
 import { useParams } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 
-const TEAL  = '#7f1d1d'
-const TEAL2 = '#dc2626'
-const GOLD  = '#ef4444'
-const BG    = '#fff5f5'
+const TEAL  = '#6b1f1f'
+const TEAL2 = '#c0392b'
+const GOLD  = '#cd6155'
+const BG    = '#fdf9f9'
 const WHITE = '#FFFFFF'
 const BORDER = '#E5E7EB'
 const TEXTD = '#1a1a1a'
@@ -306,7 +306,7 @@ export default function CustomerMenuPage() {
           <div style={{ background: WHITE, borderRadius: '20px 20px 0 0', padding: 24, width: '100%', maxWidth: 480, maxHeight: '85vh', overflowY: 'auto', boxShadow: '0 -8px 32px rgba(0,0,0,0.2)' }}>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
-              <div style={{ width: 10, height: 10, borderRadius: 2, background: pickerItem.food_type === 'veg' ? '#15803D' : '#B91C1C', flexShrink: 0 }} />
+              <div style={{ width: 10, height: 10, borderRadius: 2, background: pickerItem.food_type === 'veg' ? '#15803D' : '#a93226', flexShrink: 0 }} />
               <div style={{ fontWeight: 800, fontSize: 17, color: TEXTD, flex: 1 }}>{pickerItem.name}</div>
               {!variations[pickerItem.id]?.length && !portions[pickerItem.id]?.length && (
                 <div style={{ fontWeight: 900, fontSize: 16, color: TEAL }}>₹{pickerItem.price}</div>
@@ -317,14 +317,14 @@ export default function CustomerMenuPage() {
             {(variations[pickerItem.id] || []).length > 0 && (
               <div style={{ marginBottom: 20 }}>
                 <div style={{ fontSize: 13, fontWeight: 700, color: TEXTD, marginBottom: 12 }}>
-                  Variation <span style={{ color: '#B91C1C', fontSize: 11, fontWeight: 600 }}>* Required</span>
+                  Variation <span style={{ color: '#a93226', fontSize: 11, fontWeight: 600 }}>* Required</span>
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: 10 }}>
                   {(variations[pickerItem.id] || []).map(v => {
-                    const dotColor = /chicken|mutton|prawn|fish|egg|non.?veg/i.test(v.name) ? '#B91C1C' : '#15803D'
+                    const dotColor = /chicken|mutton|prawn|fish|egg|non.?veg/i.test(v.name) ? '#a93226' : '#15803D'
                     return (
                       <button key={v.id} onClick={() => setPickerVariation(v)}
-                        style={{ background: pickerVariation?.id === v.id ? '#991b1b' : '#fff5f5', color: pickerVariation?.id === v.id ? WHITE : '#7f1d1d', border: '2px solid ' + (pickerVariation?.id === v.id ? '#991b1b' : '#fca5a5'), borderRadius: 14, padding: '16px 10px', cursor: 'pointer', textAlign: 'center' }}>
+                        style={{ background: pickerVariation?.id === v.id ? '#922b21' : '#fdf9f9', color: pickerVariation?.id === v.id ? WHITE : '#6b1f1f', border: '2px solid ' + (pickerVariation?.id === v.id ? '#922b21' : '#f1948a'), borderRadius: 14, padding: '16px 10px', cursor: 'pointer', textAlign: 'center' }}>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginBottom: 4 }}>
                           <div style={{ width: 9, height: 9, borderRadius: 2, border: '2px solid ' + dotColor, background: dotColor, flexShrink: 0 }} />
                           <span style={{ fontWeight: 800, fontSize: 15 }}>{v.name}</span>
@@ -341,7 +341,7 @@ export default function CustomerMenuPage() {
             {(portions[pickerItem.id] || []).length > 0 && !(variations[pickerItem.id] || []).length && (
               <div style={{ marginBottom: 20 }}>
                 <div style={{ fontSize: 13, fontWeight: 700, color: TEXTD, marginBottom: 12 }}>
-                  Portion / Size <span style={{ color: '#B91C1C', fontSize: 11, fontWeight: 600 }}>* Required</span>
+                  Portion / Size <span style={{ color: '#a93226', fontSize: 11, fontWeight: 600 }}>* Required</span>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                   {(portions[pickerItem.id] || []).map(p => (
@@ -368,7 +368,7 @@ export default function CustomerMenuPage() {
                   {(addonGroups[pickerItem.id] || []).map(addon => {
                     const qty = pickerAddons[addon.id] || 0
                     return (
-                      <div key={addon.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: qty > 0 ? '#fff5f5' : '#F9FAFB', borderRadius: 12, border: '1px solid ' + (qty > 0 ? '#fecaca' : BORDER) }}>
+                      <div key={addon.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: qty > 0 ? '#fdf9f9' : '#F9FAFB', borderRadius: 12, border: '1px solid ' + (qty > 0 ? '#fadbd8' : BORDER) }}>
                         <div>
                           <div style={{ fontWeight: 600, fontSize: 15, color: TEXTD }}>{addon.name}</div>
                           {addon.price > 0 && <div style={{ fontSize: 12, color: '#C2410C', fontWeight: 600, marginTop: 2 }}>+₹{addon.price}</div>}
@@ -377,7 +377,7 @@ export default function CustomerMenuPage() {
                           {qty > 0 && (
                             <>
                               <button onClick={() => adjustAddon(addon, -1)}
-                                style={{ background: '#FEE2E2', border: 'none', borderRadius: 8, width: 32, height: 32, fontSize: 18, cursor: 'pointer', fontWeight: 700, color: '#B91C1C', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>-</button>
+                                style={{ background: '#fdedec', border: 'none', borderRadius: 8, width: 32, height: 32, fontSize: 18, cursor: 'pointer', fontWeight: 700, color: '#a93226', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>-</button>
                               <span style={{ fontWeight: 800, fontSize: 16, minWidth: 20, textAlign: 'center' }}>{qty}</span>
                             </>
                           )}
@@ -420,17 +420,17 @@ export default function CustomerMenuPage() {
             <div style={{ marginBottom: 16 }}>
               <label style={{ fontSize: 11, fontWeight: 700, color: TEXTL, textTransform: 'uppercase', letterSpacing: 0.5, display: 'block', marginBottom: 8 }}>Your Name</label>
               <input value={name} onChange={e => { setName(e.target.value); setNameErr('') }} placeholder="e.g. Rahul Sharma"
-                style={{ width: '100%', border: '1.5px solid ' + (nameErr ? '#EF4444' : BORDER), borderRadius: 10, padding: '12px 14px', fontSize: 15, color: TEXTD, background: '#FAFAFA' }} />
-              {nameErr && <div style={{ color: '#EF4444', fontSize: 12, marginTop: 5, fontWeight: 600 }}>{nameErr}</div>}
+                style={{ width: '100%', border: '1.5px solid ' + (nameErr ? '#cd6155' : BORDER), borderRadius: 10, padding: '12px 14px', fontSize: 15, color: TEXTD, background: '#FAFAFA' }} />
+              {nameErr && <div style={{ color: '#cd6155', fontSize: 12, marginTop: 5, fontWeight: 600 }}>{nameErr}</div>}
             </div>
             <div style={{ marginBottom: 24 }}>
               <label style={{ fontSize: 11, fontWeight: 700, color: TEXTL, textTransform: 'uppercase', letterSpacing: 0.5, display: 'block', marginBottom: 8 }}>WhatsApp Number</label>
-              <div style={{ display: 'flex', alignItems: 'center', border: '1.5px solid ' + (phoneErr ? '#EF4444' : BORDER), borderRadius: 10, background: '#FAFAFA', overflow: 'hidden' }}>
+              <div style={{ display: 'flex', alignItems: 'center', border: '1.5px solid ' + (phoneErr ? '#cd6155' : BORDER), borderRadius: 10, background: '#FAFAFA', overflow: 'hidden' }}>
                 <div style={{ padding: '12px', borderRight: '1px solid ' + BORDER, color: TEXTL, fontSize: 14, fontWeight: 600, whiteSpace: 'nowrap' }}>🇮🇳 +91</div>
                 <input value={phone} onChange={e => { setPhone(e.target.value.replace(/\D/g, '').slice(0, 10)); setPhoneErr('') }} placeholder="10-digit number" type="tel" inputMode="numeric"
                   style={{ flex: 1, border: 'none', background: 'transparent', padding: '12px 14px', fontSize: 15, color: TEXTD }} />
               </div>
-              {phoneErr && <div style={{ color: '#EF4444', fontSize: 12, marginTop: 5, fontWeight: 600 }}>{phoneErr}</div>}
+              {phoneErr && <div style={{ color: '#cd6155', fontSize: 12, marginTop: 5, fontWeight: 600 }}>{phoneErr}</div>}
               <div style={{ fontSize: 11, color: TEXTL, marginTop: 6 }}>📲 OTP will be sent to this WhatsApp number</div>
             </div>
             <button onClick={handleSendOTP} disabled={submitting}
@@ -457,7 +457,7 @@ export default function CustomerMenuPage() {
                   style={{ width: 46, height: 56, textAlign: 'center', fontSize: 22, fontWeight: 800, border: '2px solid ' + (digit ? TEAL : BORDER), borderRadius: 10, color: TEXTD, background: digit ? '#F0FDF9' : '#FAFAFA' }} />
               ))}
             </div>
-            {otpError && <div style={{ background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 8, padding: '10px 14px', color: '#DC2626', fontSize: 13, fontWeight: 600, textAlign: 'center', marginBottom: 16 }}>{otpError}</div>}
+            {otpError && <div style={{ background: '#FEF2F2', border: '1px solid #fadbd8', borderRadius: 8, padding: '10px 14px', color: '#c0392b', fontSize: 13, fontWeight: 600, textAlign: 'center', marginBottom: 16 }}>{otpError}</div>}
             <button onClick={handleVerifyOTP} style={{ width: '100%', background: TEAL, color: WHITE, border: 'none', borderRadius: 12, padding: '14px 0', fontSize: 15, fontWeight: 700, cursor: 'pointer', marginBottom: 16 }}>Verify OTP</button>
             <div style={{ textAlign: 'center', fontSize: 13, color: TEXTL }}>
               {resendTimer > 0 ? <>Resend OTP in <strong style={{ color: TEXTD }}>{resendTimer}s</strong></> : <button onClick={handleResendOTP} style={{ background: 'none', border: 'none', color: TEAL, fontWeight: 700, fontSize: 13, cursor: 'pointer', textDecoration: 'underline' }}>Resend OTP</button>}
@@ -502,12 +502,12 @@ export default function CustomerMenuPage() {
                       {itemVars.length > 0 ? (
                         <div style={{ width: 10, height: 10, borderRadius: 2, border: '2px solid #9CA3AF', background: '#9CA3AF', flexShrink: 0 }} />
                       ) : (
-                        <div style={{ width: 10, height: 10, borderRadius: 2, border: '2px solid ' + (item.food_type === 'veg' ? '#15803D' : '#B91C1C'), background: item.food_type === 'veg' ? '#15803D' : '#B91C1C', flexShrink: 0 }} />
+                        <div style={{ width: 10, height: 10, borderRadius: 2, border: '2px solid ' + (item.food_type === 'veg' ? '#15803D' : '#a93226'), background: item.food_type === 'veg' ? '#15803D' : '#a93226', flexShrink: 0 }} />
                       )}
                       <div style={{ fontWeight: 700, fontSize: 15, color: TEXTD }}>{item.name}</div>
                     </div>
                     {hasOptions ? (
-                      <div style={{ fontSize: 11, fontWeight: 700, color: '#991b1b' }}>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: '#922b21' }}>
                         {itemVars.length > 0 ? `Veg & Non-Veg options available` : ''}
                         {itemVars.length === 0 && itemAGs.length > 0 ? `${itemAGs.length} add-on${itemAGs.length !== 1 ? 's' : ''} available` : ''}
                         {itemPorts.length > 0 && !itemVars.length ? `${itemPorts.length} sizes available` : ''}
@@ -531,7 +531,7 @@ export default function CustomerMenuPage() {
                     ))}
                   </div>
                   <button onClick={() => addToCart(item)}
-                    style={{ background: hasOptions ? '#991b1b' : TEAL, color: WHITE, border: 'none', borderRadius: 8, padding: '8px 14px', fontSize: 13, fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}>
+                    style={{ background: hasOptions ? '#922b21' : TEAL, color: WHITE, border: 'none', borderRadius: 8, padding: '8px 14px', fontSize: 13, fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}>
                     {hasOptions ? 'Choose →' : totalQty === 0 ? '+ Add' : '+ More'}
                   </button>
                 </div>
@@ -563,7 +563,7 @@ export default function CustomerMenuPage() {
               <div key={c.key} style={{ padding: '14px 16px', borderBottom: i < cart.length - 1 ? '1px solid ' + BORDER : 'none', display: 'flex', alignItems: 'center', gap: 12 }}>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontWeight: 700, fontSize: 14, color: TEXTD }}>{c.item.name}</div>
-                  {c.variationName && <div style={{ fontSize: 12, color: '#991b1b', fontWeight: 600, marginTop: 2 }}>{c.variationName}</div>}
+                  {c.variationName && <div style={{ fontSize: 12, color: '#922b21', fontWeight: 600, marginTop: 2 }}>{c.variationName}</div>}
                   {c.portionName && <div style={{ fontSize: 12, color: TEAL2, fontWeight: 600, marginTop: 2 }}>{c.portionName}</div>}
                   {c.addons?.length > 0 && <div style={{ fontSize: 11, color: '#C2410C', marginTop: 2 }}>+ {c.addons.map(a => a.name).join(', ')}</div>}
                   <div style={{ fontSize: 12, color: TEXTL }}>₹{(c.unitPrice + c.addonsTotal).toFixed(0)} each</div>

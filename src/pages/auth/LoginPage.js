@@ -69,7 +69,7 @@ export default function LoginPage() {
         }}>
 
           {error && (
-            <div style={{ background: 'rgba(254,226,226,0.9)', border: '1px solid #FECACA', borderRadius: 8, padding: '10px 14px', fontSize: 13, color: '#B91C1C' }}>
+            <div style={{ background: 'rgba(254,226,226,0.9)', border: '1px solid #FECACA', borderRadius: 8, padding: '10px 14px', fontSize: 13, color: '#a93226' }}>
               {error}
             </div>
           )}
@@ -101,7 +101,7 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={loading}
-            style={{ background: loading ? 'rgba(255,255,255,0.2)' : '#7f1d1d', color: '#fff', border: 'none', borderRadius: 8, padding: '12px', fontSize: 15, fontWeight: 700, cursor: loading ? 'not-allowed' : 'pointer', marginTop: 4 }}
+            style={{ background: loading ? 'rgba(255,255,255,0.2)' : '#6b1f1f', color: '#fff', border: 'none', borderRadius: 8, padding: '12px', fontSize: 15, fontWeight: 700, cursor: loading ? 'not-allowed' : 'pointer', marginTop: 4 }}
           >
             {loading ? 'Signing in...' : 'Sign In'}
           </button>

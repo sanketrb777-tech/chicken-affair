@@ -193,7 +193,7 @@ export default function ReportsPage() {
           <h1 style={{ fontSize: 22, fontWeight: 800, color: theme.textDark, margin: 0 }}>Reports</h1>
           <p style={{ color: theme.textLight, fontSize: 14, marginTop: 4 }}>
             Sales and revenue breakdown
-            {maxDays && <span style={{ marginLeft: 8, background: '#fee2e2', color: '#b91c1c', fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 20 }}>Last {maxDays} days only</span>}
+            {maxDays && <span style={{ marginLeft: 8, background: '#fdedec', color: '#a93226', fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 20 }}>Last {maxDays} days only</span>}
           </p>
         </div>
 
@@ -202,11 +202,11 @@ export default function ReportsPage() {
           {isOwner && (
             <div style={{ display: 'flex', background: theme.bgWarm, border: '1px solid ' + theme.border, borderRadius: 10, overflow: 'hidden' }}>
               <button onClick={() => setActiveTab('overview')}
-                style={{ padding: '8px 16px', fontSize: 12, fontWeight: 700, border: 'none', cursor: 'pointer', background: activeTab === 'overview' ? '#7f1d1d' : 'transparent', color: activeTab === 'overview' ? '#fff' : theme.textMid }}>
+                style={{ padding: '8px 16px', fontSize: 12, fontWeight: 700, border: 'none', cursor: 'pointer', background: activeTab === 'overview' ? '#6b1f1f' : 'transparent', color: activeTab === 'overview' ? '#fff' : theme.textMid }}>
                 Overview
               </button>
               <button onClick={() => setActiveTab('category')}
-                style={{ padding: '8px 16px', fontSize: 12, fontWeight: 700, border: 'none', cursor: 'pointer', background: activeTab === 'category' ? '#7f1d1d' : 'transparent', color: activeTab === 'category' ? '#fff' : theme.textMid }}>
+                style={{ padding: '8px 16px', fontSize: 12, fontWeight: 700, border: 'none', cursor: 'pointer', background: activeTab === 'category' ? '#6b1f1f' : 'transparent', color: activeTab === 'category' ? '#fff' : theme.textMid }}>
                 By Category
               </button>
             </div>
@@ -223,7 +223,7 @@ export default function ReportsPage() {
               <div style={{ position: 'absolute', right: 0, top: 'calc(100% + 6px)', background: '#fff', border: '1px solid ' + theme.border, borderRadius: 12, boxShadow: '0 8px 24px rgba(0,0,0,0.12)', zIndex: 100, minWidth: 180, overflow: 'hidden' }}>
                 {FILTERS.map(f => (
                   <div key={f} onClick={() => selectFilter(f)}
-                    style={{ padding: '11px 16px', fontSize: 13, fontWeight: activeFilter === f ? 700 : 500, color: activeFilter === f ? '#fff' : theme.textDark, background: activeFilter === f ? '#7f1d1d' : 'transparent', cursor: 'pointer' }}
+                    style={{ padding: '11px 16px', fontSize: 13, fontWeight: activeFilter === f ? 700 : 500, color: activeFilter === f ? '#fff' : theme.textDark, background: activeFilter === f ? '#6b1f1f' : 'transparent', cursor: 'pointer' }}
                     onMouseEnter={e => { if (activeFilter !== f) e.currentTarget.style.background = theme.bgWarm }}
                     onMouseLeave={e => { if (activeFilter !== f) e.currentTarget.style.background = 'transparent' }}>
                     {f}
@@ -259,9 +259,9 @@ export default function ReportsPage() {
           {activeTab === 'overview' && (
             <>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14, marginBottom: 14 }}>
-                <div style={{ background: '#7f1d1d', borderRadius: 14, padding: '20px 22px' }}>
+                <div style={{ background: '#6b1f1f', borderRadius: 14, padding: '20px 22px' }}>
                   <div style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>Total Revenue</div>
-                  <div style={{ fontSize: 30, fontWeight: 900, color: '#ef4444', letterSpacing: -1 }}>₹{totalRevenue.toFixed(0)}</div>
+                  <div style={{ fontSize: 30, fontWeight: 900, color: '#cd6155', letterSpacing: -1 }}>₹{totalRevenue.toFixed(0)}</div>
                   <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', marginTop: 4 }}>{getFilterLabel()}</div>
                 </div>
                 <div style={{ background: '#fff', borderRadius: 14, padding: '20px 22px', border: '1px solid ' + theme.border }}>
@@ -281,9 +281,9 @@ export default function ReportsPage() {
                   {sectionTitle('Order Type Breakdown')}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                     {[
-                      { label: 'Dine In',  value: dineInRevenue,   icon: <Utensils size={14} />,   color: '#7f1d1d' },
-                      { label: 'Takeaway', value: takeawayRevenue, icon: <ShoppingBag size={14} />, color: '#dc2626' },
-                      { label: 'Delivery', value: deliveryRevenue, icon: <Truck size={14} />,       color: '#ef4444' },
+                      { label: 'Dine In',  value: dineInRevenue,   icon: <Utensils size={14} />,   color: '#6b1f1f' },
+                      { label: 'Takeaway', value: takeawayRevenue, icon: <ShoppingBag size={14} />, color: '#c0392b' },
+                      { label: 'Delivery', value: deliveryRevenue, icon: <Truck size={14} />,       color: '#cd6155' },
                     ].map(({ label, value, icon, color }) => {
                       const pct = totalRevenue > 0 ? Math.round((value / totalRevenue) * 100) : 0
                       return (
@@ -306,8 +306,8 @@ export default function ReportsPage() {
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                     {[
                       { label: 'Cash', value: cashTotal, icon: <Banknote size={14} />,  color: '#15803D' },
-                      { label: 'Card', value: cardTotal, icon: <CreditCard size={14} />, color: '#b91c1c' },
-                      { label: 'UPI',  value: upiTotal,  icon: <Smartphone size={14} />, color: '#b91c1c' },
+                      { label: 'Card', value: cardTotal, icon: <CreditCard size={14} />, color: '#a93226' },
+                      { label: 'UPI',  value: upiTotal,  icon: <Smartphone size={14} />, color: '#a93226' },
                     ].map(({ label, value, icon, color }) => {
                       const pct = paymentTotal > 0 ? Math.round((value / paymentTotal) * 100) : 0
                       return (
@@ -337,7 +337,7 @@ export default function ReportsPage() {
                       <XAxis dataKey="date" tick={{ fontSize: 11, fill: theme.textLight }} />
                       <YAxis tick={{ fontSize: 11, fill: theme.textLight }} tickFormatter={v => '₹' + v} />
                       <Tooltip formatter={(value, name) => [name === 'Revenue' ? '₹' + value.toFixed(0) : value, name]} contentStyle={{ borderRadius: 10, border: '1px solid ' + theme.border, fontSize: 12 }} />
-                      <Bar dataKey="Revenue" fill="#7f1d1d" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="Revenue" fill="#6b1f1f" radius={[4, 4, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 )}
@@ -395,7 +395,7 @@ export default function ReportsPage() {
                       <XAxis dataKey="name" tick={{ fontSize: 11, fill: theme.textLight }} angle={-20} textAnchor="end" interval={0} />
                       <YAxis tick={{ fontSize: 11, fill: theme.textLight }} tickFormatter={v => '₹' + v} />
                       <Tooltip formatter={(value) => ['₹' + value.toFixed(0), 'Revenue']} contentStyle={{ borderRadius: 10, border: '1px solid ' + theme.border, fontSize: 12 }} />
-                      <Bar dataKey="revenue" fill="#ef4444" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="revenue" fill="#cd6155" radius={[4, 4, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 )}
@@ -429,7 +429,7 @@ export default function ReportsPage() {
                           </div>
                           {/* Progress bar */}
                           <div style={{ height: 3, background: theme.bgWarm, overflow: 'hidden' }}>
-                            <div style={{ height: '100%', width: barW + '%', background: '#ef4444' }} />
+                            <div style={{ height: '100%', width: barW + '%', background: '#cd6155' }} />
                           </div>
                         </div>
                       )

@@ -1,15 +1,15 @@
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { supabase } from '../../lib/supabase'
 
-const TEAL       = '#7f1d1d'
-const TEAL_LIGHT = '#dc2626'
-const TEAL_BG    = '#fee2e2'
+const TEAL       = '#6b1f1f'
+const TEAL_LIGHT = '#c0392b'
+const TEAL_BG    = '#fdedec'
 const BORDER     = '#E5E7EB'
 const TEXT_DARK  = '#111827'
 const TEXT_MID   = '#374151'
 const TEXT_LIGHT = '#6B7280'
 const WHITE      = '#FFFFFF'
-const BG         = '#fff5f5'
+const BG         = '#fdf9f9'
 
 export default function KDSPage() {
   const [groups, setGroups]           = useState([])
@@ -137,8 +137,8 @@ export default function KDSPage() {
 
   function getElapsedColor(createdAt) {
     const diff = Math.floor((new Date() - new Date(createdAt)) / 60000)
-    if (diff > 15) return '#DC2626'
-    if (diff > 8)  return '#dc2626'
+    if (diff > 15) return '#c0392b'
+    if (diff > 8)  return '#c0392b'
     return TEAL
   }
 
@@ -177,8 +177,8 @@ export default function KDSPage() {
         <div style={{ color: WHITE, fontWeight: 900, fontSize: 20, letterSpacing: 0.5 }}>KDS Dashboard</div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
           <div style={{ color: 'rgba(255,255,255,0.6)', fontSize: 13, fontFamily: 'monospace', letterSpacing: 1 }}>{time}</div>
-          <div style={{ background: WHITE, borderRadius: 20, padding: '5px 14px', display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700, color: connected ? TEAL_LIGHT : '#DC2626' }}>
-            <span style={{ width: 8, height: 8, borderRadius: '50%', background: connected ? '#22C55E' : '#DC2626', display: 'inline-block' }} />
+          <div style={{ background: WHITE, borderRadius: 20, padding: '5px 14px', display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700, color: connected ? TEAL_LIGHT : '#c0392b' }}>
+            <span style={{ width: 8, height: 8, borderRadius: '50%', background: connected ? '#22C55E' : '#c0392b', display: 'inline-block' }} />
             {connected ? 'Online' : 'Offline'}
           </div>
         </div>
@@ -200,7 +200,7 @@ export default function KDSPage() {
               {!collapsedCats[cat.id] && cat.items.map(item => (
                 <div key={item.name} style={{ padding: '9px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid ' + BORDER, background: WHITE }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 0 }}>
-                    <div style={{ width: 10, height: 10, borderRadius: '50%', border: '2px solid ' + (item.foodType === 'veg' ? '#15803D' : '#DC2626'), background: item.foodType === 'non_veg' ? '#DC2626' : 'transparent', flexShrink: 0 }} />
+                    <div style={{ width: 10, height: 10, borderRadius: '50%', border: '2px solid ' + (item.foodType === 'veg' ? '#15803D' : '#c0392b'), background: item.foodType === 'non_veg' ? '#c0392b' : 'transparent', flexShrink: 0 }} />
                     <span style={{ fontSize: 13, color: TEXT_MID, fontWeight: 500, lineHeight: 1.3 }}>{item.name}</span>
                   </div>
                   <div style={{ background: TEAL, color: WHITE, borderRadius: '50%', width: 26, height: 26, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 800, flexShrink: 0, marginLeft: 8 }}>
@@ -264,10 +264,10 @@ export default function KDSPage() {
                             return (
                               <div key={ki.id} style={{ padding: '10px 14px', borderBottom: '1px solid ' + BORDER, display: 'flex', alignItems: 'center', gap: 10, background: isDone ? '#F0FDF4' : WHITE, transition: 'background 0.2s' }}>
                                 <div style={{ fontWeight: 800, fontSize: 14, color: TEXT_DARK, minWidth: 18, textAlign: 'center', flexShrink: 0 }}>{qty}</div>
-                                {item?.food_type === 'non_veg' && <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#DC2626', border: '2px solid #DC2626', flexShrink: 0 }} />}
+                                {item?.food_type === 'non_veg' && <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#c0392b', border: '2px solid #c0392b', flexShrink: 0 }} />}
                                 <div style={{ flex: 1, minWidth: 0 }}>
                                   <div style={{ fontSize: 13, fontWeight: 600, color: isDone ? TEXT_LIGHT : TEXT_DARK, textDecoration: isDone ? 'line-through' : 'none', lineHeight: 1.3 }}>{item?.name}</div>
-                                  {notes && <div style={{ fontSize: 11, color: '#dc2626', marginTop: 2 }}>{notes}</div>}
+                                  {notes && <div style={{ fontSize: 11, color: '#c0392b', marginTop: 2 }}>{notes}</div>}
                                 </div>
                                 <div onClick={() => toggleItem(ki.id, isDone, group.groupKey, kot.id)}
                                   style={{ position: 'relative', width: 44, height: 24, borderRadius: 12, background: isDone ? TEAL_LIGHT : '#D1D5DB', cursor: 'pointer', transition: 'background 0.2s', flexShrink: 0 }}>

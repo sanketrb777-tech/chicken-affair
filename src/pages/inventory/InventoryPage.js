@@ -108,25 +108,25 @@ export default function InventoryPage() {
           <h1 style={{ fontSize: 22, fontWeight: 800, color: theme.textDark, margin: 0 }}>Inventory</h1>
           <p style={{ color: theme.textLight, fontSize: 14, marginTop: 4 }}>
             {items.length} items · {lowCount > 0
-              ? <span style={{ color: '#dc2626', fontWeight: 700 }}>⚠ {lowCount} low stock</span>
+              ? <span style={{ color: '#c0392b', fontWeight: 700 }}>⚠ {lowCount} low stock</span>
               : <span style={{ color: '#15803D' }}>✓ All stocked</span>}
           </p>
         </div>
         <button onClick={openAdd}
-          style={{ background: '#7f1d1d', color: '#fff', border: 'none', borderRadius: 9, padding: '10px 18px', fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
+          style={{ background: '#6b1f1f', color: '#fff', border: 'none', borderRadius: 9, padding: '10px 18px', fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
           <Plus size={16} /> Add Item
         </button>
       </div>
 
       {/* Low stock banner */}
       {lowCount > 0 && (
-        <div style={{ background: '#fff5f5', border: '1px solid #fca5a5', borderRadius: 12, padding: '12px 16px', marginBottom: 20, display: 'flex', alignItems: 'center', gap: 10 }}>
-          <AlertTriangle size={18} color='#dc2626' />
+        <div style={{ background: '#fdf9f9', border: '1px solid #fca5a5', borderRadius: 12, padding: '12px 16px', marginBottom: 20, display: 'flex', alignItems: 'center', gap: 10 }}>
+          <AlertTriangle size={18} color='#c0392b' />
           <span style={{ fontSize: 13, color: '#92400E', fontWeight: 600 }}>
             {lowCount} item{lowCount !== 1 ? 's are' : ' is'} running low and need{lowCount === 1 ? 's' : ''} restocking.
           </span>
           <button onClick={() => setFilter('low')}
-            style={{ marginLeft: 'auto', fontSize: 12, fontWeight: 700, color: '#dc2626', background: 'none', border: '1px solid #fca5a5', borderRadius: 6, padding: '4px 10px', cursor: 'pointer' }}>
+            style={{ marginLeft: 'auto', fontSize: 12, fontWeight: 700, color: '#c0392b', background: 'none', border: '1px solid #fca5a5', borderRadius: 6, padding: '4px 10px', cursor: 'pointer' }}>
             View Low Stock
           </button>
         </div>
@@ -142,7 +142,7 @@ export default function InventoryPage() {
         <div style={{ display: 'flex', background: '#fff', border: '1px solid ' + theme.border, borderRadius: 9, overflow: 'hidden' }}>
           {[['all', 'All'], ['low', '⚠ Low'], ['ok', '✓ OK']].map(([val, label]) => (
             <button key={val} onClick={() => setFilter(val)}
-              style={{ padding: '9px 16px', fontSize: 12, fontWeight: 700, border: 'none', cursor: 'pointer', background: filter === val ? '#7f1d1d' : 'transparent', color: filter === val ? '#fff' : theme.textMid, borderRight: val !== 'ok' ? '1px solid ' + theme.border : 'none' }}>
+              style={{ padding: '9px 16px', fontSize: 12, fontWeight: 700, border: 'none', cursor: 'pointer', background: filter === val ? '#6b1f1f' : 'transparent', color: filter === val ? '#fff' : theme.textMid, borderRight: val !== 'ok' ? '1px solid ' + theme.border : 'none' }}>
               {label}
             </button>
           ))}
@@ -173,13 +173,13 @@ export default function InventoryPage() {
             const isLow    = parseFloat(item.current_stock) <= parseFloat(item.min_stock)
             const stockPct = Math.min(100, (parseFloat(item.current_stock) / Math.max(parseFloat(item.min_stock) * 2, 1)) * 100)
             return (
-              <div key={item.id} style={{ display: 'grid', gridTemplateColumns: '1fr 100px 120px 120px 160px', padding: '14px 18px', borderBottom: idx < filtered.length - 1 ? '1px solid ' + theme.bgWarm : 'none', alignItems: 'center', background: isLow ? '#fff5f5' : '#fff', transition: 'background 0.1s' }}>
+              <div key={item.id} style={{ display: 'grid', gridTemplateColumns: '1fr 100px 120px 120px 160px', padding: '14px 18px', borderBottom: idx < filtered.length - 1 ? '1px solid ' + theme.bgWarm : 'none', alignItems: 'center', background: isLow ? '#fdf9f9' : '#fff', transition: 'background 0.1s' }}>
                 {/* Name */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  {isLow && <AlertTriangle size={14} color='#dc2626' style={{ flexShrink: 0 }} />}
+                  {isLow && <AlertTriangle size={14} color='#c0392b' style={{ flexShrink: 0 }} />}
                   <div>
                     <div style={{ fontWeight: 700, fontSize: 14, color: theme.textDark }}>{item.name}</div>
-                    {isLow && <div style={{ fontSize: 11, color: '#dc2626', fontWeight: 600, marginTop: 1 }}>Low stock</div>}
+                    {isLow && <div style={{ fontSize: 11, color: '#c0392b', fontWeight: 600, marginTop: 1 }}>Low stock</div>}
                   </div>
                 </div>
 
@@ -188,9 +188,9 @@ export default function InventoryPage() {
 
                 {/* Current stock */}
                 <div style={{ textAlign: 'center' }}>
-                  <div style={{ fontWeight: 800, fontSize: 15, color: isLow ? '#dc2626' : theme.textDark }}>{item.current_stock}</div>
+                  <div style={{ fontWeight: 800, fontSize: 15, color: isLow ? '#c0392b' : theme.textDark }}>{item.current_stock}</div>
                   <div style={{ height: 4, background: theme.bgWarm, borderRadius: 99, marginTop: 4, overflow: 'hidden' }}>
-                    <div style={{ height: '100%', width: stockPct + '%', background: isLow ? '#ef4444' : '#dc2626', borderRadius: 99, transition: 'width 0.3s' }} />
+                    <div style={{ height: '100%', width: stockPct + '%', background: isLow ? '#cd6155' : '#c0392b', borderRadius: 99, transition: 'width 0.3s' }} />
                   </div>
                 </div>
 
@@ -209,7 +209,7 @@ export default function InventoryPage() {
                   </button>
                   <button onClick={() => setDeleteId(item.id)}
                     style={{ background: '#FEF2F2', border: 'none', borderRadius: 7, padding: '6px 8px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
-                    <Trash2 size={14} color='#DC2626' />
+                    <Trash2 size={14} color='#c0392b' />
                   </button>
                 </div>
               </div>
@@ -238,7 +238,7 @@ export default function InventoryPage() {
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                   {UNITS.map(u => (
                     <button key={u} onClick={() => setForm(f => ({ ...f, unit: u }))}
-                      style={{ background: form.unit === u ? '#7f1d1d' : theme.bgWarm, color: form.unit === u ? '#fff' : theme.textMid, border: 'none', borderRadius: 7, padding: '6px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+                      style={{ background: form.unit === u ? '#6b1f1f' : theme.bgWarm, color: form.unit === u ? '#fff' : theme.textMid, border: 'none', borderRadius: 7, padding: '6px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
                       {u}
                     </button>
                   ))}
@@ -257,14 +257,14 @@ export default function InventoryPage() {
                 </div>
               </div>
             </div>
-            {error && <div style={{ marginTop: 12, fontSize: 12, color: '#DC2626', fontWeight: 600 }}>{error}</div>}
+            {error && <div style={{ marginTop: 12, fontSize: 12, color: '#c0392b', fontWeight: 600 }}>{error}</div>}
             <div style={{ display: 'flex', gap: 10, marginTop: 22 }}>
               <button onClick={() => setModal(null)}
                 style={{ flex: 1, background: theme.bgWarm, border: 'none', borderRadius: 9, padding: '11px 0', fontSize: 13, fontWeight: 700, cursor: 'pointer', color: theme.textMid }}>
                 Cancel
               </button>
               <button onClick={handleSave} disabled={saving}
-                style={{ flex: 2, background: '#7f1d1d', color: '#fff', border: 'none', borderRadius: 9, padding: '11px 0', fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                style={{ flex: 2, background: '#6b1f1f', color: '#fff', border: 'none', borderRadius: 9, padding: '11px 0', fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
                 <Check size={15} /> {saving ? 'Saving...' : modal.mode === 'add' ? 'Add Item' : 'Save Changes'}
               </button>
             </div>
@@ -289,7 +289,7 @@ export default function InventoryPage() {
             <div style={{ display: 'flex', background: theme.bgWarm, borderRadius: 9, padding: 4, marginBottom: 16 }}>
               {[['add', '+ Add Stock'], ['remove', '− Remove Stock']].map(([val, label]) => (
                 <button key={val} onClick={() => setAdjust(a => ({ ...a, type: val }))}
-                  style={{ flex: 1, padding: '9px 0', borderRadius: 7, border: 'none', fontWeight: 700, fontSize: 13, cursor: 'pointer', background: adjust.type === val ? (val === 'add' ? '#dc2626' : '#DC2626') : 'transparent', color: adjust.type === val ? '#fff' : theme.textMid, transition: 'all 0.15s' }}>
+                  style={{ flex: 1, padding: '9px 0', borderRadius: 7, border: 'none', fontWeight: 700, fontSize: 13, cursor: 'pointer', background: adjust.type === val ? (val === 'add' ? '#c0392b' : '#c0392b') : 'transparent', color: adjust.type === val ? '#fff' : theme.textMid, transition: 'all 0.15s' }}>
                   {label}
                 </button>
               ))}
@@ -317,7 +317,7 @@ export default function InventoryPage() {
               </div>
             )}
 
-            {error && <div style={{ marginTop: 10, fontSize: 12, color: '#DC2626', fontWeight: 600 }}>{error}</div>}
+            {error && <div style={{ marginTop: 10, fontSize: 12, color: '#c0392b', fontWeight: 600 }}>{error}</div>}
 
             <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
               <button onClick={() => setModal(null)}
@@ -325,7 +325,7 @@ export default function InventoryPage() {
                 Cancel
               </button>
               <button onClick={handleAdjust} disabled={saving}
-                style={{ flex: 2, background: adjust.type === 'add' ? '#dc2626' : '#DC2626', color: '#fff', border: 'none', borderRadius: 9, padding: '11px 0', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+                style={{ flex: 2, background: adjust.type === 'add' ? '#c0392b' : '#c0392b', color: '#fff', border: 'none', borderRadius: 9, padding: '11px 0', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
                 {saving ? 'Saving...' : adjust.type === 'add' ? '+ Add Stock' : '− Remove Stock'}
               </button>
             </div>
@@ -338,7 +338,7 @@ export default function InventoryPage() {
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
           <div style={{ background: '#fff', borderRadius: 16, padding: 28, width: '100%', maxWidth: 360, textAlign: 'center', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}>
             <div style={{ width: 52, height: 52, borderRadius: '50%', background: '#FEF2F2', border: '2px solid #FECACA', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
-              <Trash2 size={22} color='#DC2626' />
+              <Trash2 size={22} color='#c0392b' />
             </div>
             <div style={{ fontWeight: 800, fontSize: 16, color: theme.textDark, marginBottom: 8 }}>Delete Item?</div>
             <div style={{ fontSize: 13, color: theme.textLight, marginBottom: 22 }}>This item will be permanently removed from inventory.</div>
@@ -348,7 +348,7 @@ export default function InventoryPage() {
                 Cancel
               </button>
               <button onClick={handleDelete}
-                style={{ flex: 1, background: '#DC2626', color: '#fff', border: 'none', borderRadius: 9, padding: '11px 0', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+                style={{ flex: 1, background: '#c0392b', color: '#fff', border: 'none', borderRadius: 9, padding: '11px 0', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
                 Delete
               </button>
             </div>

@@ -28,7 +28,7 @@ export default function SettingsPage() {
               </div>
               <div style={{ fontWeight: 700, fontSize: 14, color: theme.textDark, marginBottom: 4 }}>{s.title}</div>
               <div style={{ fontSize: 12, color: theme.textLight }}>{s.desc}</div>
-              <div style={{ marginTop: 14, color: '#7f1d1d', fontSize: 12, fontWeight: 700 }}>Configure ?</div>
+              <div style={{ marginTop: 14, color: '#6b1f1f', fontSize: 12, fontWeight: 700 }}>Configure ?</div>
             </div>
           )
         })}

@@ -45,7 +45,7 @@ export default function PrinterSettingsPage() {
 
   const toggle = (value, setter) => (
     <div onClick={() => setter(!value)}
-      style={{ width: 44, height: 24, borderRadius: 99, background: value ? '#7f1d1d' : theme.border, cursor: 'pointer', position: 'relative', transition: 'background 0.2s', flexShrink: 0 }}>
+      style={{ width: 44, height: 24, borderRadius: 99, background: value ? '#6b1f1f' : theme.border, cursor: 'pointer', position: 'relative', transition: 'background 0.2s', flexShrink: 0 }}>
       <div style={{ width: 18, height: 18, borderRadius: '50%', background: '#fff', position: 'absolute', top: 3, left: value ? 23 : 3, transition: 'left 0.2s' }} />
     </div>
   )
@@ -84,7 +84,7 @@ export default function PrinterSettingsPage() {
           <div style={{ display: 'flex', gap: 10 }}>
             {['58', '80'].map(size => (
               <div key={size} onClick={() => setPaperSize(size)}
-                style={{ flex: 1, padding: '10px', borderRadius: 9, border: '2px solid ' + (paperSize === size ? '#7f1d1d' : theme.border), background: paperSize === size ? '#7f1d1d' : '#fff', color: paperSize === size ? '#fff' : theme.textDark, textAlign: 'center', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
+                style={{ flex: 1, padding: '10px', borderRadius: 9, border: '2px solid ' + (paperSize === size ? '#6b1f1f' : theme.border), background: paperSize === size ? '#6b1f1f' : '#fff', color: paperSize === size ? '#fff' : theme.textDark, textAlign: 'center', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
                 {size}mm
               </div>
             ))}
@@ -109,13 +109,13 @@ export default function PrinterSettingsPage() {
 
         <div style={{ marginTop: 8 }}>
           <button onClick={saveSettings} disabled={saving}
-            style={{ background: '#7f1d1d', color: '#fff', border: 'none', borderRadius: 10, padding: '12px 24px', fontSize: 13, fontWeight: 700, cursor: 'pointer', width: '100%' }}>
+            style={{ background: '#6b1f1f', color: '#fff', border: 'none', borderRadius: 10, padding: '12px 24px', fontSize: 13, fontWeight: 700, cursor: 'pointer', width: '100%' }}>
             {saving ? 'Saving...' : saved ? '✓ Saved' : 'Save Settings'}
           </button>
         </div>
       </div>
 
-      <div style={{ marginTop: 14, background: '#fee2e2', borderRadius: 12, border: '1px solid #fca5a5', padding: '14px 18px' }}>
+      <div style={{ marginTop: 14, background: '#fdedec', borderRadius: 12, border: '1px solid #fca5a5', padding: '14px 18px' }}>
         <div style={{ fontSize: 12, fontWeight: 700, color: '#92400E', marginBottom: 4 }}>Note</div>
         <div style={{ fontSize: 12, color: '#92400E' }}>Thermal printer integration (actual printing) will be activated in a future update. These settings will be used when printing is enabled.</div>
       </div>
