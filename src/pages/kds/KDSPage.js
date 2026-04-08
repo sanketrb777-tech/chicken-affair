@@ -188,14 +188,14 @@ export default function KDSPage() {
         <div style={{ width: 240, background: WHITE, borderRight: '1px solid ' + BORDER, display: 'flex', flexDirection: 'column', flexShrink: 0, overflowY: 'auto' }}>
           {batchCategories.length === 0 ? (
             <div style={{ padding: 24, textAlign: 'center', color: TEXT_LIGHT, fontSize: 13, marginTop: 40 }}>
-              <div style={{ fontSize: 32, marginBottom: 10 }}>?</div>All items done
+              <div style={{ fontSize: 32, marginBottom: 10 }}>✓</div>All items done
             </div>
           ) : batchCategories.map(cat => (
             <div key={cat.id} style={{ borderBottom: '1px solid ' + BORDER }}>
               <div onClick={() => toggleCat(cat.id)}
                 style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', background: '#F9FAFB', userSelect: 'none' }}>
                 <div style={{ fontWeight: 800, fontSize: 13, color: TEXT_DARK, textTransform: 'uppercase', letterSpacing: 0.5 }}>{cat.name}</div>
-                <span style={{ fontSize: 14, color: TEXT_LIGHT, transform: collapsedCats[cat.id] ? 'rotate(-90deg)' : 'rotate(0)', transition: 'transform 0.15s', display: 'inline-block' }}>?</span>
+                <span style={{ fontSize: 14, color: TEXT_LIGHT, transform: collapsedCats[cat.id] ? 'rotate(-90deg)' : 'rotate(0)', transition: 'transform 0.15s', display: 'inline-block' }}>✓</span>
               </div>
               {!collapsedCats[cat.id] && cat.items.map(item => (
                 <div key={item.name} style={{ padding: '9px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid ' + BORDER, background: WHITE }}>
@@ -215,7 +215,7 @@ export default function KDSPage() {
         <div style={{ flex: 1, overflowY: 'auto', padding: 16 }}>
           {groups.length === 0 ? (
             <div style={{ textAlign: 'center', marginTop: 80 }}>
-              <div style={{ width: 72, height: 72, borderRadius: '50%', background: TEAL_BG, border: '2px solid ' + TEAL_LIGHT, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px', fontSize: 32 }}>?</div>
+              <div style={{ width: 72, height: 72, borderRadius: '50%', background: TEAL_BG, border: '2px solid ' + TEAL_LIGHT, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px', fontSize: 32 }}>✓</div>
               <div style={{ color: TEAL_LIGHT, fontSize: 22, fontWeight: 800 }}>All Orders Done</div>
               <div style={{ color: TEXT_LIGHT, fontSize: 14, marginTop: 8 }}>Waiting for new orders...</div>
             </div>
@@ -233,7 +233,7 @@ export default function KDSPage() {
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                         <div style={{ width: 14, height: 14, borderRadius: '50%', border: '2px solid ' + (allItemsDone ? TEAL_LIGHT : TEAL), background: allItemsDone ? TEAL_LIGHT : 'transparent', flexShrink: 0 }} />
                         <span style={{ fontWeight: 700, fontSize: 14, color: TEXT_DARK }}>{label}</span>
-                        {sub && <span style={{ fontSize: 12, color: TEXT_LIGHT }}>� {sub}</span>}
+                        {sub && <span style={{ fontSize: 12, color: TEXT_LIGHT }}>� {sub}</span>}
                       </div>
                       <span style={{ fontWeight: 900, fontSize: 16, color: TEXT_DARK }}>{badge}</span>
                     </div>
@@ -283,7 +283,7 @@ export default function KDSPage() {
                     <div style={{ padding: '12px 14px', borderTop: '1px solid ' + BORDER }}>
                       <button onClick={() => markGroupReady(group)}
                         style={{ width: '100%', background: allItemsDone ? TEAL : '#E5E7EB', color: allItemsDone ? WHITE : TEXT_LIGHT, border: 'none', borderRadius: 8, padding: '11px 0', fontSize: 14, fontWeight: 800, cursor: allItemsDone ? 'pointer' : 'default', transition: 'all 0.2s' }}>
-                        {allItemsDone ? '?'? Food Ready' : 'Food Ready'}
+                        {allItemsDone ? 'Food Ready ✓' : 'Food Ready'}
                       </button>
                     </div>
                   </div>
